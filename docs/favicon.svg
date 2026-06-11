@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#282a36"/>
+  <g transform="translate(32,32)">
+    <circle r="15" fill="none" stroke="#8be9fd" stroke-width="3"/>
+    <g fill="#8be9fd">
+      <g><rect x="-1.4" y="-22" width="2.8" height="20" rx="1.4"/><circle cy="-22" r="2.6" fill="#50fa7b"/></g>
+      <g transform="rotate(45)"><rect x="-1.4" y="-22" width="2.8" height="20" rx="1.4"/><circle cy="-22" r="2.6" fill="#50fa7b"/></g>
+      <g transform="rotate(90)"><rect x="-1.4" y="-22" width="2.8" height="20" rx="1.4"/><circle cy="-22" r="2.6" fill="#50fa7b"/></g>
+      <g transform="rotate(135)"><rect x="-1.4" y="-22" width="2.8" height="20" rx="1.4"/><circle cy="-22" r="2.6" fill="#50fa7b"/></g>
+      <g transform="rotate(180)"><rect x="-1.4" y="-22" width="2.8" height="20" rx="1.4"/><circle cy="-22" r="2.6" fill="#50fa7b"/></g>
+      <g transform="rotate(225)"><rect x="-1.4" y="-22" width="2.8" height="20" rx="1.4"/><circle cy="-22" r="2.6" fill="#50fa7b"/></g>
+      <g transform="rotate(270)"><rect x="-1.4" y="-22" width="2.8" height="20" rx="1.4"/><circle cy="-22" r="2.6" fill="#50fa7b"/></g>
+      <g transform="rotate(315)"><rect x="-1.4" y="-22" width="2.8" height="20" rx="1.4"/><circle cy="-22" r="2.6" fill="#50fa7b"/></g>
+    </g>
+    <circle r="5" fill="#282a36" stroke="#8be9fd" stroke-width="3"/>
+  </g>
+</svg>
