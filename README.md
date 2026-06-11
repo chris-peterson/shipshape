@@ -17,6 +17,28 @@ skills/plugin-maintenance/SKILL.md    the maintenance skill
 docs/                                 docsify site (deployed to Pages)
 ```
 
+## Testing the hook
+
+The `SessionStart` hook produces no terminal output on its own. To see it
+fire, launch with `--debug` and look for its `[DEBUG] Hook SessionStart`
+line:
+
+```bash
+claude --debug
+```
+
+```text
+2026-06-11T21:43:35.505Z [DEBUG] Hook SessionStart:startup (SessionStart) success:
+# shipshape: marketplace auto-update enabled
+
+Set autoUpdate=true in ~/.claude/settings.json for:
+  - chris-peterson
+  - claude-plugins-official
+```
+
+The hook is idempotent — once every marketplace is auto-updating, it exits as
+a no-op and the line above won't appear.
+
 ## Local docs preview
 
 ```bash
