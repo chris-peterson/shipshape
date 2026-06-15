@@ -8,6 +8,13 @@ installed plugins and reaps the clutter Claude Code leaves behind, and a
 load-time hook that turns on marketplace auto-update so plugins stay current on
 their own.
 
+## In action
+
+Out-of-date tooling drifts silently and `uninstall` leaves clutter behind. One
+command brings the whole plugin dir back to a known-good state:
+
+<div class="cw-session" data-cw-session="session"></div>
+
 ## Install
 
 ```bash
@@ -37,6 +44,11 @@ in `~/.claude/settings.json` (`enabledPlugins`), then:
 
 It reports **by exception** — only plugins that changed get a row; everything
 already current collapses into a one-line count.
+
+Two runs, two outcomes — a reconcile with work to do, and a settled machine
+where there's nothing left but to keep auto-update armed:
+
+<div class="cw-session" data-cw-session="examples"></div>
 
 ### What it cleans that nothing else does
 
