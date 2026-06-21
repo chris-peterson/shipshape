@@ -1,6 +1,6 @@
 # <img src="favicon.svg" alt="shipshape" width="64" height="64" style="vertical-align: middle"> shipshape
 
-Keep all your AI plugins up to date.
+Keep your Claude Code plugins up to date.
 
 shipshape is a Claude Code plugin for maintaining your *other* Claude Code
 plugins. It does two things: a `/plugin-maintenance` skill that reconciles your

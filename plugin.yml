@@ -17,13 +17,11 @@ marketplace:
 
 # → marketplace SPA; keys mirror the SPA's PLUGINS object.
 suite:
-  ac: "--guard"
-  group: stay safe
-  passive: true
-  # The plugin's docs site renders the live session preview, so the hub hands
-  # its drill-in off to the spoke rather than showing the in-hub detail view.
-  spoke: true
-  gloss: "Nautical: everything stowed, secured, and ready for sea."
+  group: safety
+  # Activated by the user (/plugin-maintenance) and by a SessionStart hook that
+  # arms marketplace auto-update.
+  activations: [user, session]
+  gloss: Everything stowed, secured, and ready for sea.
   pitch: "Keeps your other plugins current and your plugin dir tidy — out-of-date tooling is its own kind of risk."
   what: "Reconciles the plugins you have installed against the set you've declared, updates them, and reaps the stale caches and orphan data dirs that uninstall leaves behind — without touching a version a live session still holds. A load-time hook turns on marketplace auto-update so plugins keep themselves current."
   cmds:

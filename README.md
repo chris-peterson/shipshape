@@ -2,7 +2,7 @@
 
 📖 **[Read the docs →](https://chris-peterson.github.io/shipshape/)**
 
-Keep all your AI plugins up to date. shipshape is a Claude Code plugin that
+Keep your Claude Code plugins up to date. shipshape is a Claude Code plugin that
 maintains your *other* Claude Code plugins — a `/plugin-maintenance` skill that
 reconciles and prunes, plus a `SessionStart` hook that enforces marketplace
 auto-update. See the docs for usage.
