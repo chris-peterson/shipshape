@@ -18,6 +18,16 @@ The `claude plugin uninstall` command does **not** prune `~/.claude/plugins/cach
 
 Plugins with **Scope: project** are checked into a repo's `.claude/settings.json` and shared with the team. **Do not uninstall them** — `claude plugin uninstall` will fail with a clear error. Report them as "skipped (team-shared)" and move on. User-scope plugins are personal and safe to reconcile.
 
+## Guardrail: a plugin shared by two marketplaces
+
+The same plugin can be published to more than one marketplace — a public marketplace and a separate mirror, say. When both are registered (common while migrating from one to the other), `claude plugin list` shows two rows for that plugin — `foo@marketplace-a` and `foo@marketplace-b` — but `installed_plugins.json` records the install **once**, under whichever marketplace it was installed from. The other row points at that same on-disk install.
+
+`claude plugin uninstall foo@marketplace-a` then removes the plugin's only install record, uninstalling `foo` entirely — including the copy that was enabled and in use — and returns a success message regardless, so the command's exit can't confirm the intended "remove just this marketplace copy" effect.
+
+**The tell:** a `<plugin>@<marketplace>` row in `claude plugin list` that has no matching key in `installed_plugins.json`, while another row for the same plugin name does. That row shares the single on-disk install — uninstalling it deletes the shared copy.
+
+So gate every extra uninstall on the install manifest, not on `claude plugin list` plus the desired set alone (Step 3). A plugin with genuinely independent install records per marketplace — a key present in the manifest for each marketplace — is reconciled as before.
+
 ## Flow
 
 ```mermaid
@@ -28,7 +38,7 @@ flowchart TD
     Read --> Diff["Diff installed vs desired"]
     Diff --> Update["Update kept plugins (parallel)"]
     Update --> Reconcile{Reconcile diffs}
-    Reconcile -->|extras| Uninstall["Uninstall extras (skip project-scope)"]
+    Reconcile -->|extras| Uninstall["Uninstall extras (skip project-scope + shared installs)"]
     Reconcile -->|missing| Install["Offer to install missing"]
     Uninstall --> Scan
     Install --> Scan
@@ -55,6 +65,14 @@ cat ~/.claude/settings.json | jq '.enabledPlugins'
 
 Build two sets of `<plugin>@<marketplace>` keys: **installed** (with scope) and **desired**.
 
+Also read the install manifest — Step 3 gates uninstalls on it (see "a plugin shared by two marketplaces"):
+
+```bash
+jq '.plugins | keys' ~/.claude/plugins/installed_plugins.json
+```
+
+The manifest keys by the same `<plugin>@<marketplace>` form. A `claude plugin list` row whose key is absent here shares another marketplace's single on-disk install.
+
 While you have the marketplace state, note **auto-update** coverage for the final report — a marketplace is auto-updating when its `extraKnownMarketplaces.<name>.autoUpdate` is `true` in `~/.claude/settings.json`:
 
 ```bash
@@ -76,15 +94,16 @@ Report which had updates available and which were already current.
 ## Step 3: Reconcile differences
 
 - **Extras** (installed, not desired):
-  - **User-scope** → `claude plugin uninstall <plugin>@<marketplace> -y`
+  - **Shared on-disk install** (the extra's `<plugin>@<marketplace>` key is absent from `installed_plugins.json`, but another row for the same plugin name is present) → **do not uninstall.** Removing this marketplace key deletes the plugin's only install record, taking the enabled copy with it. Surface it as a warning with the evidence — the row is enabled in `claude plugin list` yet absent from the manifest — and let the user resolve it deliberately: re-point `enabledPlugins` to the desired marketplace, or uninstall and reinstall from that marketplace. Report as "skipped (shared install)".
+  - **User-scope** → `claude plugin uninstall <plugin>@<marketplace> -y`, then confirm against the manifest: re-read `installed_plugins.json` and check the key is gone. The uninstall reports success regardless, so verify the effect rather than trusting the message.
   - **Project-scope** → skip with a warning ("team-shared via repo settings; remove from the repo's `.claude/settings.json` instead")
 - **Missing** (desired, not installed):
   - Offer to install: `claude plugin install <plugin>@<marketplace>`
   - Ask before installing — the desired set may be aspirational or out-of-date.
 
-**Report by exception.** The desired set is usually large and mostly current on any given run — enumerating every plugin buries the few rows that matter under a wall of `current`. Show a row only for plugins whose status is **not** `current`: `updated`, `uninstalled`, `install? (missing)`, `skipped (team-shared)`. Collapse everything that was already current into a single trailing line — a count, not rows.
+**Report by exception.** The desired set is usually large and mostly current on any given run — enumerating every plugin buries the few rows that matter under a wall of `current`. Show a row only for plugins whose status is **not** `current`: `updated`, `uninstalled`, `install? (missing)`, `skipped (team-shared)`, `skipped (shared install)`. Collapse everything that was already current into a single trailing line — a count, not rows.
 
-Order the columns `Marketplace | Plugin | Previous Version | Current Version | Status`. For upgraded plugins, show the version transition across the two version columns. The **Status** column carries `updated` / `skipped (team-shared)` / `uninstalled` / `install? (missing)`.
+Order the columns `Marketplace | Plugin | Previous Version | Current Version | Status`. For upgraded plugins, show the version transition across the two version columns. The **Status** column carries `updated` / `skipped (team-shared)` / `skipped (shared install)` / `uninstalled` / `install? (missing)`.
 
 ```text
 | Marketplace    | Plugin    | Previous Version | Current Version | Status                |
