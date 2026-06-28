@@ -37,7 +37,8 @@ in `~/.claude/settings.json` (`enabledPlugins`), then:
    desired set.
 2. **Update** — `claude plugin update` every plugin in both sets, in parallel.
 3. **Reconcile** — uninstall user-scope extras, offer to install what's
-   missing, and skip team-shared (project-scope) plugins.
+   missing, and skip plugins it shouldn't remove (team-shared project-scope
+   ones, and a plugin whose two marketplace rows share one on-disk install).
 4. **Scan & prune** — find orphan and stale-version caches and orphan data
    dirs, auto-delete the safe ones, and ask before removing anything that may
    hold user state.
