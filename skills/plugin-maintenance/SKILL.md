@@ -1,6 +1,7 @@
 ---
 name: plugin-maintenance
 description: Reconcile installed Claude Code plugins against the desired set, update them, and prune stale caches/data. Triggers on 'sync plugins', 'update my plugins'.
+disable-model-invocation: true
 ---
 
 # Plugin Maintenance
