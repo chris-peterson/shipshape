@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.1
+
+### Other
+- Trimmed the `plugin-maintenance` skill's `description` frontmatter to cut the always-resident context cost. Kept the "sync plugins" / "update my plugins" cues; dropped the name-echo and redundant trigger phrases.
+
 ## 0.2.0
 
 ### Features
