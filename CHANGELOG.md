@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.2
+
+### Other
+- The `plugin-maintenance` skill is now marked `disable-model-invocation`, dropping its description from every session's always-resident context. Still available via `/`; Claude no longer auto-loads it.
+
 ## 0.2.1
 
 ### Other
