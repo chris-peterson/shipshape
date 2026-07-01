@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.1
+
+### Other
+- Maintenance release — no functional changes. Cut to validate `release.yml` end-to-end after restoring the `MARKETPLACE_DISPATCH_TOKEN` repo secret, whose absence had failed the marketplace-dispatch step on the prior three releases (#5).
+
 ## 0.3.0
 
 ### Features
