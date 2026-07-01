@@ -1,6 +1,10 @@
 default:
     @just --list
 
+# run the shell script test suite
+test:
+    bash scripts/tests/plugin-cache-in-use.test.sh
+
 # preview the docsify docs site locally
 docs:
     bash scripts/build-docs.sh

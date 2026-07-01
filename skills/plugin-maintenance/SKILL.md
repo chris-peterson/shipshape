@@ -52,6 +52,50 @@ flowchart TD
     Reload --> Done([Done])
 ```
 
+## Output model: two tables + the native task list
+
+Don't narrate the run as a scroll of per-plugin lines. Use three surfaces: a **plan table** up front, the **native task list** for progress, and a **refreshed table** at the end.
+
+Know what the terminal can and can't do, so this isn't cargo-culted: message text is **append-only**. A printed line can't be redrawn — there's no cursor control in rendered markdown — so a hand-typed progress bar or `- [ ]` checklist just stacks copies and scrolls *worse*. The **only** surface Claude can mutate after emitting it is the harness task list (`TaskCreate` / `TaskUpdate`), which re-renders in place as items flip to `completed`. That's what carries progress; the tables are two separate renders (a plan, then its refresh), not one mutated in place.
+
+**1. Plan table** — render after Step 1, before any update/install/uninstall runs. One row per plugin you'll act on, ordered by marketplace then plugin. The Status column carries the *planned* action so the user sees the whole scope before anything changes:
+
+```text
+| Marketplace    | Plugin   | Version | Status            |
+|----------------|----------|---------|-------------------|
+| chris-peterson | beacon   | 1.1.0   | queued: update    |
+| chris-peterson | moor     | 0.6.1   | queued: update    |
+| official       | gitlab   | 1.2.0   | skip: team-shared |
+| chris-peterson | newthing | —       | queued: install?  |
+```
+
+**2. Progress** — during Steps 2-3, track work on the **native task list** via `TaskCreate` / `TaskUpdate`. Build the list from the *actual* work the Step-1 diff and Step-4 scan turn up — **one task per non-empty action group**, not a fixed pipeline of phases:
+
+- `Update kept plugins (N)` — whenever the kept set is non-empty. This is the one group you can't pre-filter: you don't know which plugins have an update until you run the pass, so it's a single task, not one per plugin.
+- `Uninstall N extras` — only if there are extras to remove.
+- `Install N missing` — only if the user confirmed missing installs.
+- `Prune N stale/orphan caches` — only once the scan finds delete-eligible dirs (no live lease).
+
+Don't create a task for an empty group — an instantly-completed `Reconcile: nothing to do` task is exactly the wall-of-no-ops this redesign removes. If that leaves **≤1 action group** — the common all-current run — skip the task list entirely; the plan and refreshed tables already carry it (the task tool's own guidance is to skip it for trivial single-step work). Mark each task `in_progress` on launch and `completed` on return. Because Step 2's updates run in parallel and return in one batch, ticks flip together rather than trickle — the list is a live status surface, not an animation.
+
+**3. Refreshed table** — render after Steps 2-3 finish. The *same* table, now with terminal statuses and version transitions. This is the authoritative result:
+
+```text
+| Marketplace    | Plugin | Previous Version | Current Version | Status                |
+|----------------|--------|------------------|-----------------|-----------------------|
+| chris-peterson | beacon | 1.1.0            | 1.3.0           | updated               |
+| chris-peterson | moor   | 0.6.1            | 0.6.1           | current               |
+| official       | gitlab | 1.2.0            | 1.2.0           | skipped (team-shared) |
+```
+
+For a large desired set, collapse the rows that ended up `current` with no change into a single trailing count and keep the rows that actually changed (`updated` / `uninstalled` / `install? (missing)` / `skipped (...)`) — but keep the table shape so it reads as the plan, refreshed:
+
+```text
+17 other plugins already current.
+```
+
+If nothing changed at all — no updates, no extras, no missing — skip both tables and say so in one line: `All 20 desired plugins installed and current; nothing to reconcile.`
+
 ## Step 1: Inventory
 
 Run in parallel:
@@ -64,7 +108,7 @@ claude plugin list
 cat ~/.claude/settings.json | jq '.enabledPlugins'
 ```
 
-Build two sets of `<plugin>@<marketplace>` keys: **installed** (with scope) and **desired**.
+Build two sets of `<plugin>@<marketplace>` keys: **installed** (with scope) and **desired**. Once you've diffed them (Step 3's classification), render the **plan table** from the "Output model" section — this is the up-front table the user sees before anything changes.
 
 Also read the install manifest — Step 3 gates uninstalls on it (see "a plugin shared by two marketplaces"):
 
@@ -90,7 +134,7 @@ For every plugin that appears in **both** sets, run `claude plugin update` in pa
 claude plugin update <plugin>@<marketplace>
 ```
 
-Report which had updates available and which were already current.
+While the batch runs, track it on the **native task list** (see "Output model") — mark the `Update kept plugins` task `in_progress` on launch, `completed` when the batch returns. Don't emit a line per plugin; the results land in the refreshed table (Step 3).
 
 ## Step 3: Reconcile differences
 
@@ -102,21 +146,7 @@ Report which had updates available and which were already current.
   - Offer to install: `claude plugin install <plugin>@<marketplace>`
   - Ask before installing — the desired set may be aspirational or out-of-date.
 
-**Report by exception.** The desired set is usually large and mostly current on any given run — enumerating every plugin buries the few rows that matter under a wall of `current`. Show a row only for plugins whose status is **not** `current`: `updated`, `uninstalled`, `install? (missing)`, `skipped (team-shared)`, `skipped (shared install)`. Collapse everything that was already current into a single trailing line — a count, not rows.
-
-Order the columns `Marketplace | Plugin | Previous Version | Current Version | Status`. For upgraded plugins, show the version transition across the two version columns. The **Status** column carries `updated` / `skipped (team-shared)` / `skipped (shared install)` / `uninstalled` / `install? (missing)`.
-
-```text
-| Marketplace    | Plugin    | Previous Version | Current Version | Status                |
-|----------------|-----------|------------------|-----------------|-----------------------|
-| chris-peterson | beacon    | 1.1.0            | 1.3.0           | updated               |
-| chris-peterson | moor      | 0.6.1            | 0.7.0           | updated               |
-| official       | gitlab    | —                | 1.2.0           | skipped (team-shared) |
-
-17 other plugins already current.
-```
-
-If nothing changed at all — no updates, no extras, no missing — skip the table and say so in one line: `All 20 desired plugins installed and current; nothing to reconcile.`
+Now render the **refreshed table** (see "Output model") — the plan table from Step 1, updated in place with terminal statuses and version transitions. The **Status** column carries `updated` / `current` / `skipped (team-shared)` / `skipped (shared install)` / `uninstalled` / `install? (missing)`. For a large desired set, collapse the unchanged `current` rows into a trailing count; if nothing changed at all, skip the table and say so in one line.
 
 ## Step 4: Scan caches and data dirs
 
@@ -138,20 +168,21 @@ Classify every entry against the **currently installed** set (use `claude plugin
 
 ### Respect `.in_use` leases
 
-Each plugin version dir carries an `.in_use/` directory in which every running session drops a lease file — `{"pid":<n>,"procStart":"<ts>"}`. It's a reference count: a version dir is **live** if any lease names a running process. **Never delete a cache dir with a live lease** — another session loaded that version at startup and is still using its hooks/skills; pruning it breaks that session until it restarts. A lease whose PID is dead is stale and safe to ignore (a platform sweep, recorded in `~/.claude/plugins/.last_inuse_sweep`, eventually clears dead leases).
+Each plugin version dir carries an `.in_use/` directory in which every running session drops a lease file — `{"pid":<n>,"procStart":"<ts>"}`. It's a reference count: a version dir is **live** if any lease names a running process **whose start time still matches the lease's `procStart`**. **Never delete a cache dir with a live lease** — another session loaded that version at startup and is still using its hooks/skills; pruning it breaks that session until it restarts. A lease whose PID is dead is stale and safe to ignore (a platform sweep, recorded in `~/.claude/plugins/.last_inuse_sweep`, eventually clears dead leases).
+
+**Match `procStart`, not just the PID.** The OS recycles PIDs: a dead session's PID gets handed to an unrelated new process, so a `ps -p <pid>` hit alone does **not** prove the lease is live — it false-positives on reuse and wedges the cache dir forever (nothing prunes it). The lease stores `procStart` precisely to disambiguate, so the check compares it to the running process's actual start time, handling two wrinkles: `procStart` is written in **UTC** while `ps -o lstart=` prints **local** time (compared as epoch seconds, matching in either zone since the field's timezone is undocumented), and `date` may be GNU (`date -d`) or BSD (`date -j -f`).
+
+That logic ships as a script — call it per version dir; exit `0` means in use (don't prune), `1` means safe to prune. It's conservative by design: a missing/unparseable `procStart` counts as in use, so uncertainty never prunes.
 
 ```bash
-# A version dir is in use if any lease names a live process.
-in_use() {
-  for lease in "$1"/.in_use/*; do
-    [ -e "$lease" ] || continue
-    ps -p "$(jq -r .pid "$lease")" >/dev/null 2>&1 && return 0
-  done
-  return 1
-}
+if bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-cache-in-use.sh" "$version_dir"; then
+  : # live lease — skip (in use)
+else
+  : # no live lease — delete-eligible
+fi
 ```
 
-(The `.in_use` mechanism is observed from disk, not documented — treat it as a conservative safety check: when a lease looks live, don't prune.)
+(The `.in_use` mechanism is observed from disk, not documented — treat it as a conservative safety check: when a lease looks live, or when you can't confidently prove it dead, don't prune.)
 
 **Report by exception here too.** Stale-version caches are routine — every update leaves one behind — and they're auto-deletable (Step 5), so they don't warrant a row each. Roll them into a single line: count and total size. Reserve table rows for the classes that need user judgment: **orphan caches/data** and **legacy slugs**. If there are none of those, a one-line summary is the whole report.
 
