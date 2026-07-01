@@ -34,10 +34,13 @@ So gate every extra uninstall on the install manifest, not on `claude plugin lis
 ```mermaid
 %%{ init: { 'look': 'handDrawn' } }%%
 flowchart TD
-    Start(["/plugin-maintenance"]) --> List["claude plugin list"]
+    Start(["/plugin-maintenance"]) --> Lock{Acquire maintenance lock}
+    Lock -->|held by another run| Bail([Bail: another reconcile active])
+    Lock -->|acquired| List["claude plugin list"]
     List --> Read["Read enabledPlugins from settings.json"]
     Read --> Diff["Diff installed vs desired"]
-    Diff --> Update["Update kept plugins (parallel)"]
+    Diff --> Refresh["claude plugin marketplace update (once)"]
+    Refresh --> Update["Update kept plugins (serialized)"]
     Update --> Reconcile{Reconcile diffs}
     Reconcile -->|extras| Uninstall["Uninstall extras (skip project-scope + shared installs)"]
     Reconcile -->|missing| Install["Offer to install missing"]
@@ -47,8 +50,9 @@ flowchart TD
     Report --> Confirm{Delete?}
     Confirm -->|empty caches| Auto["Delete without prompting"]
     Confirm -->|non-empty data| Ask["Ask before each non-empty data dir"]
-    Auto --> Reload["/reload-plugins"]
-    Ask --> Reload
+    Auto --> Unlock["Release lock"]
+    Ask --> Unlock
+    Unlock --> Reload["/reload-plugins"]
     Reload --> Done([Done])
 ```
 
@@ -76,7 +80,7 @@ Know what the terminal can and can't do, so this isn't cargo-culted: message tex
 - `Install N missing` — only if the user confirmed missing installs.
 - `Prune N stale/orphan caches` — only once the scan finds delete-eligible dirs (no live lease).
 
-Don't create a task for an empty group — an instantly-completed `Reconcile: nothing to do` task is exactly the wall-of-no-ops this redesign removes. If that leaves **≤1 action group** — the common all-current run — skip the task list entirely; the plan and refreshed tables already carry it (the task tool's own guidance is to skip it for trivial single-step work). Mark each task `in_progress` on launch and `completed` on return. Because Step 2's updates run in parallel and return in one batch, ticks flip together rather than trickle — the list is a live status surface, not an animation.
+Don't create a task for an empty group — an instantly-completed `Reconcile: nothing to do` task is exactly the wall-of-no-ops this redesign removes. If that leaves **≤1 action group** — the common all-current run — skip the task list entirely; the plan and refreshed tables already carry it (the task tool's own guidance is to skip it for trivial single-step work). Mark each task `in_progress` when its group starts and `completed` when it finishes. Step 2's updates run serialized (see Step 2), so the `Update kept plugins` task stays `in_progress` across the whole pass and flips once at the end — the list is a live status surface, not a per-item animation.
 
 **3. Refreshed table** — render after Steps 2-3 finish. The *same* table, now with terminal statuses and version transitions. This is the authoritative result:
 
@@ -96,9 +100,22 @@ For a large desired set, collapse the rows that ended up `current` with no chang
 
 If nothing changed at all — no updates, no extras, no missing — skip both tables and say so in one line: `All 20 desired plugins installed and current; nothing to reconcile.`
 
+## Step 0: Take the maintenance lock
+
+`claude plugin` has **no concurrency control**: install/update/uninstall all mutate the same shared state — the install manifest, the per-marketplace git clones, the per-version caches — with no locking. Two reconciles, or a reconcile overlapping another session's plugin operations, can interleave and leave that state in a mix neither intended (an uninstall in one session racing an update in another). So take a cooperative lock for the duration of the reconcile:
+
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-maintenance-lock.sh" acquire
+```
+
+- **Exit 0** — lock acquired (or already yours; it's re-entrant within a session). Proceed.
+- **Exit 3** — another live session holds it. **Stop.** Tell the user another maintenance run is active (the script names the holding session and when it started on stderr) and that they should let it finish or, if it's a crashed run, wait for the lock to go stale. Don't reconcile past this.
+
+Release it in Step 6, on every exit path. The lock self-clears if this run crashes (a lock older than the stale threshold is treated as abandoned and stolen by the next run), so a missed release degrades to a stale-lock steal, not a permanent block.
+
 ## Step 1: Inventory
 
-Run in parallel:
+These are read-only reads of disk state — safe to run in parallel (the concurrency hazard is only among *mutating* `claude plugin` operations, handled in Step 2):
 
 ```bash
 claude plugin list
@@ -128,13 +145,25 @@ shipshape's `SessionStart` hook enforces this — it arms any marketplace missin
 
 ## Step 2: Update kept plugins
 
-For every plugin that appears in **both** sets, run `claude plugin update` in parallel:
+**Do not blanket-parallelize updates.** `claude plugin update` refreshes the plugin's marketplace by re-cloning it; run several updates for plugins from the *same* marketplace at once (the common case) and the clones collide (`destination path already exists and is not an empty directory`), so some updates fail with `Plugin not found` and are silently skipped in the parallel output. The marketplace isn't damaged — a sequential retry succeeds immediately — but the failure hides in the noise.
+
+Instead, **refresh every marketplace once, up front** (one command, internally sequential), so the per-plugin updates that follow aren't each re-cloning:
+
+```bash
+claude plugin marketplace update
+```
+
+Then update each kept plugin **serialized** — one at a time, not a parallel batch:
 
 ```bash
 claude plugin update <plugin>@<marketplace>
 ```
 
-While the batch runs, track it on the **native task list** (see "Output model") — mark the `Update kept plugins` task `in_progress` on launch, `completed` when the batch returns. Don't emit a line per plugin; the results land in the refreshed table (Step 3).
+Updates are fast and network-bound, and with the marketplaces already refreshed each one is cheap; the clone-collision cost far outweighs the parallelism. (If speed ever matters on a large set, the only safe parallelism is across *distinct* marketplaces — never two updates of the same marketplace at once.)
+
+**Surface and retry failures — never lose one in the output.** If an update reports `Plugin not found` or another transient error, retry it once serially and reflect the real outcome in the refreshed table. An update that stays failed is a row the user needs to see, not a silent gap.
+
+Track the pass on the **native task list** (see "Output model") — mark the `Update kept plugins` task `in_progress` before the first update, `completed` after the last. Don't emit a line per plugin; the results land in the refreshed table (Step 3).
 
 ## Step 3: Reconcile differences
 
@@ -210,6 +239,14 @@ Use `rm -rf` only after explicit confirmation for non-empty dirs. Never delete t
 
 ## Step 6: Reload plugins
 
+**First, release the maintenance lock from Step 0** — the mutating work is done, so hold it no longer than necessary (the reload is a human action outside this run):
+
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-maintenance-lock.sh" release
+```
+
+Release on every exit path, including the early ones — if you bailed out mid-reconcile after acquiring the lock, release it before you stop. (A missed release isn't fatal: the lock goes stale and the next run steals it, but an explicit release frees a waiting session immediately.)
+
 Installs, uninstalls, and updates change plugins on disk but don't take effect in the running session — Claude Code reads the plugin set once at startup and freezes it. `/reload-plugins` re-reads it in place (no restart). It's a built-in command that only a human can type: there's no CLI flag, hook, or skill that triggers a reload, and no way to reload across sessions — each running session is an independent process. So the reconcile only lands where the user runs the reload:
 
 ```text
@@ -228,7 +265,8 @@ Skip this entirely if Step 3 made no changes and Step 5 pruned nothing — there
 
 ```bash
 claude plugin list                                    # inventory
-claude plugin update <plugin>@<marketplace>           # update
+claude plugin marketplace update                       # refresh all marketplaces once (do before updates)
+claude plugin update <plugin>@<marketplace>           # update (run serialized, not in parallel)
 claude plugin install <plugin>@<marketplace>          # install
 claude plugin uninstall <plugin>@<marketplace> -y     # uninstall (fails on project-scope)
 claude plugin --help                                  # full subcommand list (includes prune, enable, disable)
@@ -244,4 +282,5 @@ Cache:                 ~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/
 Data:                  ~/.claude/plugins/data/<plugin>-<marketplace>/
 Known marketplaces:    ~/.claude/plugins/known_marketplaces.json
 Installed manifest:    ~/.claude/plugins/installed_plugins.json
+Maintenance lock:      ~/.claude/plugins/.plugin-maintenance.lock
 ```

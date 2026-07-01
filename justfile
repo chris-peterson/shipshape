@@ -3,7 +3,9 @@ default:
 
 # run the shell script test suite
 test:
-    bash scripts/tests/plugin-cache-in-use.test.sh
+    #!/usr/bin/env bash
+    set -euo pipefail
+    for t in scripts/tests/*.test.sh; do echo "== $t =="; bash "$t"; done
 
 # preview the docsify docs site locally
 docs:
