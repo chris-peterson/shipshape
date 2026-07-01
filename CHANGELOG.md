@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.0
+
+### Fixed
+- `plugin-maintenance` no longer races on the shared plugin state that `claude plugin` mutates without locking (#2):
+  - **Within a run** — updates were run in parallel, and plugins sharing a marketplace each re-cloned it concurrently, colliding (`destination path already exists`) so some updates failed with `Plugin not found` and were silently skipped. The skill now refreshes all marketplaces once up front (`claude plugin marketplace update`), then updates **serialized**, surfacing and retrying any failure instead of losing it in parallel output.
+  - **Across runs** — a new advisory lock (`scripts/plugin-maintenance-lock.sh`, keyed on the Claude Code session) guards the whole reconcile. A second overlapping run bails instead of interleaving on the manifest and caches; a crashed run's lock self-clears once stale. Re-entrant within a session, mutually exclusive across.
+
+### Other
+- Added a hermetic test suite for the lock (`scripts/tests/plugin-maintenance-lock.test.sh`); `just test` now runs every `scripts/tests/*.test.sh`.
+
 ## 0.3.1
 
 ### Other
