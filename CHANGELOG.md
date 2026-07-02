@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.2
+
+### Changed
+- `plugin-maintenance` now declares the enabled/disabled split up front. A composition line (installed · enabled · disabled) leads both the opening inventory and the closing report, so "enabled" is no longer introduced only at the end. A disabled plugin is framed as a deliberate state the run leaves alone, not drift.
+- The final report is now a scannable, emoji-tagged status block (composition → reconcile → updates → cache → data) instead of prose, grouped and counted rather than one row per plugin. A shared emoji vocabulary ties the plan and the report together.
+
+### Fixed
+- `-inline` data dirs are no longer flagged for judgment on every run. They're benign artifacts of testing a plugin locally, not orphans — the skill now ignores them entirely.
+
 ## 0.4.1
 
 ### Fixed
