@@ -40,7 +40,7 @@ flowchart TD
     List --> Read["Read enabledPlugins from settings.json"]
     Read --> Diff["Diff installed vs desired"]
     Diff --> Refresh["claude plugin marketplace update (once)"]
-    Refresh --> Update["Update kept plugins (serialized)"]
+    Refresh --> Update["Update plugins (serialized)"]
     Update --> Reconcile{Reconcile diffs}
     Reconcile -->|extras| Uninstall["Uninstall extras (skip project-scope + shared installs)"]
     Reconcile -->|missing| Install["Offer to install missing"]
@@ -60,6 +60,16 @@ flowchart TD
 
 Don't narrate the run as a scroll of per-plugin lines. Use three surfaces: a **plan table** up front, the **native task list** for progress, and a **refreshed table** at the end.
 
+### Voice: report outcomes, not your reasoning
+
+The user cares about **what changed and what they must do next** — not how you figured it out. Do the reasoning silently and emit only results.
+
+- **No per-tool-call preambles.** Don't announce each command before running it ("Now let me refresh the marketplaces…", "Lock's held and inventory's in…"). Run the tool; let its result and the tables speak. Between steps, stay silent unless you hit something the user must decide.
+- **No narrated investigation.** If a check surprises you — a lease reads as in-use, a version looks off — resolve it with silent tool calls, then report the *conclusion* in one line. Never walk the user through your hypotheses, your `ps` spelunking, or your "that's almost certainly wrong… actually it's correct" reversals. That is internal dialog; it belongs in no message.
+- **Trust the skill's own tooling.** The lock script and `plugin-cache-in-use.sh` return verdicts you act on, not verdicts you audit out loud (see Step 4). If the script says a dir is in use, it's in use — report it and move on.
+- **Stay in scope.** Report only this run's plugin maintenance. Don't append status on unrelated parked work, other sessions' tasks, or what you were doing before the skill was invoked.
+- **The final summary is short.** Lead with what changed (or "nothing changed"), then the one action the user takes (`/reload-plugins`). A run where everything was already current is a few lines, not a report.
+
 Know what the terminal can and can't do, so this isn't cargo-culted: message text is **append-only**. A printed line can't be redrawn — there's no cursor control in rendered markdown — so a hand-typed progress bar or `- [ ]` checklist just stacks copies and scrolls *worse*. The **only** surface Claude can mutate after emitting it is the harness task list (`TaskCreate` / `TaskUpdate`), which re-renders in place as items flip to `completed`. That's what carries progress; the tables are two separate renders (a plan, then its refresh), not one mutated in place.
 
 **1. Plan table** — render after Step 1, before any update/install/uninstall runs. One row per plugin you'll act on, ordered by marketplace then plugin. The Status column carries the *planned* action so the user sees the whole scope before anything changes:
@@ -75,12 +85,12 @@ Know what the terminal can and can't do, so this isn't cargo-culted: message tex
 
 **2. Progress** — during Steps 2-3, track work on the **native task list** via `TaskCreate` / `TaskUpdate`. Build the list from the *actual* work the Step-1 diff and Step-4 scan turn up — **one task per non-empty action group**, not a fixed pipeline of phases:
 
-- `Update kept plugins (N)` — whenever the kept set is non-empty. This is the one group you can't pre-filter: you don't know which plugins have an update until you run the pass, so it's a single task, not one per plugin.
+- `Update plugins` — whenever any plugin stays installed. This is the one task with **no count** in its label: `claude plugin update` has no dry-run, so you can't know which plugins actually have an update until you run the pass. Don't guess a number that overstates the work (`Update plugins (29)` when 27 are no-ops) — the real tally of updated-vs-current lands in the refreshed table afterward. It's a single task, not one per plugin.
 - `Uninstall N extras` — only if there are extras to remove.
 - `Install N missing` — only if the user confirmed missing installs.
 - `Prune N stale/orphan caches` — only once the scan finds delete-eligible dirs (no live lease).
 
-Don't create a task for an empty group — an instantly-completed `Reconcile: nothing to do` task is exactly the wall-of-no-ops this redesign removes. If that leaves **≤1 action group** — the common all-current run — skip the task list entirely; the plan and refreshed tables already carry it (the task tool's own guidance is to skip it for trivial single-step work). Mark each task `in_progress` when its group starts and `completed` when it finishes. Step 2's updates run serialized (see Step 2), so the `Update kept plugins` task stays `in_progress` across the whole pass and flips once at the end — the list is a live status surface, not a per-item animation.
+Don't create a task for an empty group — an instantly-completed `Reconcile: nothing to do` task is exactly the wall-of-no-ops this redesign removes. If that leaves **≤1 action group** — the common all-current run — skip the task list entirely; the plan and refreshed tables already carry it (the task tool's own guidance is to skip it for trivial single-step work). Mark each task `in_progress` when its group starts and `completed` when it finishes. Step 2's updates run serialized (see Step 2), so the `Update plugins` task stays `in_progress` across the whole pass and flips once at the end — the list is a live status surface, not a per-item animation.
 
 **3. Refreshed table** — render after Steps 2-3 finish. The *same* table, now with terminal statuses and version transitions. This is the authoritative result:
 
@@ -143,7 +153,7 @@ jq '.extraKnownMarketplaces | to_entries | map({(.key): (.value.autoUpdate // fa
 
 shipshape's `SessionStart` hook enforces this — it arms any marketplace missing the flag, effective next launch — so the skill only **reports** status here; it doesn't write. Surface any marketplace still showing `false` so the user knows the hook will pick it up.
 
-## Step 2: Update kept plugins
+## Step 2: Update plugins
 
 **Do not blanket-parallelize updates.** `claude plugin update` refreshes the plugin's marketplace by re-cloning it; run several updates for plugins from the *same* marketplace at once (the common case) and the clones collide (`destination path already exists and is not an empty directory`), so some updates fail with `Plugin not found` and are silently skipped in the parallel output. The marketplace isn't damaged — a sequential retry succeeds immediately — but the failure hides in the noise.
 
@@ -153,7 +163,7 @@ Instead, **refresh every marketplace once, up front** (one command, internally s
 claude plugin marketplace update
 ```
 
-Then update each kept plugin **serialized** — one at a time, not a parallel batch:
+Then update each plugin **serialized** — one at a time, not a parallel batch:
 
 ```bash
 claude plugin update <plugin>@<marketplace>
@@ -163,7 +173,7 @@ Updates are fast and network-bound, and with the marketplaces already refreshed 
 
 **Surface and retry failures — never lose one in the output.** If an update reports `Plugin not found` or another transient error, retry it once serially and reflect the real outcome in the refreshed table. An update that stays failed is a row the user needs to see, not a silent gap.
 
-Track the pass on the **native task list** (see "Output model") — mark the `Update kept plugins` task `in_progress` before the first update, `completed` after the last. Don't emit a line per plugin; the results land in the refreshed table (Step 3).
+Track the pass on the **native task list** (see "Output model") — mark the `Update plugins` task `in_progress` before the first update, `completed` after the last. Don't emit a line per plugin; the results land in the refreshed table (Step 3).
 
 ## Step 3: Reconcile differences
 
@@ -203,6 +213,8 @@ Each plugin version dir carries an `.in_use/` directory in which every running s
 
 That logic ships as a script — call it per version dir; exit `0` means in use (don't prune), `1` means safe to prune. It's conservative by design: a missing/unparseable `procStart` counts as in use, so uncertainty never prunes.
 
+**Act on the verdict; don't audit it.** The script already handles PID reuse, the UTC/local gap, and the GNU/BSD `date` split — that's why it's a script and not bash prose in the skill. Take its exit code at face value: exit `0` → skip as in-use, exit `1` → delete-eligible. A run where every stale dir reads as in-use is normal (background spares and long-lived sessions pin the versions they loaded); it is **not** a signal to go verify the script with your own `ps` calls. If you genuinely suspect a bug, that's a note to file against this skill later — not a live investigation narrated into the run.
+
 ```bash
 if bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-cache-in-use.sh" "$version_dir"; then
   : # live lease — skip (in use)
@@ -217,6 +229,12 @@ fi
 
 ```text
 Stale-version caches: 12 dirs, ~70M — auto-pruned.
+```
+
+When some or all stale dirs are pinned by a live lease, say so in the same one line — a count, not a roster of which sessions hold what. The holders' PIDs, start times, and command lines are internal; the user needs only that they're pinned and clear on their own:
+
+```text
+Stale-version caches: 22 dirs, ~10M — skipped, pinned by live sessions (they free up as those sessions exit).
 ```
 
 When orphans or legacy slugs are present, table only those:
