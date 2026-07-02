@@ -56,9 +56,9 @@ flowchart TD
     Reload --> Done([Done])
 ```
 
-## Output model: two tables + the native task list
+## Output model: composition-first, scannable surfaces
 
-Don't narrate the run as a scroll of per-plugin lines. Use three surfaces: a **plan table** up front, the **native task list** for progress, and a **refreshed table** at the end.
+Don't narrate the run as a scroll of per-plugin lines. Use three surfaces: an **inventory summary + plan table** up front, the **native task list** for progress, and a **scannable final report** at the end. Both the opening summary and the closing report lead with the same composition line (installed / enabled / disabled) and share one emoji vocabulary, so the run reads as one coherent thing.
 
 ### Voice: report outcomes, not your reasoning
 
@@ -68,47 +68,84 @@ The user cares about **what changed and what they must do next** — not how you
 - **No narrated investigation.** If a check surprises you — a lease reads as in-use, a version looks off — resolve it with silent tool calls, then report the *conclusion* in one line. Never walk the user through your hypotheses, your `ps` spelunking, or your "that's almost certainly wrong… actually it's correct" reversals. That is internal dialog; it belongs in no message.
 - **Trust the skill's own tooling.** The lock script and `plugin-cache-in-use.sh` return verdicts you act on, not verdicts you audit out loud (see Step 4). If the script says a dir is in use, it's in use — report it and move on.
 - **Stay in scope.** Report only this run's plugin maintenance. Don't append status on unrelated parked work, other sessions' tasks, or what you were doing before the skill was invoked.
-- **The final summary is short.** Lead with what changed (or "nothing changed"), then the one action the user takes (`/reload-plugins`). A run where everything was already current is a few lines, not a report.
+- **The final summary is scannable, not prose.** Emit it as the compact emoji-tagged status block defined below (surface 3) — composition line first (so the enabled/disabled split is declared, never introduced for the first time at the end), then reconcile / updates / cache / data as short lines or small tables, then the one action the user takes (`/reload-plugins`, or "nothing changed"). Group and count rather than listing every plugin; a run where everything was already current is a few lines, not a wall of rows.
 
 Know what the terminal can and can't do, so this isn't cargo-culted: message text is **append-only**. A printed line can't be redrawn — there's no cursor control in rendered markdown — so a hand-typed progress bar or `- [ ]` checklist just stacks copies and scrolls *worse*. The **only** surface Claude can mutate after emitting it is the harness task list (`TaskCreate` / `TaskUpdate`), which re-renders in place as items flip to `completed`. That's what carries progress; the tables are two separate renders (a plan, then its refresh), not one mutated in place.
 
-**1. Plan table** — render after Step 1, before any update/install/uninstall runs. One row per plugin you'll act on, ordered by marketplace then plugin. The Status column carries the *planned* action so the user sees the whole scope before anything changes:
+A shared **emoji vocabulary** ties the surfaces together — the same marker means the same thing in the plan and the final report, so a glance decodes it:
+
+| Emoji | Meaning |
+|-------|---------|
+| ✅ | already current (no change) |
+| ⬆️ | updated to a newer version |
+| 🔄 | refreshed from source (HEAD-tracked, no version number) |
+| ➕ | installed · 🗑️ uninstalled |
+| 💤 | installed but **disabled** (a deliberate state, left as-is) |
+| ⏭️ | skipped (team-shared, or shared on-disk install) |
+| 🔒 | stale cache pinned by a live session (not pruned) · 🧹 pruned |
+| ⚠️ | needs your judgment (orphan data dir, shared-install anomaly) |
+
+**1. Inventory summary + plan table** — render after Step 1, before any update/install/uninstall runs.
+
+Lead with a one-line **composition** so the enabled-vs-disabled split is declared up front, not revealed at the end. A disabled plugin is a deliberate state, not drift — the run leaves it alone, and the user should see that scope from the start:
+
+```text
+📦 30 installed · ✅ 17 enabled · 💤 13 disabled (1 team-shared) · reconciling the 17 enabled
+```
+
+Then a **plan table** — but only when there's a mix of actions worth previewing (installs, uninstalls, skips). When the only planned action is "update every enabled plugin" (the common case), the composition line already says so — don't follow it with 17 identical `queued: update` rows. One row per plugin you'll act on, ordered by marketplace then plugin; the Status column carries the *planned* action:
 
 ```text
 | Marketplace    | Plugin   | Version | Status            |
 |----------------|----------|---------|-------------------|
-| chris-peterson | beacon   | 1.1.0   | queued: update    |
-| chris-peterson | moor     | 0.6.1   | queued: update    |
-| official       | gitlab   | 1.2.0   | skip: team-shared |
-| chris-peterson | newthing | —       | queued: install?  |
+| chris-peterson | beacon   | 1.1.0   | ⬆️ queued: update |
+| official       | gitlab   | 1.2.0   | ⏭️ team-shared    |
+| chris-peterson | newthing | —       | ➕ queued: install? |
 ```
 
 **2. Progress** — during Steps 2-3, track work on the **native task list** via `TaskCreate` / `TaskUpdate`. Build the list from the *actual* work the Step-1 diff and Step-4 scan turn up — **one task per non-empty action group**, not a fixed pipeline of phases:
 
-- `Update plugins` — whenever any plugin stays installed. This is the one task with **no count** in its label: `claude plugin update` has no dry-run, so you can't know which plugins actually have an update until you run the pass. Don't guess a number that overstates the work (`Update plugins (29)` when 27 are no-ops) — the real tally of updated-vs-current lands in the refreshed table afterward. It's a single task, not one per plugin.
+- `Update plugins` — whenever any plugin stays installed. This is the one task with **no count** in its label: `claude plugin update` has no dry-run, so you can't know which plugins actually have an update until you run the pass. Don't guess a number that overstates the work (`Update plugins (29)` when 27 are no-ops) — the real tally of updated-vs-current lands in the final report afterward. It's a single task, not one per plugin.
 - `Uninstall N extras` — only if there are extras to remove.
 - `Install N missing` — only if the user confirmed missing installs.
 - `Prune N stale/orphan caches` — only once the scan finds delete-eligible dirs (no live lease).
 
-Don't create a task for an empty group — an instantly-completed `Reconcile: nothing to do` task is exactly the wall-of-no-ops this redesign removes. If that leaves **≤1 action group** — the common all-current run — skip the task list entirely; the plan and refreshed tables already carry it (the task tool's own guidance is to skip it for trivial single-step work). Mark each task `in_progress` when its group starts and `completed` when it finishes. Step 2's updates run serialized (see Step 2), so the `Update plugins` task stays `in_progress` across the whole pass and flips once at the end — the list is a live status surface, not a per-item animation.
+Don't create a task for an empty group — an instantly-completed `Reconcile: nothing to do` task is exactly the wall-of-no-ops this redesign removes. If that leaves **≤1 action group** — the common all-current run — skip the task list entirely; the composition line and final report already carry it (the task tool's own guidance is to skip it for trivial single-step work). Mark each task `in_progress` when its group starts and `completed` when it finishes. Step 2's updates run serialized (see Step 2), so the `Update plugins` task stays `in_progress` across the whole pass and flips once at the end — the list is a live status surface, not a per-item animation.
 
-**3. Refreshed table** — render after Steps 2-3 finish. The *same* table, now with terminal statuses and version transitions. This is the authoritative result:
+**3. Final report** — render after Steps 2-3 finish. This is the authoritative result, and it should be **scannable at a glance**: a compact status block, emoji-tagged, not prose paragraphs and not a per-plugin scroll. It opens with the *same composition line* the run led with (so the reader who scrolled past the top still sees the enabled/disabled split here) and then reports each area — reconcile, updates, cache, data — as its own short line or small table.
 
-```text
-| Marketplace    | Plugin | Previous Version | Current Version | Status                |
-|----------------|--------|------------------|-----------------|-----------------------|
-| chris-peterson | beacon | 1.1.0            | 1.3.0           | updated               |
-| chris-peterson | moor   | 0.6.1            | 0.6.1           | current               |
-| official       | gitlab | 1.2.0            | 1.2.0           | skipped (team-shared) |
-```
-
-For a large desired set, collapse the rows that ended up `current` with no change into a single trailing count and keep the rows that actually changed (`updated` / `uninstalled` / `install? (missing)` / `skipped (...)`) — but keep the table shape so it reads as the plan, refreshed:
+Group the update results by marketplace and by outcome rather than one row per plugin — a reader wants "these 14 were current, these 3 refreshed," not 17 near-identical lines. Show version transitions only for plugins that actually moved.
 
 ```text
-17 other plugins already current.
+### Plugin maintenance
+
+📦 30 installed · ✅ 17 enabled · 💤 13 disabled (1 team-shared)
+🔁 Reconcile — nothing to install or uninstall; every plugin matches its desired state.
+
+**Updates** (17 enabled)
+| Marketplace              | Plugins                               | Result       |
+|--------------------------|---------------------------------------|--------------|
+| chris-peterson           | beacon, logbook, moor, sextant, tack  | ✅ current   |
+| getty-claude-marketplace | anchor +8                             | ✅ current   |
+| claude-plugins-official  | frontend-design, playwright, plugin-dev | 🔄 refreshed |
+
+🔒 Cache — 23 stale dirs (~166M) pinned by live sessions; 🧹 0 pruned (they free up as those sessions exit).
 ```
 
-If nothing changed at all — no updates, no extras, no missing — skip both tables and say so in one line: `All 20 desired plugins installed and current; nothing to reconcile.`
+(No data line here — there were no genuine orphan data dirs. `-inline` dirs, if present, are silently ignored.)
+
+When plugins actually changed, give the movers their own rows with the version transition, and collapse the unchanged into a count — keep the table shape so it reads as the plan, refreshed:
+
+```text
+**Updates** (17 enabled)
+| Marketplace              | Plugin | Version         | Result     |
+|--------------------------|--------|-----------------|------------|
+| getty-claude-marketplace | anchor | 0.16.0 → 0.17.0 | ⬆️ updated |
+| claude-plugins-official  | 3 HEAD-tracked officials | —    | 🔄 refreshed |
+| —                        | 13 others               | —     | ✅ current  |
+```
+
+Close with the **one action the user takes** — `/reload-plugins` if anything changed on disk, or an explicit "nothing changed, no reload needed" if not. If nothing changed at all — no updates, no installs, no uninstalls, no prune — the report is just the composition line plus that one closing line; don't pad it.
 
 ## Step 0: Take the maintenance lock
 
@@ -135,7 +172,7 @@ claude plugin list
 cat ~/.claude/settings.json | jq '.enabledPlugins'
 ```
 
-Build two sets of `<plugin>@<marketplace>` keys: **installed** (with scope) and **desired**. Once you've diffed them (Step 3's classification), render the **plan table** from the "Output model" section — this is the up-front table the user sees before anything changes.
+Build two sets of `<plugin>@<marketplace>` keys: **installed** (with scope) and **desired**. Note the enabled/disabled split while you're here — it feeds the composition line. Once you've diffed them (Step 3's classification), render the **inventory summary + plan table** from the "Output model" section — the composition line (installed / enabled / disabled) the user sees before anything changes.
 
 Also read the install manifest — Step 3 gates uninstalls on it (see "a plugin shared by two marketplaces"):
 
@@ -171,9 +208,9 @@ claude plugin update <plugin>@<marketplace>
 
 Updates are fast and network-bound, and with the marketplaces already refreshed each one is cheap; the clone-collision cost far outweighs the parallelism. (If speed ever matters on a large set, the only safe parallelism is across *distinct* marketplaces — never two updates of the same marketplace at once.)
 
-**Surface and retry failures — never lose one in the output.** If an update reports `Plugin not found` or another transient error, retry it once serially and reflect the real outcome in the refreshed table. An update that stays failed is a row the user needs to see, not a silent gap.
+**Surface and retry failures — never lose one in the output.** If an update reports `Plugin not found` or another transient error, retry it once serially and reflect the real outcome in the final report. An update that stays failed is a row the user needs to see, not a silent gap.
 
-Track the pass on the **native task list** (see "Output model") — mark the `Update plugins` task `in_progress` before the first update, `completed` after the last. Don't emit a line per plugin; the results land in the refreshed table (Step 3).
+Track the pass on the **native task list** (see "Output model") — mark the `Update plugins` task `in_progress` before the first update, `completed` after the last. Don't emit a line per plugin; the results land in the final report (Step 3).
 
 ## Step 3: Reconcile differences
 
@@ -185,7 +222,7 @@ Track the pass on the **native task list** (see "Output model") — mark the `Up
   - Offer to install: `claude plugin install <plugin>@<marketplace>`
   - Ask before installing — the desired set may be aspirational or out-of-date.
 
-Now render the **refreshed table** (see "Output model") — the plan table from Step 1, updated in place with terminal statuses and version transitions. The **Status** column carries `updated` / `current` / `skipped (team-shared)` / `skipped (shared install)` / `uninstalled` / `install? (missing)`. For a large desired set, collapse the unchanged `current` rows into a trailing count; if nothing changed at all, skip the table and say so in one line.
+The reconcile outcomes feed the **final report** (see "Output model") — the scannable, emoji-tagged status block, opening with the same composition line and reporting reconcile / updates / cache / data. Statuses map to the shared vocabulary: ⬆️ updated · ✅ current · ⏭️ skipped (team-shared / shared install) · 🗑️ uninstalled · ➕ install? (missing). Group and count rather than listing every plugin; if nothing changed at all, the report is the composition line plus a one-line "nothing to reconcile."
 
 ## Step 4: Scan caches and data dirs
 
@@ -203,7 +240,8 @@ Classify every entry against the **currently installed** set (use `claude plugin
 
 - **Orphan cache** — `<plugin>@<marketplace>` no longer installed. Delete-eligible (subject to the `.in_use` check below).
 - **Stale version cache** — `<plugin>@<marketplace>` is installed but `<version>` doesn't match the current installed version. Delete-eligible (subject to the `.in_use` check below). Nothing prunes these automatically — left alone they accumulate, and since each version dir is loaded at the startup of any session pinned to it, that's wasted disk and a heavier plugin set. Running this skill is what keeps the cache at one version per plugin.
-- **Orphan data dir** — `<plugin>-<marketplace>` slug doesn't match any installed plugin. This is the orphan class nothing else cleans: `claude plugin uninstall` doesn't remove data dirs, and the version-cache lifecycle never touches them. Watch for **legacy slugs** like `<plugin>-inline` left over from local/inline installs. These look orphaned because the slug style changed, not because the plugin was uninstalled — flag them clearly so the user knows the data may still matter.
+- **Orphan data dir** — `<plugin>-<marketplace>` slug doesn't match any installed plugin. This is the orphan class nothing else cleans: `claude plugin uninstall` doesn't remove data dirs, and the version-cache lifecycle never touches them. Flag a genuine orphan (a slug for a plugin that's truly gone) so the user can decide whether the data still matters.
+- **`-inline` data dir** — **ignore it.** A `<plugin>-inline` slug is a benign artifact of testing a plugin locally (an inline/skills-dir install), not an orphan and not drift. Don't flag it, don't count it, don't offer to remove it — leave it alone and omit it from the report entirely.
 
 ### Respect `.in_use` leases
 
@@ -225,7 +263,7 @@ fi
 
 (The `.in_use` mechanism is observed from disk, not documented — treat it as a conservative safety check: when a lease looks live, or when you can't confidently prove it dead, don't prune.)
 
-**Report by exception here too.** Stale-version caches are routine — every update leaves one behind — and they're auto-deletable (Step 5), so they don't warrant a row each. Roll them into a single line: count and total size. Reserve table rows for the classes that need user judgment: **orphan caches/data** and **legacy slugs**. If there are none of those, a one-line summary is the whole report.
+**Report by exception here too.** Stale-version caches are routine — every update leaves one behind — and they're auto-deletable (Step 5), so they don't warrant a row each. Roll them into a single line: count and total size. Reserve table rows for the one class that needs user judgment: a genuine **orphan cache/data dir** (`-inline` dirs don't count — they're ignored). If there are none, a one-line summary is the whole report.
 
 ```text
 Stale-version caches: 12 dirs, ~70M — auto-pruned.
@@ -237,13 +275,13 @@ When some or all stale dirs are pinned by a live lease, say so in the same one l
 Stale-version caches: 22 dirs, ~10M — skipped, pinned by live sessions (they free up as those sessions exit).
 ```
 
-When orphans or legacy slugs are present, table only those:
+When a genuine orphan cache/data dir is present, table only those:
 
 ```text
 | Path                                     | Class       | Size |
 |------------------------------------------|-------------|------|
-| ~/.claude/plugins/data/beacon-inline     | legacy slug | 744K |
 | ~/.claude/plugins/data/old-plugin-old-mp | orphan data | 0    |
+| ~/.claude/plugins/cache/mp/gone-plugin   | orphan cache| 2.1M |
 ```
 
 ## Step 5: Clean up (with confirmation)
@@ -251,7 +289,7 @@ When orphans or legacy slugs are present, table only those:
 - **Live-leased cache dirs** (the `.in_use` check above passed) — **never delete**, regardless of class. A live session is loaded from it; pruning breaks that session. Report as "skipped (in use)".
 - **Empty cache dirs and orphan/stale caches with no live lease** — safe to delete; do it without asking.
 - **Non-empty data dirs** — **ask first**. They may hold user state (settings, history, accumulated context). Quote the size and a sample of file names so the user can decide.
-- **Legacy-slug data dirs** — never auto-delete. Show the slug, the size, and the suspected current slug so the user can choose to migrate, archive, or remove.
+- **`-inline` data dirs** — leave them alone. They're benign local-testing artifacts (see Step 4); don't delete them and don't ask about them.
 
 Use `rm -rf` only after explicit confirmation for non-empty dirs. Never delete the parent `cache/<marketplace>/` or `data/` directories themselves.
 
