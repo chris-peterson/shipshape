@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.1
+
+### Fixed
+- `plugin-maintenance` output no longer leaks internal dialog. The 0.4.0 render-surface redesign (plan table, task list, refreshed table) never governed the *voice* between the surfaces, so a run still narrated a preamble before every command and walked the user through its own `.in_use` investigation. The skill now adds a **Voice** section: do the reasoning silently, no per-tool-call preambles, no narrated investigation (report the conclusion in one line), stay in scope, and keep the final summary short.
+- The `.in_use` guidance is now "act on the verdict, don't audit it" — an all-in-use run is normal (background spares and long-lived sessions pin the versions they loaded), not a cue to go verify `plugin-cache-in-use.sh` with ad-hoc `ps` calls. Pinned stale caches collapse to a one-line count instead of a who-holds-what roster.
+- The update task label drops its plugin count. `Update plugins (N)` read as N updates when most were no-ops; since `claude plugin update` has no dry-run, the count can't be known up front, so the real updated-vs-current tally lands in the refreshed table instead.
+- Dropped the "kept" adjective for plugins throughout — it implied the others were lesser; "Update plugins" reads the same without the ranking.
+
 ## 0.4.0
 
 ### Fixed
