@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.3
+
+### Changed
+- The `plugin-maintenance` skill's output spec — the emoji vocabulary, the three surface layouts, and the worked examples — moved into a `references/output-format.md` companion. The procedure (Steps 0–6) now leads the file instead of sitting behind ~90 lines of formatting, and the two guardrails and the `.in_use` section no longer restate the scripts that own their logic.
+- The skill description no longer advertises "Triggers on ..." phrases. With `disable-model-invocation` set, the skill is user-invoked only, so the description now reads as the `/plugin-maintenance` command it is rather than listing triggers that can never fire.
+
+### Other
+- The `SessionStart` hook is registered with an explicit `"matcher": "*"`, matching the documented convention.
+- Documented the auto-update hook's "takes effect on the next launch" output line in the README, and added a hermetic test suite for `enforce-autoupdate.sh` — arm only a pending marketplace, preserve unrelated settings keys, no churn at steady state, and a conservative no-op when `jq` is absent.
+
 ## 0.4.2
 
 ### Changed
