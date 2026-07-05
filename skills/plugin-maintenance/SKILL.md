@@ -1,6 +1,6 @@
 ---
 name: plugin-maintenance
-description: Reconcile installed Claude Code plugins against the desired set, update them, and prune stale caches/data. Triggers on 'sync plugins', 'update my plugins'.
+description: Reconcile installed Claude Code plugins against your desired set (enabledPlugins in settings.json) — update what stays, install/uninstall to match, and prune stale caches and orphan data dirs. User-invoked via /plugin-maintenance.
 disable-model-invocation: true
 ---
 
@@ -68,84 +68,9 @@ The user cares about **what changed and what they must do next** — not how you
 - **No narrated investigation.** If a check surprises you — a lease reads as in-use, a version looks off — resolve it with silent tool calls, then report the *conclusion* in one line. Never walk the user through your hypotheses, your `ps` spelunking, or your "that's almost certainly wrong… actually it's correct" reversals. That is internal dialog; it belongs in no message.
 - **Trust the skill's own tooling.** The lock script and `plugin-cache-in-use.sh` return verdicts you act on, not verdicts you audit out loud (see Step 4). If the script says a dir is in use, it's in use — report it and move on.
 - **Stay in scope.** Report only this run's plugin maintenance. Don't append status on unrelated parked work, other sessions' tasks, or what you were doing before the skill was invoked.
-- **The final summary is scannable, not prose.** Emit it as the compact emoji-tagged status block defined below (surface 3) — composition line first (so the enabled/disabled split is declared, never introduced for the first time at the end), then reconcile / updates / cache / data as short lines or small tables, then the one action the user takes (`/reload-plugins`, or "nothing changed"). Group and count rather than listing every plugin; a run where everything was already current is a few lines, not a wall of rows.
+- **The final summary is scannable, not prose.** Emit it as the compact emoji-tagged status block defined in the output-format reference (surface 3) — composition line first (so the enabled/disabled split is declared, never introduced for the first time at the end), then reconcile / updates / cache / data as short lines or small tables, then the one action the user takes (`/reload-plugins`, or "nothing changed"). Group and count rather than listing every plugin; a run where everything was already current is a few lines, not a wall of rows.
 
-Know what the terminal can and can't do, so this isn't cargo-culted: message text is **append-only**. A printed line can't be redrawn — there's no cursor control in rendered markdown — so a hand-typed progress bar or `- [ ]` checklist just stacks copies and scrolls *worse*. The **only** surface Claude can mutate after emitting it is the harness task list (`TaskCreate` / `TaskUpdate`), which re-renders in place as items flip to `completed`. That's what carries progress; the tables are two separate renders (a plan, then its refresh), not one mutated in place.
-
-A shared **emoji vocabulary** ties the surfaces together — the same marker means the same thing in the plan and the final report, so a glance decodes it:
-
-| Emoji | Meaning |
-|-------|---------|
-| ✅ | already current (no change) |
-| ⬆️ | updated to a newer version |
-| 🔄 | refreshed from source (HEAD-tracked, no version number) |
-| ➕ | installed · 🗑️ uninstalled |
-| 💤 | installed but **disabled** (a deliberate state, left as-is) |
-| ⏭️ | skipped (team-shared, or shared on-disk install) |
-| 🔒 | stale cache pinned by a live session (not pruned) · 🧹 pruned |
-| ⚠️ | needs your judgment (orphan data dir, shared-install anomaly) |
-
-**1. Inventory summary + plan table** — render after Step 1, before any update/install/uninstall runs.
-
-Lead with a one-line **composition** so the enabled-vs-disabled split is declared up front, not revealed at the end. A disabled plugin is a deliberate state, not drift — the run leaves it alone, and the user should see that scope from the start:
-
-```text
-📦 30 installed · ✅ 17 enabled · 💤 13 disabled (1 team-shared) · reconciling the 17 enabled
-```
-
-Then a **plan table** — but only when there's a mix of actions worth previewing (installs, uninstalls, skips). When the only planned action is "update every enabled plugin" (the common case), the composition line already says so — don't follow it with 17 identical `queued: update` rows. One row per plugin you'll act on, ordered by marketplace then plugin; the Status column carries the *planned* action:
-
-```text
-| Marketplace    | Plugin   | Version | Status            |
-|----------------|----------|---------|-------------------|
-| chris-peterson | beacon   | 1.1.0   | ⬆️ queued: update |
-| official       | gitlab   | 1.2.0   | ⏭️ team-shared    |
-| chris-peterson | newthing | —       | ➕ queued: install? |
-```
-
-**2. Progress** — during Steps 2-3, track work on the **native task list** via `TaskCreate` / `TaskUpdate`. Build the list from the *actual* work the Step-1 diff and Step-4 scan turn up — **one task per non-empty action group**, not a fixed pipeline of phases:
-
-- `Update plugins` — whenever any plugin stays installed. This is the one task with **no count** in its label: `claude plugin update` has no dry-run, so you can't know which plugins actually have an update until you run the pass. Don't guess a number that overstates the work (`Update plugins (29)` when 27 are no-ops) — the real tally of updated-vs-current lands in the final report afterward. It's a single task, not one per plugin.
-- `Uninstall N extras` — only if there are extras to remove.
-- `Install N missing` — only if the user confirmed missing installs.
-- `Prune N stale/orphan caches` — only once the scan finds delete-eligible dirs (no live lease).
-
-Don't create a task for an empty group — an instantly-completed `Reconcile: nothing to do` task is exactly the wall-of-no-ops this redesign removes. If that leaves **≤1 action group** — the common all-current run — skip the task list entirely; the composition line and final report already carry it (the task tool's own guidance is to skip it for trivial single-step work). Mark each task `in_progress` when its group starts and `completed` when it finishes. Step 2's updates run serialized (see Step 2), so the `Update plugins` task stays `in_progress` across the whole pass and flips once at the end — the list is a live status surface, not a per-item animation.
-
-**3. Final report** — render after Steps 2-3 finish. This is the authoritative result, and it should be **scannable at a glance**: a compact status block, emoji-tagged, not prose paragraphs and not a per-plugin scroll. It opens with the *same composition line* the run led with (so the reader who scrolled past the top still sees the enabled/disabled split here) and then reports each area — reconcile, updates, cache, data — as its own short line or small table.
-
-Group the update results by marketplace and by outcome rather than one row per plugin — a reader wants "these 14 were current, these 3 refreshed," not 17 near-identical lines. Show version transitions only for plugins that actually moved.
-
-```text
-### Plugin maintenance
-
-📦 30 installed · ✅ 17 enabled · 💤 13 disabled (1 team-shared)
-🔁 Reconcile — nothing to install or uninstall; every plugin matches its desired state.
-
-**Updates** (17 enabled)
-| Marketplace              | Plugins                               | Result       |
-|--------------------------|---------------------------------------|--------------|
-| chris-peterson           | beacon, logbook, moor, sextant, tack  | ✅ current   |
-| getty-claude-marketplace | anchor +8                             | ✅ current   |
-| claude-plugins-official  | frontend-design, playwright, plugin-dev | 🔄 refreshed |
-
-🔒 Cache — 23 stale dirs (~166M) pinned by live sessions; 🧹 0 pruned (they free up as those sessions exit).
-```
-
-(No data line here — there were no genuine orphan data dirs. `-inline` dirs, if present, are silently ignored.)
-
-When plugins actually changed, give the movers their own rows with the version transition, and collapse the unchanged into a count — keep the table shape so it reads as the plan, refreshed:
-
-```text
-**Updates** (17 enabled)
-| Marketplace              | Plugin | Version         | Result     |
-|--------------------------|--------|-----------------|------------|
-| getty-claude-marketplace | anchor | 0.16.0 → 0.17.0 | ⬆️ updated |
-| claude-plugins-official  | 3 HEAD-tracked officials | —    | 🔄 refreshed |
-| —                        | 13 others               | —     | ✅ current  |
-```
-
-Close with the **one action the user takes** — `/reload-plugins` if anything changed on disk, or an explicit "nothing changed, no reload needed" if not. If nothing changed at all — no updates, no installs, no uninstalls, no prune — the report is just the composition line plus that one closing line; don't pad it.
+The detailed specs for these three surfaces — the shared emoji vocabulary, the plan/progress/report layouts, and the terminal-is-append-only rationale behind them — live in **[references/output-format.md](references/output-format.md)**. Read it before rendering; the rest of this file assumes that vocabulary.
 
 ## Step 0: Take the maintenance lock
 
@@ -172,7 +97,7 @@ claude plugin list
 cat ~/.claude/settings.json | jq '.enabledPlugins'
 ```
 
-Build two sets of `<plugin>@<marketplace>` keys: **installed** (with scope) and **desired**. Note the enabled/disabled split while you're here — it feeds the composition line. Once you've diffed them (Step 3's classification), render the **inventory summary + plan table** from the "Output model" section — the composition line (installed / enabled / disabled) the user sees before anything changes.
+Build two sets of `<plugin>@<marketplace>` keys: **installed** (with scope) and **desired**. Note the enabled/disabled split while you're here — it feeds the composition line. Once you've diffed them (Step 3's classification), render the **inventory summary + plan table** (surface 1 in references/output-format.md) — the composition line (installed / enabled / disabled) the user sees before anything changes.
 
 Also read the install manifest — Step 3 gates uninstalls on it (see "a plugin shared by two marketplaces"):
 
@@ -210,19 +135,19 @@ Updates are fast and network-bound, and with the marketplaces already refreshed 
 
 **Surface and retry failures — never lose one in the output.** If an update reports `Plugin not found` or another transient error, retry it once serially and reflect the real outcome in the final report. An update that stays failed is a row the user needs to see, not a silent gap.
 
-Track the pass on the **native task list** (see "Output model") — mark the `Update plugins` task `in_progress` before the first update, `completed` after the last. Don't emit a line per plugin; the results land in the final report (Step 3).
+Track the pass on the **native task list** (surface 2 in references/output-format.md) — mark the `Update plugins` task `in_progress` before the first update, `completed` after the last. Don't emit a line per plugin; the results land in the final report (Step 3).
 
 ## Step 3: Reconcile differences
 
 - **Extras** (installed, not desired):
-  - **Shared on-disk install** (the extra's `<plugin>@<marketplace>` key is absent from `installed_plugins.json`, but another row for the same plugin name is present) → **do not uninstall.** Removing this marketplace key deletes the plugin's only install record, taking the enabled copy with it. Surface it as a warning with the evidence — the row is enabled in `claude plugin list` yet absent from the manifest — and let the user resolve it deliberately: re-point `enabledPlugins` to the desired marketplace, or uninstall and reinstall from that marketplace. Report as "skipped (shared install)".
+  - **Shared on-disk install** (see the guardrail above — the extra's key is absent from `installed_plugins.json` while another row for the same plugin name is present) → **do not uninstall.** Removing this marketplace key deletes the plugin's only install record, taking the enabled copy with it. Surface it as a warning with the manifest-vs-list evidence and let the user resolve it deliberately (re-point `enabledPlugins`, or uninstall and reinstall from the desired marketplace). Report as "skipped (shared install)".
   - **User-scope** → `claude plugin uninstall <plugin>@<marketplace> -y`, then confirm against the manifest: re-read `installed_plugins.json` and check the key is gone. The uninstall reports success regardless, so verify the effect rather than trusting the message.
   - **Project-scope** → skip with a warning ("team-shared via repo settings; remove from the repo's `.claude/settings.json` instead")
 - **Missing** (desired, not installed):
   - Offer to install: `claude plugin install <plugin>@<marketplace>`
   - Ask before installing — the desired set may be aspirational or out-of-date.
 
-The reconcile outcomes feed the **final report** (see "Output model") — the scannable, emoji-tagged status block, opening with the same composition line and reporting reconcile / updates / cache / data. Statuses map to the shared vocabulary: ⬆️ updated · ✅ current · ⏭️ skipped (team-shared / shared install) · 🗑️ uninstalled · ➕ install? (missing). Group and count rather than listing every plugin; if nothing changed at all, the report is the composition line plus a one-line "nothing to reconcile."
+The reconcile outcomes feed the **final report** (surface 3 in references/output-format.md) — the scannable, emoji-tagged status block, opening with the same composition line and reporting reconcile / updates / cache / data. Statuses map to the shared vocabulary: ⬆️ updated · ✅ current · ⏭️ skipped (team-shared / shared install) · 🗑️ uninstalled · ➕ install? (missing). Group and count rather than listing every plugin; if nothing changed at all, the report is the composition line plus a one-line "nothing to reconcile."
 
 ## Step 4: Scan caches and data dirs
 
@@ -247,7 +172,7 @@ Classify every entry against the **currently installed** set (use `claude plugin
 
 Each plugin version dir carries an `.in_use/` directory in which every running session drops a lease file — `{"pid":<n>,"procStart":"<ts>"}`. It's a reference count: a version dir is **live** if any lease names a running process **whose start time still matches the lease's `procStart`**. **Never delete a cache dir with a live lease** — another session loaded that version at startup and is still using its hooks/skills; pruning it breaks that session until it restarts. A lease whose PID is dead is stale and safe to ignore (a platform sweep, recorded in `~/.claude/plugins/.last_inuse_sweep`, eventually clears dead leases).
 
-**Match `procStart`, not just the PID.** The OS recycles PIDs: a dead session's PID gets handed to an unrelated new process, so a `ps -p <pid>` hit alone does **not** prove the lease is live — it false-positives on reuse and wedges the cache dir forever (nothing prunes it). The lease stores `procStart` precisely to disambiguate, so the check compares it to the running process's actual start time, handling two wrinkles: `procStart` is written in **UTC** while `ps -o lstart=` prints **local** time (compared as epoch seconds, matching in either zone since the field's timezone is undocumented), and `date` may be GNU (`date -d`) or BSD (`date -j -f`).
+**Match `procStart`, not just the PID.** The OS recycles PIDs: a dead session's PID gets handed to an unrelated new process, so a `ps -p <pid>` hit alone does **not** prove the lease is live — it false-positives on reuse and wedges the cache dir forever (nothing prunes it). The lease stores `procStart` precisely to disambiguate; the check compares it to the process's actual start time. The script owns the mechanism — the UTC/local timezone gap and the GNU/BSD `date` split included — so its header, not this skill, is the source of truth for how the comparison works.
 
 That logic ships as a script — call it per version dir; exit `0` means in use (don't prune), `1` means safe to prune. It's conservative by design: a missing/unparseable `procStart` counts as in use, so uncertainty never prunes.
 

@@ -34,6 +34,8 @@ claude --debug
 Set autoUpdate=true in ~/.claude/settings.json for:
   - chris-peterson
   - claude-plugins-official
+
+Takes effect on the next Claude Code launch.
 ```
 
 The hook is idempotent — once every marketplace is auto-updating, it exits as
