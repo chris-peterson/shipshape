@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.4
+
+### Changed
+- The `plugin-maintenance` final report now lists **every enabled plugin on its own row** — name, version (or a `from → to` transition for a plugin that moved), and result — rather than collapsing a marketplace's unnamed remainder into a count (`beacon +5`) or a block of unchanged plugins into `13 others`. A maintenance report exists to let the reader confirm each plugin's disposition; a collapsed count defeated that, forcing a re-run of `claude plugin list` to answer "did my plugin get handled?". The composition line, emoji vocabulary, and reconcile/updates/cache/data structure are unchanged, and caches stay reported by exception. (#7)
+
 ## 0.4.3
 
 ### Changed
