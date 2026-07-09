@@ -52,37 +52,45 @@ Don't create a task for an empty group — an instantly-completed `Reconcile: no
 
 ## 3. Final report
 
-Render after Steps 2-3 finish. This is the authoritative result, and it should be **scannable at a glance**: a compact status block, emoji-tagged, not prose paragraphs and not a per-plugin scroll. It opens with the *same composition line* the run led with (so the reader who scrolled past the top still sees the enabled/disabled split here) and then reports each area — reconcile, updates, cache, data — as its own short line or small table.
+Render after Steps 2-3 finish. This is the authoritative result: an emoji-tagged status block, not prose paragraphs. It opens with the *same composition line* the run led with (so the reader who scrolled past the top still sees the enabled/disabled split here) and then reports each area — reconcile, updates, cache, data — as its own short line or table.
 
-Group the update results by marketplace and by outcome rather than one row per plugin — a reader wants "these 14 were current, these 3 refreshed," not 17 near-identical lines. Show version transitions only for plugins that actually moved.
+List **every enabled plugin on its own row** in the updates table. A maintenance report exists to let the reader confirm each plugin's disposition — "did my plugin get handled?" — and a collapsed count (`beacon +5`, `13 others`) hides exactly the names they came to check, forcing a re-run of `claude plugin list`. Completeness wins over brevity here: one row per plugin, ordered by marketplace then plugin. The Version column shows the current version, a `from → to` transition for a plugin that moved, or `—` for a HEAD-tracked plugin with no version number; the Result column carries the emoji-tagged outcome. A large plugin set produces a long table — that's the intended trade.
 
 ```text
 ### Plugin maintenance
 
-📦 30 installed · ✅ 17 enabled · 💤 13 disabled (1 team-shared)
+📦 22 installed · ✅ 9 enabled · 💤 13 disabled (1 team-shared)
 🔁 Reconcile — nothing to install or uninstall; every plugin matches its desired state.
 
-**Updates** (17 enabled)
-| Marketplace              | Plugins                               | Result       |
-|--------------------------|---------------------------------------|--------------|
-| chris-peterson           | beacon, logbook, moor, sextant, tack  | ✅ current   |
-| getty-claude-marketplace | anchor +8                             | ✅ current   |
-| claude-plugins-official  | frontend-design, playwright, plugin-dev | 🔄 refreshed |
+**Updates** (9 enabled)
+| Marketplace             | Plugin          | Version | Result       |
+|-------------------------|-----------------|---------|--------------|
+| chris-peterson          | beacon          | 1.1.0   | ✅ current   |
+| chris-peterson          | logbook         | 0.3.0   | ✅ current   |
+| chris-peterson          | moor            | 0.15.0  | ✅ current   |
+| chris-peterson          | sextant         | 0.4.0   | ✅ current   |
+| chris-peterson          | shipshape       | 0.4.3   | ✅ current   |
+| chris-peterson          | tack            | 0.9.0   | ✅ current   |
+| claude-plugins-official | frontend-design | —       | 🔄 refreshed |
+| claude-plugins-official | playwright      | —       | 🔄 refreshed |
+| claude-plugins-official | plugin-dev      | —       | 🔄 refreshed |
 
 🔒 Cache — 23 stale dirs (~166M) pinned by live sessions; 🧹 0 pruned (they free up as those sessions exit).
 ```
 
 (No data line here — there were no genuine orphan data dirs. `-inline` dirs, if present, are silently ignored.)
 
-When plugins actually changed, give the movers their own rows with the version transition, and collapse the unchanged into a count — keep the table shape so it reads as the plan, refreshed:
+When plugins actually changed, the movers show their version transition in the same table — no separate treatment, no collapsing the unchanged into a count. The table reads as the plan, refreshed:
 
 ```text
-**Updates** (17 enabled)
-| Marketplace              | Plugin | Version         | Result     |
-|--------------------------|--------|-----------------|------------|
-| getty-claude-marketplace | anchor | 0.16.0 → 0.17.0 | ⬆️ updated |
-| claude-plugins-official  | 3 HEAD-tracked officials | —    | 🔄 refreshed |
-| —                        | 13 others               | —     | ✅ current  |
+**Updates** (5 enabled)
+| Marketplace             | Plugin          | Version         | Result       |
+|-------------------------|-----------------|-----------------|--------------|
+| chris-peterson          | beacon          | 1.1.0           | ✅ current   |
+| chris-peterson          | moor            | 0.14.0 → 0.15.0 | ⬆️ updated   |
+| chris-peterson          | tack            | 0.8.0 → 0.9.0   | ⬆️ updated   |
+| claude-plugins-official | frontend-design | —               | 🔄 refreshed |
+| claude-plugins-official | plugin-dev      | —               | 🔄 refreshed |
 ```
 
 Close with the **one action the user takes** — `/reload-plugins` if anything changed on disk, or an explicit "nothing changed, no reload needed" if not. If nothing changed at all — no updates, no installs, no uninstalls, no prune — the report is just the composition line plus that one closing line; don't pad it.

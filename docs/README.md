@@ -43,8 +43,10 @@ in `~/.claude/settings.json` (`enabledPlugins`), then:
    dirs, auto-delete the safe ones, and ask before removing anything that may
    hold user state.
 
-It reports **by exception** — only plugins that changed get a row; everything
-already current collapses into a one-line count.
+It lists **every enabled plugin** — each gets a row with its version and result,
+so you can confirm each plugin's disposition at a glance rather than re-running
+`claude plugin list`. Only caches are reported by exception (stale-version dirs
+are routine noise).
 
 Two runs, two outcomes — a reconcile with work to do, and a settled machine
 where there's nothing left but to keep auto-update armed:
