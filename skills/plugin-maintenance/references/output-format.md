@@ -32,11 +32,11 @@ Lead with a one-line **composition** so the enabled-vs-disabled split is declare
 Then a **plan table** — but only when there's a mix of actions worth previewing (installs, uninstalls, skips). When the only planned action is "update every enabled plugin" (the common case), the composition line already says so — don't follow it with 17 identical `queued: update` rows. One row per plugin you'll act on, ordered by marketplace then plugin; the Status column carries the *planned* action:
 
 ```text
-| Marketplace    | Plugin   | Version | Status            |
-|----------------|----------|---------|-------------------|
-| chris-peterson | beacon   | 1.1.0   | ⬆️ queued: update |
-| official       | gitlab   | 1.2.0   | ⏭️ team-shared    |
-| chris-peterson | newthing | —       | ➕ queued: install? |
+| Marketplace  | Plugin   | Version | Status            |
+|--------------|----------|---------|-------------------|
+| acme-tools   | tidydiff | 1.1.0   | ⬆️ queued: update |
+| oss-registry | scmkit   | 1.2.0   | ⏭️ team-shared    |
+| acme-tools   | gadget   | —       | ➕ queued: install? |
 ```
 
 ## 2. Progress
@@ -54,7 +54,7 @@ Don't create a task for an empty group — an instantly-completed `Reconcile: no
 
 Render after Steps 2-3 finish. This is the authoritative result: an emoji-tagged status block, not prose paragraphs. It opens with the *same composition line* the run led with (so the reader who scrolled past the top still sees the enabled/disabled split here) and then reports each area — reconcile, updates, cache, data — as its own short line or table.
 
-List **every enabled plugin on its own row** in the updates table. A maintenance report exists to let the reader confirm each plugin's disposition — "did my plugin get handled?" — and a collapsed count (`beacon +5`, `13 others`) hides exactly the names they came to check, forcing a re-run of `claude plugin list`. Completeness wins over brevity here: one row per plugin, ordered by marketplace then plugin. The Version column shows the current version, a `from → to` transition for a plugin that moved, or `—` for a HEAD-tracked plugin with no version number; the Result column carries the emoji-tagged outcome. A large plugin set produces a long table — that's the intended trade.
+List **every enabled plugin on its own row** in the updates table. A maintenance report exists to let the reader confirm each plugin's disposition — "did my plugin get handled?" — and a collapsed count (`tidydiff +5`, `13 others`) hides exactly the names they came to check, forcing a re-run of `claude plugin list`. Completeness wins over brevity here: one row per plugin, ordered by marketplace then plugin. The Version column shows the current version, a `from → to` transition for a plugin that moved, or `—` for a HEAD-tracked plugin with no version number; the Result column carries the emoji-tagged outcome. A large plugin set produces a long table — that's the intended trade.
 
 ```text
 ### Plugin maintenance
@@ -63,17 +63,17 @@ List **every enabled plugin on its own row** in the updates table. A maintenance
 🔁 Reconcile — nothing to install or uninstall; every plugin matches its desired state.
 
 **Updates** (9 enabled)
-| Marketplace             | Plugin          | Version | Result       |
-|-------------------------|-----------------|---------|--------------|
-| chris-peterson          | beacon          | 1.1.0   | ✅ current   |
-| chris-peterson          | logbook         | 0.3.0   | ✅ current   |
-| chris-peterson          | moor            | 0.15.0  | ✅ current   |
-| chris-peterson          | sextant         | 0.4.0   | ✅ current   |
-| chris-peterson          | shipshape       | 0.4.3   | ✅ current   |
-| chris-peterson          | tack            | 0.9.0   | ✅ current   |
-| claude-plugins-official | frontend-design | —       | 🔄 refreshed |
-| claude-plugins-official | playwright      | —       | 🔄 refreshed |
-| claude-plugins-official | plugin-dev      | —       | 🔄 refreshed |
+| Marketplace  | Plugin     | Version | Result       |
+|--------------|------------|---------|--------------|
+| acme-tools   | tidydiff   | 1.1.0   | ✅ current   |
+| acme-tools   | notekeep   | 0.3.0   | ✅ current   |
+| acme-tools   | difflens   | 0.15.0  | ✅ current   |
+| acme-tools   | speccraft  | 0.4.0   | ✅ current   |
+| acme-tools   | tuneup     | 0.4.3   | ✅ current   |
+| acme-tools   | trailhead  | 0.9.0   | ✅ current   |
+| oss-registry | uikit      | —       | 🔄 refreshed |
+| oss-registry | browserkit | —       | 🔄 refreshed |
+| oss-registry | devkit     | —       | 🔄 refreshed |
 
 🔒 Cache — 23 stale dirs (~166M) pinned by live sessions; 🧹 0 pruned (they free up as those sessions exit).
 ```
@@ -84,13 +84,13 @@ When plugins actually changed, the movers show their version transition in the s
 
 ```text
 **Updates** (5 enabled)
-| Marketplace             | Plugin          | Version         | Result       |
-|-------------------------|-----------------|-----------------|--------------|
-| chris-peterson          | beacon          | 1.1.0           | ✅ current   |
-| chris-peterson          | moor            | 0.14.0 → 0.15.0 | ⬆️ updated   |
-| chris-peterson          | tack            | 0.8.0 → 0.9.0   | ⬆️ updated   |
-| claude-plugins-official | frontend-design | —               | 🔄 refreshed |
-| claude-plugins-official | plugin-dev      | —               | 🔄 refreshed |
+| Marketplace  | Plugin     | Version         | Result       |
+|--------------|------------|-----------------|--------------|
+| acme-tools   | tidydiff   | 1.1.0           | ✅ current   |
+| acme-tools   | difflens   | 0.14.0 → 0.15.0 | ⬆️ updated   |
+| acme-tools   | trailhead  | 0.8.0 → 0.9.0   | ⬆️ updated   |
+| oss-registry | uikit      | —               | 🔄 refreshed |
+| oss-registry | devkit     | —               | 🔄 refreshed |
 ```
 
 Close with the **one action the user takes** — `/reload-plugins` if anything changed on disk, or an explicit "nothing changed, no reload needed" if not. If nothing changed at all — no updates, no installs, no uninstalls, no prune — the report is just the composition line plus that one closing line; don't pad it.
