@@ -28,6 +28,14 @@ suite:
     - ["/plugin-maintenance", "Reconcile, update, and prune your installed plugins"]
   # Skill-anchored previews shown live on the docs site; the session: below is
   # the at-a-glance flow the hub also reads.
+  # >>> shipyard:describe — generated from source by `shipyard gen-describe`; do not edit >>>
+  describe:
+    skills:
+      plugin-maintenance: Reconcile installed Claude Code plugins against your desired set (enabledPlugins in settings.json) — update what stays, install/uninstall to match, and prune stale caches and orphan data dirs.
+    hooks:
+      enforce-autoupdate: SessionStart — Enforce marketplace auto-update.
+      hooks: 'Hook wiring: SessionStart→enforce-autoupdate.'
+  # <<< shipyard:describe <<<
   examples:
     - label: "/plugin-maintenance"
       ac: "--guard"
