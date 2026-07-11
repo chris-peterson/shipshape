@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# DOCUMENTATION: Enforce marketplace auto-update.
 # SessionStart hook: enforce marketplace auto-update.
 #
 # Sets "autoUpdate": true for every known marketplace under
