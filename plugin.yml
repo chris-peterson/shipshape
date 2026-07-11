@@ -34,7 +34,7 @@ suite:
       plugin-maintenance: Reconcile installed Claude Code plugins against your desired set (enabledPlugins in settings.json) — update what stays, install/uninstall to match, and prune stale caches and orphan data dirs.
     hooks:
       enforce-autoupdate: SessionStart — Enforce marketplace auto-update.
-      hooks: 'Hook wiring: SessionStart→enforce-autoupdate.'
+      hooks: 'Hook wiring: SessionStart→enforce-autoupdate (*).'
   # <<< shipyard:describe <<<
   examples:
     - label: "/plugin-maintenance"

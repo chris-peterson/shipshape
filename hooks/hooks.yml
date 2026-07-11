@@ -1,0 +1,6 @@
+# Source of record for shipshape's hooks — shipyard generates hooks.json.
+hooks:
+  - event: SessionStart
+    matcher: '*'
+    command: 'bash "${CLAUDE_PLUGIN_ROOT}/hooks/enforce-autoupdate.sh"'
+    description: Enforce marketplace auto-update.
