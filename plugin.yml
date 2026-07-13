@@ -54,3 +54,7 @@ suite:
     - { t: cmd, cmd: "/plugin-maintenance", out: "beacon 1.1.0 → 1.3.0 · moor 0.6.1 → 0.7.0 · 17 already current. Pruned 12 stale caches (~70M); asked before the one non-empty data dir." }
     - { t: event, text: "next launch: marketplace auto-update armed for every marketplace" }
     - { t: note, text: "From here on, plugins update themselves at startup." }
+
+docs:
+  code_languages: [bash, json]
+  mermaid: true
