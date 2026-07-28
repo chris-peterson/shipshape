@@ -3,8 +3,8 @@
 # the marketplace SPA (the suite: block).
 
 name: shipshape
-version: 0.4.4
-description: Keep your Claude Code plugins up to date — reconcile installed plugins against your desired set, update them, and prune stale caches.
+version: 0.5.0
+description: Keep your Claude Code plugins up to date — reconcile installed plugins against your desired set, update them, prune stale caches, and hold one pinned to a local checkout while you work on it.
 author: chris-peterson
 repository: https://github.com/chris-peterson/shipshape
 keywords: [plugins, maintenance, auto-update, marketplace, claude-code]
@@ -19,11 +19,12 @@ marketplace:
 suite:
   group: safety
   # Activated by the user (/plugin-maintenance) and by a SessionStart hook that
-  # arms marketplace auto-update.
+  # arms marketplace auto-update. Pinning is a between-sessions shell script, so
+  # it isn't an in-session activation.
   activations: [user, session]
   gloss: Everything stowed, secured, and ready for sea.
   pitch: "Keeps your other plugins current and your plugin dir tidy — out-of-date tooling is its own kind of risk."
-  what: "Reconciles the plugins you have installed against the set you've declared, updates them, and reaps the stale caches and orphan data dirs that uninstall leaves behind — without touching a version a live session still holds. A load-time hook turns on marketplace auto-update so plugins keep themselves current."
+  what: "Reconciles the plugins you have installed against the set you've declared, updates them, and reaps the stale caches and orphan data dirs that uninstall leaves behind — without touching a version a live session still holds. A load-time hook turns on marketplace auto-update so plugins keep themselves current. Maintaining a plugin yourself? Pin it to your local checkout between sessions and the reconcile holds it there instead of updating it away."
   cmds:
     - ["/plugin-maintenance", "Reconcile, update, and prune your installed plugins"]
   # Skill-anchored previews shown live on the docs site; the session: below is

@@ -13,6 +13,12 @@
 # mutually exclusive across sessions. A lock older than the stale threshold is
 # treated as abandoned — a crashed run that never released — and stolen.
 #
+# Outside a session there is no session id, and the `pid-$$` fallback is the PID
+# of *this* process — which differs between the acquire call and the release call
+# when a caller runs each as its own `bash`. Such a caller sets
+# $PLUGIN_MAINT_OWNER once and exports it, so both calls present one identity and
+# release recognizes the lock as its own.
+#
 # Usage:  plugin-maintenance-lock.sh acquire
 #         plugin-maintenance-lock.sh release
 # Exit:   0 = acquired, or released (or nothing to release)
@@ -21,13 +27,14 @@
 #
 # Env:    PLUGIN_MAINT_LOCK   override the lockfile path (tests)
 #         PLUGIN_MAINT_STALE  override the stale threshold in seconds (default 1800)
+#         PLUGIN_MAINT_OWNER  lock identity for a caller with no session id
 
 set -euo pipefail
 
 cmd="${1:-}"
 lock="${PLUGIN_MAINT_LOCK:-$HOME/.claude/plugins/.plugin-maintenance.lock}"
 stale="${PLUGIN_MAINT_STALE:-1800}"
-me="${CLAUDE_CODE_SESSION_ID:-pid-$$}"
+me="${PLUGIN_MAINT_OWNER:-${CLAUDE_CODE_SESSION_ID:-pid-$$}}"
 
 # Read a string field from the lockfile JSON (jq if present, else a sed fallback).
 field_of() {  # $1 = file, $2 = key

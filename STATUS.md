@@ -4,7 +4,7 @@ Tracks coverage of the requirements in [SPEC.md](./SPEC.md) against the single
 in-repo implementation. Status vocabulary: **Covered** · **Partial** ·
 **Missing** · **Contradicts**.
 
-**Coverage: 40/40 requirements Covered (100%)**
+**Coverage: 66/66 requirements Covered (100%)**
 
 ## RCON — Reconciliation
 
@@ -58,6 +58,37 @@ in-repo implementation. Status vocabulary: **Covered** · **Partial** ·
 | AUTO-04 | Covered | hooks/enforce-autoupdate.sh |
 | AUTO-05 | Covered | hooks/enforce-autoupdate.sh |
 | AUTO-06 | Covered | skills/plugin-maintenance/SKILL.md:116 |
+
+## PIN — Local-checkout pins
+
+| ID      | Status  | Location |
+|---------|---------|----------|
+| PIN-01  | Covered | scripts/pin-plugin (`cmd_pin`) |
+| PIN-02  | Covered | scripts/pin-plugin (`validate_checkout`) |
+| PIN-03  | Covered | scripts/pin-plugin (`cmd_pin`) |
+| PIN-04  | Covered | scripts/pin-plugin (`cmd_pin`) |
+| PIN-05  | Covered | scripts/pin-plugin (`assert_repointable`) |
+| PIN-06  | Covered | scripts/pin-plugin (`resolve_one`) |
+| PIN-07  | Covered | scripts/pin-plugin (`cmd_pin`) |
+| PIN-08  | Covered | scripts/pin-plugin (`cmd_pin`) |
+| PIN-09  | Covered | scripts/pin-plugin (`repoint`) |
+| PIN-10  | Covered | scripts/pin-plugin (`cmd_unpin`) |
+| PIN-11  | Covered | scripts/pin-plugin (`cmd_unpin`) |
+| PIN-12  | Covered | scripts/pin-plugin (`cmd_list`, `cmd_is_pinned`) |
+| PIN-13  | Covered | scripts/pin-plugin (`cmd_reconcile`) |
+| PIN-14  | Covered | scripts/pin-plugin (`cmd_reconcile`) |
+| PIN-15  | Covered | scripts/pin-plugin (`take_lock`) |
+| PIN-16  | Covered | scripts/pin-plugin (`write_json`) |
+| PIN-17  | Covered | skills/plugin-maintenance/SKILL.md (Step 2) |
+| PIN-18  | Covered | skills/plugin-maintenance/SKILL.md (Steps 4-5) |
+| PIN-19  | Covered | skills/plugin-maintenance/SKILL.md (Step 3) |
+| PIN-20  | Covered | docs/README.md (Pinning a plugin to a local checkout) |
+| PIN-21  | Covered | scripts/pin-plugin (header); docs/README.md |
+| PIN-22  | Covered | scripts/pin-plugin (`validate_checkout`) |
+| PIN-23  | Covered | scripts/pin-plugin (`assert_repointable`) |
+| PIN-24  | Covered | scripts/pin-plugin (`assert_pins_readable`) |
+| PIN-25  | Covered | scripts/pin-plugin (`cmd_is_pinned`) |
+| PIN-26  | Covered | scripts/pin-plugin (`PLUGIN_MAINT_OWNER`); scripts/plugin-maintenance-lock.sh |
 
 ## RPRT — Reporting & output model
 

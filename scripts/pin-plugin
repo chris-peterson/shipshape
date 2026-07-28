@@ -1,0 +1,432 @@
+#!/usr/bin/env bash
+# Pin a plugin to a local checkout, so new sessions load your working copy
+# instead of the read-only marketplace cache.
+#
+# This is a **between-sessions** operation, run from a shell, not from inside
+# Claude Code. Claude Code resolves where each plugin loads from via the
+# `installPath` recorded per `<plugin>@<marketplace>` in installed_plugins.json,
+# and it reads that once at startup: `/reload-plugins` re-reads the plugin set
+# but does not re-resolve `installPath`. So a pin cannot move the session that
+# applies it — you exit, pin, and start the sessions that need the checkout.
+# That is why there is no slash command wrapping this; an in-session entrypoint
+# would only be able to tell you to restart.
+#
+# A pin also cannot survive on its own. `claude plugin update` repoints
+# `installPath` at a fresh cache dir, and shipshape arms marketplace auto-update
+# every launch. So a pin is a *declaration* shipshape's reconcile honors —
+# recorded here, re-asserted by `reconcile`, and excluded from update and prune
+# by the plugin-maintenance skill.
+#
+# A pin records the `origin` it displaced (the marketplace `installPath` and
+# version) and that is what `unpin` restores. The recorded origin cache dir is
+# left on disk untouched, and every repoint writes the manifest's `version` back
+# to the origin's: pinned, the recorded version keeps matching the origin dir, so
+# prune never classifies that dir stale and deletes what `unpin` restores to.
+# Holding the version is not the same as leaving it alone — an update that ran
+# before a re-assert has already bumped it, and only rewriting it undoes that.
+# Another live session may still hold the origin dir's `.in_use` lease.
+#
+# Usage:  pin-plugin pin <plugin>[@<marketplace>] [checkout]
+#         pin-plugin unpin <plugin>[@<marketplace>]
+#         pin-plugin list
+#         pin-plugin is-pinned <plugin>[@<marketplace>]
+#         pin-plugin reconcile
+#
+#         `checkout` defaults to the current directory when that directory is
+#         itself a valid plugin checkout; otherwise pass it explicitly.
+#
+#         --no-lock  skip the maintenance lock (for a caller that already holds
+#                    it — the lock is re-entrant per session, so a nested
+#                    acquire/release pair would release the caller's lock early)
+#
+# Exit:   0 = done (or, for is-pinned, pinned)
+#         1 = pinned plugin not found / failed validation / not pinned
+#         2 = usage error (including a bare name is-pinned cannot resolve to one
+#             pin — exit 1 there would read as a confident "not pinned")
+#         3 = the maintenance lock is held by another live session (bail)
+#
+# Env:    SHIPSHAPE_PINS      override the pins file (tests)
+#         SHIPSHAPE_MANIFEST  override installed_plugins.json (tests)
+
+set -uo pipefail
+
+here="$(cd "$(dirname "$0")" && pwd)"
+pins="${SHIPSHAPE_PINS:-$HOME/.claude/plugins/.shipshape-pins.json}"
+manifest="${SHIPSHAPE_MANIFEST:-$HOME/.claude/plugins/installed_plugins.json}"
+lock_script="$here/plugin-maintenance-lock.sh"
+
+# Each lock call below is its own `bash`, so the lock's `pid-$$` fallback would
+# name a different process each time and `release` would decline to remove a lock
+# it no longer recognizes — leaking it for the full stale window and blocking
+# every later maintenance run. Fix one identity here and export it for both calls.
+export PLUGIN_MAINT_OWNER="${PLUGIN_MAINT_OWNER:-${CLAUDE_CODE_SESSION_ID:-pin-plugin-$$}}"
+
+die() { echo "pin-plugin: $*" >&2; exit 1; }
+usage() {
+  echo "usage: pin-plugin pin <plugin>[@<marketplace>] [checkout] | unpin <plugin>[@<marketplace>] | list | is-pinned <plugin>[@<marketplace>] | reconcile" >&2
+  exit 2
+}
+
+command -v jq >/dev/null 2>&1 || die "jq is required and was not found on PATH"
+
+# ---------------------------------------------------------------- lock
+
+lock_held=""
+take_lock() {
+  [ -n "${no_lock:-}" ] && return 0
+  bash "$lock_script" acquire
+  local rc=$?
+  [ "$rc" = 3 ] && exit 3          # another live session is reconciling
+  [ "$rc" = 0 ] || die "could not acquire the maintenance lock (exit $rc)"
+  lock_held=1
+  trap 'drop_lock' EXIT
+}
+drop_lock() { [ -n "$lock_held" ] && bash "$lock_script" release >/dev/null 2>&1; lock_held=""; }
+
+# ---------------------------------------------------------------- pins file
+
+# Every `read_pins` call site is a command substitution or a pipeline, so a `die`
+# from inside it would end only that subshell and hand the caller an empty
+# document — which reads as "nothing is pinned" and exits 0. That is the worst
+# possible failure for this script: the maintenance run would then update a pinned
+# plugin, prune the origin dir `unpin` restores to, and uninstall it as an extra.
+# So the parse check lives here, in the main shell, ahead of every subcommand.
+assert_pins_readable() {
+  [ -e "$pins" ] || return 0
+  [ -f "$pins" ] || die "pins file is not a regular file: $pins"
+  jq -e 'type == "object" and (.pins | type) == "object"' "$pins" >/dev/null 2>&1 \
+    || die "pins file is unreadable or malformed: $pins
+Every pin is recorded there, so shipshape will not guess that nothing is pinned.
+Repair the file, or move it aside and re-pin."
+}
+
+read_pins() {
+  if [ -f "$pins" ]; then
+    cat "$pins"
+  else
+    echo '{"version":1,"pins":{}}'
+  fi
+}
+
+assert_manifest_readable() {
+  [ -f "$manifest" ] || die "install manifest not found: $manifest"
+  jq -e 'type == "object" and (.plugins | type == "object")' "$manifest" >/dev/null 2>&1 \
+    || die "install manifest is unreadable or malformed: $manifest"
+}
+
+# Replace a JSON file atomically, so an interrupted write cannot truncate it.
+#
+# Content comes in as an *argument*, never on stdin: `die` in the last element of
+# a pipeline exits only that subshell, so a piped writer would report a failed
+# write and let the caller carry on with exit 0 — the write silently swallowed.
+write_json() {  # $1 = target path, $2 = label, $3 = content
+  local target="$1" label="$2" content="$3" tmp
+  mkdir -p "$(dirname "$target")" || die "could not create $(dirname "$target")"
+  tmp=$(mktemp "${target}.XXXXXX") || die "could not create a temp file beside $target"
+  printf '%s\n' "$content" > "$tmp" || { rm -f "$tmp"; die "could not write $tmp"; }
+  jq -e . "$tmp" >/dev/null 2>&1 || { rm -f "$tmp"; die "refusing to write malformed $label JSON"; }
+  mv "$tmp" "$target" || { rm -f "$tmp"; die "could not replace $target"; }
+}
+
+write_pins()     { write_json "$pins" "pins" "$1"; }
+write_manifest() { write_json "$manifest" "install manifest" "$1"; }
+
+# ---------------------------------------------------------------- resolution
+
+# Pick the `<plugin>@<marketplace>` keys a bare plugin name matches, out of a
+# newline-separated key list. Shared by every subcommand that takes a name, so all
+# of them refuse an ambiguous name the same way instead of each deciding again.
+match_keys() {  # $1 = key list, $2 = bare name  -> stdout: matching keys
+  local k
+  while IFS= read -r k; do
+    [ -n "$k" ] || continue
+    case "$k" in "$2@"*) printf '%s\n' "$k" ;; esac
+  done <<< "$1"
+}
+
+# Resolve a bare plugin name to a single key, or die naming the candidates.
+resolve_one() {  # $1 = key list, $2 = name, $3 = what was searched  -> stdout: key
+  local matches count
+  matches=$(match_keys "$1" "$2")
+  count=$(printf '%s' "$matches" | grep -c . || true)
+  case "$count" in
+    0) die "no $3 named '$2'" ;;
+    1) printf '%s\n' "$matches" ;;
+    *) die "'$2' matches more than one $3; pass the qualified <plugin>@<marketplace> name:
+$(printf '%s' "$matches" | sed 's/^/  /')" ;;
+  esac
+}
+
+# Resolve a name to its `<plugin>@<marketplace>` manifest key.
+resolve_key() {  # $1 = plugin or plugin@marketplace  -> stdout: key
+  local want="$1"
+  if [ "${want#*@}" != "$want" ]; then          # already qualified
+    jq -e --arg k "$want" '.plugins | has($k)' "$manifest" >/dev/null 2>&1 \
+      || die "$want is not in the install manifest"
+    echo "$want"; return 0
+  fi
+  resolve_one "$(jq -r '.plugins | keys[]' "$manifest")" "$want" "installed plugin"
+}
+
+record_count_of() {  # $1 = key -> stdout: number of install records (0 if absent)
+  jq -r --arg k "$1" '.plugins[$k] // [] | length' "$manifest"
+}
+
+# A repoint rewrites one install record, so it needs exactly one to rewrite. Two
+# scopes means two records and no way to know which the user meant; zero means the
+# plugin is gone from the manifest, and jq's assignment would *create* the key —
+# writing a scope-less, version-less record for a plugin that is not installed.
+assert_repointable() {  # $1 = key
+  local n; n=$(record_count_of "$1")
+  case "$n" in
+    1) return 0 ;;
+    0) die "$1 is not in the install manifest; refusing to write an install record for a plugin that is not installed" ;;
+    *) die "$1 has $n install records (installed under more than one scope); shipshape cannot tell which one to repoint — resolve the duplicate install first" ;;
+  esac
+}
+
+validate_checkout() {  # $1 = path, $2 = plugin name it must declare -> stdout: abs path
+  local p="$1" want="$2" declared
+  [ -n "$p" ] || die "no checkout path given"
+  [ -d "$p" ] || die "checkout is not a directory: $p"
+  p=$(cd "$p" && pwd) || die "could not resolve checkout: $1"
+  [ -f "$p/.claude-plugin/plugin.json" ] \
+    || die "not a plugin checkout (no .claude-plugin/plugin.json): $p"
+  jq -e . "$p/.claude-plugin/plugin.json" >/dev/null 2>&1 \
+    || die "checkout has a malformed .claude-plugin/plugin.json: $p"
+
+  # The checkout is loaded under the pinned plugin's install record, so a checkout
+  # of some *other* plugin would silently load that plugin's skills, commands, and
+  # hooks in place of the pinned one's.
+  declared=$(jq -r '.name // empty' "$p/.claude-plugin/plugin.json")
+  [ -n "$declared" ] || die "checkout's .claude-plugin/plugin.json declares no name: $p"
+  [ "$declared" = "$want" ] \
+    || die "checkout declares plugin '$declared', but you are pinning '$want': $p
+Loading it under $want's install record would replace $want with $declared."
+  echo "$p"
+}
+
+# ---------------------------------------------------------------- repoint
+
+# Point a manifest key's single record at `installPath`, and hold `version` at the
+# pin's origin version — see the header for why the version has to be written and
+# not merely left alone. An empty version leaves the recorded one in place, for a
+# manifest record that never had one.
+repoint() {  # $1 = key, $2 = installPath, $3 = version ("" to leave as recorded)
+  assert_repointable "$1"
+  local out
+  out=$(jq --arg k "$1" --arg p "$2" --arg v "$3" '
+      .plugins[$k][0].installPath = $p
+      | if $v == "" then . else .plugins[$k][0].version = $v end
+    ' "$manifest") \
+    || die "could not rewrite the install manifest for $1"
+  write_manifest "$out"
+}
+
+installed_path_of() { jq -r --arg k "$1" '.plugins[$k][0].installPath // empty' "$manifest"; }
+installed_version_of() { jq -r --arg k "$1" '.plugins[$k][0].version // empty' "$manifest"; }
+
+# ---------------------------------------------------------------- subcommands
+
+cmd_pin() {
+  local name="${1:-}" path="${2:-}"
+  [ -n "$name" ] || usage
+  local key; key=$(resolve_key "$name") || exit 1
+  assert_repointable "$key"
+
+  if [ -z "$path" ]; then
+    path="$PWD"
+    [ -f "$path/.claude-plugin/plugin.json" ] \
+      || die "no checkout given and the current directory is not a plugin checkout; pass the path explicitly"
+  fi
+  local checkout; checkout=$(validate_checkout "$path" "${key%@*}") || exit 1
+
+  # Everything is validated before the first write, so a bad path cannot leave a
+  # recorded pin without a repoint, or the reverse.
+  take_lock
+
+  local existing
+  existing=$(read_pins | jq -r --arg k "$key" '.pins[$k].checkout // empty')
+  if [ -n "$existing" ]; then
+    if [ "$existing" = "$checkout" ]; then
+      # Re-assert against the recorded origin, not the manifest's current version:
+      # an update may have moved both fields since the pin was taken.
+      repoint "$key" "$checkout" \
+        "$(read_pins | jq -r --arg k "$key" '.pins[$k].origin.version // empty')"
+      echo "already pinned: $key -> $checkout (re-asserted)"
+      return 0
+    fi
+    die "$key is already pinned to $existing; unpin it before pinning elsewhere"
+  fi
+
+  local origin_path origin_version
+  origin_path=$(installed_path_of "$key")
+  origin_version=$(installed_version_of "$key")
+  [ -n "$origin_path" ] || die "$key has no installPath in the manifest; nothing to record as its origin"
+
+  # Repoint first, record second. Both orders are safe against a *validation*
+  # failure (nothing is written until here), but not against an I/O failure
+  # between the two writes, and the two leftovers are not equally bad:
+  #   repointed, unrecorded -> the next update repoints it back to the cache;
+  #                            the pin just didn't take, loudly.
+  #   recorded, unrepointed -> reconcile holds a plugin out of update and prune
+  #                            that is still loading from the cache — a wrong
+  #                            state that persists silently.
+  # So take the self-correcting leftover.
+  repoint "$key" "$checkout" "$origin_version"
+  local updated
+  updated=$(read_pins | jq \
+    --arg k "$key" --arg c "$checkout" \
+    --arg op "$origin_path" --arg ov "$origin_version" \
+    --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    '.pins[$k] = {checkout:$c, origin:{installPath:$op, version:$ov}, pinnedAt:$ts}') \
+    || die "could not record the pin for $key"
+  write_pins "$updated"
+
+  echo "pinned: $key -> $checkout"
+  echo "origin: $origin_path ($origin_version)"
+  echo "New sessions load the checkout; this session keeps the copy it started with."
+}
+
+cmd_unpin() {
+  local name="${1:-}"
+  [ -n "$name" ] || usage
+  # Resolve against the pins file, so the bare name the user pinned with works.
+  local key
+  if [ "${name#*@}" != "$name" ]; then
+    key="$name"
+  else
+    key=$(resolve_one "$(read_pins | jq -r '.pins | keys[]')" "$name" "pinned plugin") || exit 1
+  fi
+
+  local entry origin_path origin_version
+  entry=$(read_pins | jq -c --arg k "$key" '.pins[$k] // empty')
+  [ -n "$entry" ] || die "'$key' is not pinned"
+  origin_path=$(printf '%s' "$entry" | jq -r '.origin.installPath // empty')
+  origin_version=$(printf '%s' "$entry" | jq -r '.origin.version // empty')
+  [ -n "$origin_path" ] || die "pin for $key records no origin installPath; cannot restore it"
+  [ -d "$origin_path" ] \
+    || die "the recorded origin is gone from disk: $origin_path
+Reinstall or update $key to restore it, then unpin."
+
+  # Check the manifest side before dropping the record. `repoint` refuses a key
+  # that is missing or has several scope records, and hitting that refusal *after*
+  # the drop would leave the plugin unrecorded and still loading the checkout.
+  assert_repointable "$key"
+
+  # Drop the record first, restore second — the mirror of pin's reasoning. A
+  # lingering record with the origin already restored is worse than the reverse:
+  # `reconcile` would re-assert the pin and silently undo the unpin, whereas an
+  # unrecorded plugin still sitting on its checkout is repointed by the next
+  # update.
+  take_lock
+  local remaining
+  remaining=$(read_pins | jq --arg k "$key" 'del(.pins[$k])') \
+    || die "could not drop the pin record for $key"
+  write_pins "$remaining"
+  repoint "$key" "$origin_path" "$origin_version"
+
+  echo "unpinned: $key -> $origin_path ($origin_version)"
+  echo "New sessions load the marketplace copy again."
+}
+
+cmd_list() {
+  local content count
+  content=$(read_pins)
+  count=$(printf '%s' "$content" | jq -r '.pins | length')
+  if [ "$count" = 0 ]; then echo "No pinned plugins."; return 0; fi
+  printf '%s' "$content" | jq -r '
+    .pins | to_entries[] |
+    "\(.key)\n  checkout: \(.value.checkout)\n  origin:   \(.value.origin.installPath) (\(.value.origin.version))\n  pinned:   \(.value.pinnedAt)"'
+}
+
+cmd_is_pinned() {
+  local name="${1:-}"
+  [ -n "$name" ] || usage
+  local keys; keys=$(read_pins | jq -r '.pins | keys[]')
+  if [ "${name#*@}" != "$name" ]; then
+    printf '%s\n' "$keys" | grep -qxF -- "$name" && exit 0 || exit 1
+  fi
+  # A bare name matching two pins is ambiguous here for the same reason it is for
+  # `pin` and `unpin`: answering for whichever key sorted first would report on a
+  # plugin the caller never asked about. Refuse — as a usage error, not as exit 1,
+  # which here *means* "not pinned" and would read as a confident no.
+  local matches count
+  matches=$(match_keys "$keys" "$name")
+  count=$(printf '%s' "$matches" | grep -c . || true)
+  case "$count" in
+    0) exit 1 ;;
+    1) exit 0 ;;
+    *) echo "pin-plugin: '$name' matches more than one pin; pass the qualified <plugin>@<marketplace> name:
+$(printf '%s' "$matches" | sed 's/^/  /')" >&2
+       exit 2 ;;
+  esac
+}
+
+# Re-assert every pin against the manifest. Idempotent, and the hook a reconcile
+# calls after updates have repointed installPath back at the cache.
+cmd_reconcile() {
+  local content keys changed=0
+  # Read under the lock, so a pin recorded by another shell between the read and
+  # the re-assert isn't missed and left pointing at its cache.
+  take_lock
+  content=$(read_pins)
+  keys=$(printf '%s' "$content" | jq -r '.pins | keys[]')
+  [ -n "$keys" ] || { echo "No pinned plugins."; return 0; }
+
+  while IFS= read -r key; do
+    [ -n "$key" ] || continue
+    local checkout origin_version current records
+    checkout=$(printf '%s' "$content" | jq -r --arg k "$key" '.pins[$k].checkout')
+    origin_version=$(printf '%s' "$content" | jq -r --arg k "$key" '.pins[$k].origin.version // empty')
+    records=$(record_count_of "$key")
+    # One bad pin warns and is skipped rather than aborting the whole re-assert —
+    # the other pins are still worth restoring.
+    if [ "$records" = 0 ]; then
+      echo "warning: $key is pinned but no longer in the install manifest; leaving the pin recorded" >&2
+      continue
+    fi
+    if [ "$records" != 1 ]; then
+      echo "warning: $key now has $records install records (multiple scopes); cannot tell which to repoint, so leaving it alone" >&2
+      continue
+    fi
+    if [ ! -f "$checkout/.claude-plugin/plugin.json" ]; then
+      echo "warning: $key is pinned to $checkout, which is no longer a plugin checkout; not repointing" >&2
+      continue
+    fi
+    current=$(installed_path_of "$key")
+    if [ "$current" != "$checkout" ] \
+       || { [ -n "$origin_version" ] && [ "$(installed_version_of "$key")" != "$origin_version" ]; }; then
+      repoint "$key" "$checkout" "$origin_version"
+      echo "re-pinned: $key -> $checkout (was $current)"
+      changed=$((changed + 1))
+    fi
+  done <<< "$keys"
+  [ "$changed" = 0 ] && echo "All pins already point at their checkouts."
+  return 0
+}
+
+# ---------------------------------------------------------------- dispatch
+
+no_lock=""
+args=()
+for a in "$@"; do
+  case "$a" in
+    --no-lock) no_lock=1 ;;
+    *) args+=("$a") ;;
+  esac
+done
+set -- ${args+"${args[@]}"}
+
+# Both files are validated here, in the main shell, where `die` ends the script —
+# see assert_pins_readable for why that placement is load-bearing. `list` and
+# `is-pinned` answer from the pins file alone, so they don't require the manifest.
+assert_pins_readable
+case "${1:-}" in
+  pin)       shift; assert_manifest_readable; cmd_pin "$@" ;;
+  unpin)     shift; assert_manifest_readable; cmd_unpin "$@" ;;
+  list)      shift; cmd_list "$@" ;;
+  is-pinned) shift; cmd_is_pinned "$@" ;;
+  reconcile) shift; assert_manifest_readable; cmd_reconcile "$@" ;;
+  *)         usage ;;
+esac

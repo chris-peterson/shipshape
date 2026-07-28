@@ -4,8 +4,9 @@
 
 Keep your Claude Code plugins up to date. shipshape is a Claude Code plugin that
 maintains your *other* Claude Code plugins — a `/plugin-maintenance` skill that
-reconciles and prunes, plus a `SessionStart` hook that enforces marketplace
-auto-update. See the docs for usage.
+reconciles and prunes, a `pin-plugin` script that points one plugin at a local
+checkout while you work on it, plus a `SessionStart` hook that enforces
+marketplace auto-update. See the docs for usage.
 
 ## Repo layout
 
@@ -14,6 +15,9 @@ auto-update. See the docs for usage.
 hooks/hooks.json                      SessionStart hook registration
 hooks/enforce-autoupdate.sh           arms marketplace auto-update at load
 skills/plugin-maintenance/SKILL.md    the maintenance skill
+scripts/pin-plugin                    pin/unpin a plugin to a local checkout
+scripts/plugin-maintenance-lock.sh    cooperative reconcile lock
+scripts/plugin-cache-in-use.sh        .in_use lease check
 docs/                                 docsify site (deployed to Pages)
 ```
 

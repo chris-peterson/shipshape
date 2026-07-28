@@ -29,6 +29,16 @@ The same plugin can be published to more than one marketplace — a public marke
 
 So gate every extra uninstall on the install manifest, not on `claude plugin list` plus the desired set alone (Step 3). A plugin with genuinely independent install records per marketplace — a key present in the manifest for each marketplace — is reconciled as before.
 
+## Guardrail: pinned plugins are held, not reconciled
+
+A plugin pinned to a local checkout (via `scripts/pin-plugin`, run from a shell between sessions) loads from that checkout instead of its marketplace cache — its `installPath` points at the user's working copy. That makes it a **declared exception to this reconcile**, the same way a live `.in_use` lease makes a cache dir untouchable:
+
+- **Never update a pinned plugin** (Step 2). `claude plugin update` repoints `installPath` back at a fresh cache dir, silently undoing the pin.
+- **Never prune a pinned plugin's cache** (Steps 4-5), including the origin version recorded in the pin. That dir is what `unpin` restores to.
+- **Re-assert pins after updating** (Step 2). Auto-update runs outside this skill and can repoint a pinned plugin before the run starts.
+
+Read the pins once during inventory (Step 1) and carry the set through the run.
+
 ## Flow
 
 ```mermaid
@@ -107,6 +117,14 @@ jq '.plugins | keys' ~/.claude/plugins/installed_plugins.json
 
 The manifest keys by the same `<plugin>@<marketplace>` form. A `claude plugin list` row whose key is absent here shares another marketplace's single on-disk install.
 
+Read the **pinned set** too — these are held out of update and prune for the rest of the run (see the guardrail above):
+
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/pin-plugin" list
+```
+
+Keep each pinned plugin's key, its checkout, and its recorded origin `installPath`. The origin path is the cache dir Step 4 must not classify as prunable.
+
 While you have the marketplace state, note **auto-update** coverage for the final report — a marketplace is auto-updating when its `extraKnownMarketplaces.<name>.autoUpdate` is `true` in `~/.claude/settings.json`:
 
 ```bash
@@ -133,13 +151,24 @@ claude plugin update <plugin>@<marketplace>
 
 Updates are fast and network-bound, and with the marketplaces already refreshed each one is cheap; the clone-collision cost far outweighs the parallelism. (If speed ever matters on a large set, the only safe parallelism is across *distinct* marketplaces — never two updates of the same marketplace at once.)
 
+**Skip every pinned plugin.** A pinned plugin is deliberately loading from a local checkout; updating it repoints `installPath` at a fresh cache dir and undoes that. Leave it out of the update pass entirely and report it as 📌 pinned with its checkout.
+
 **Surface and retry failures — never lose one in the output.** If an update reports `Plugin not found` or another transient error, retry it once serially and reflect the real outcome in the final report. An update that stays failed is a row the user needs to see, not a silent gap.
+
+**Then re-assert the pins.** Marketplace auto-update runs at session start, outside this skill, and can repoint a pinned plugin before the run even begins. Re-assert after the update pass, while the maintenance lock is still held (`--no-lock` tells the script the caller already holds it — a nested acquire/release would drop this run's lock early):
+
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/pin-plugin" reconcile --no-lock
+```
+
+Only the `re-pinned: …` lines mean a pin had been clobbered — each is worth a row in the final report, since something moved the plugin out from under the user. `All pins already point at their checkouts.` and `No pinned plugins.` are the quiet outcomes, printed on every clean run; don't report them as clobbers. Warnings on stderr mean the opposite again — the pin *couldn't* be re-asserted (the plugin left the manifest, gained a second scope, or its checkout is gone), so it's inert until the user acts. Surface those.
 
 Track the pass on the **native task list** (surface 2 in references/output-format.md) — mark the `Update plugins` task `in_progress` before the first update, `completed` after the last. Don't emit a line per plugin; the results land in the final report (Step 3).
 
 ## Step 3: Reconcile differences
 
 - **Extras** (installed, not desired):
+  - **Pinned** → **do not uninstall.** The user pinned it to a local checkout on purpose; uninstalling drops the install record the pin is recorded against, and its recorded origin with it. Report as "skipped (pinned)" and let the user unpin first if they really mean to remove it.
   - **Shared on-disk install** (see the guardrail above — the extra's key is absent from `installed_plugins.json` while another row for the same plugin name is present) → **do not uninstall.** Removing this marketplace key deletes the plugin's only install record, taking the enabled copy with it. Surface it as a warning with the manifest-vs-list evidence and let the user resolve it deliberately (re-point `enabledPlugins`, or uninstall and reinstall from the desired marketplace). Report as "skipped (shared install)".
   - **User-scope** → `claude plugin uninstall <plugin>@<marketplace> -y`, then confirm against the manifest: re-read `installed_plugins.json` and check the key is gone. The uninstall reports success regardless, so verify the effect rather than trusting the message.
   - **Project-scope** → skip with a warning ("team-shared via repo settings; remove from the repo's `.claude/settings.json` instead")
@@ -147,7 +176,7 @@ Track the pass on the **native task list** (surface 2 in references/output-forma
   - Offer to install: `claude plugin install <plugin>@<marketplace>`
   - Ask before installing — the desired set may be aspirational or out-of-date.
 
-The reconcile outcomes feed the **final report** (surface 3 in references/output-format.md) — the scannable, emoji-tagged status block, opening with the same composition line and reporting reconcile / updates / cache / data. Statuses map to the shared vocabulary: ⬆️ updated · ✅ current · ⏭️ skipped (team-shared / shared install) · 🗑️ uninstalled · ➕ install? (missing). List every enabled plugin on its own row rather than collapsing a remainder into a count; if nothing changed at all, the report is the composition line plus a one-line "nothing to reconcile."
+The reconcile outcomes feed the **final report** (surface 3 in references/output-format.md) — the scannable, emoji-tagged status block, opening with the same composition line and reporting reconcile / updates / cache / data. Statuses map to the shared vocabulary: ⬆️ updated · ✅ current · ⏭️ skipped (team-shared / shared install) · 🗑️ uninstalled · ➕ install? (missing) · 📌 pinned to a local checkout. List every enabled plugin on its own row rather than collapsing a remainder into a count; if nothing changed at all, the report is the composition line plus a one-line "nothing to reconcile."
 
 ## Step 4: Scan caches and data dirs
 
@@ -164,9 +193,10 @@ find ~/.claude/plugins/data -mindepth 1 -maxdepth 1 -type d
 Classify every entry against the **currently installed** set (use `claude plugin list` again — the inventory just changed):
 
 - **Orphan cache** — `<plugin>@<marketplace>` no longer installed. Delete-eligible (subject to the `.in_use` check below).
-- **Stale version cache** — `<plugin>@<marketplace>` is installed but `<version>` doesn't match the current installed version. Delete-eligible (subject to the `.in_use` check below). Nothing prunes these automatically — left alone they accumulate, and since each version dir is loaded at the startup of any session pinned to it, that's wasted disk and a heavier plugin set. Running this skill is what keeps the cache at one version per plugin.
+- **Stale version cache** — `<plugin>@<marketplace>` is installed but `<version>` doesn't match the current installed version. Delete-eligible (subject to the `.in_use` check below). Nothing prunes these automatically — left alone they accumulate, and since each version dir is loaded at the startup of any session that resolved to it, that's wasted disk and a heavier plugin set. Running this skill is what keeps the cache at one version per plugin.
 - **Orphan data dir** — `<plugin>-<marketplace>` slug doesn't match any installed plugin. This is the orphan class nothing else cleans: `claude plugin uninstall` doesn't remove data dirs, and the version-cache lifecycle never touches them. Flag a genuine orphan (a slug for a plugin that's truly gone) so the user can decide whether the data still matters.
 - **`-inline` data dir** — **ignore it.** A `<plugin>-inline` slug is a benign artifact of testing a plugin locally (an inline/skills-dir install), not an orphan and not drift. Don't flag it, don't count it, don't offer to remove it — leave it alone and omit it from the report entirely.
+- **A pinned plugin's cache dir** — **never delete, and don't classify it.** Its `installPath` points at a checkout, so every cache dir for it reads as orphan or stale by the rules above; the one recorded as the pin's `origin` is exactly what `unpin` restores to. Hold all of them and report the plugin as 📌 pinned. Its data dir is live too — the checkout-loaded plugin still uses it — so it is not an orphan.
 
 ### Respect `.in_use` leases
 
@@ -194,10 +224,10 @@ fi
 Stale-version caches: 12 dirs, ~70M — auto-pruned.
 ```
 
-When some or all stale dirs are pinned by a live lease, say so in the same one line — a count, not a roster of which sessions hold what. The holders' PIDs, start times, and command lines are internal; the user needs only that they're pinned and clear on their own:
+When some or all stale dirs are held by a live lease, say so in the same one line — a count, not a roster of which sessions hold what. The holders' PIDs, start times, and command lines are internal; the user needs only that they're held and clear on their own:
 
 ```text
-Stale-version caches: 22 dirs, ~10M — skipped, pinned by live sessions (they free up as those sessions exit).
+Stale-version caches: 22 dirs, ~10M — skipped, held by live sessions (they free up as those sessions exit).
 ```
 
 When a genuine orphan cache/data dir is present, table only those:
@@ -212,6 +242,7 @@ When a genuine orphan cache/data dir is present, table only those:
 ## Step 5: Clean up (with confirmation)
 
 - **Live-leased cache dirs** (the `.in_use` check above passed) — **never delete**, regardless of class. A live session is loaded from it; pruning breaks that session. Report as "skipped (in use)".
+- **Pinned plugins' cache and data dirs** — **never delete**, regardless of class or lease. Report as "skipped (pinned)".
 - **Empty cache dirs and orphan/stale caches with no live lease** — safe to delete; do it without asking.
 - **Non-empty data dirs** — **ask first**. They may hold user state (settings, history, accumulated context). Quote the size and a sample of file names so the user can decide.
 - **`-inline` data dirs** — leave them alone. They're benign local-testing artifacts (see Step 4); don't delete them and don't ask about them.

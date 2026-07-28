@@ -40,6 +40,16 @@ check "lock now owned by B" "$(sed -n 's/.*"session"[^"]*"\([^"]*\)".*/\1/p' "$L
 
 run 2 "usage error on bad subcommand"             env CLAUDE_CODE_SESSION_ID=A bash "$SCRIPT" frobnicate
 
+# A caller with no session id (pin-plugin, run between sessions) supplies its own
+# identity, because the pid fallback would differ between its acquire and release
+# and the release would leave the lock behind.
+rm -f "$LOCK"
+run 0 "acquire with an explicit owner"  env -u CLAUDE_CODE_SESSION_ID PLUGIN_MAINT_OWNER=owner-1 bash "$SCRIPT" acquire
+check "owner recorded" "$(sed -n 's/.*"session"[^"]*"\([^"]*\)".*/\1/p' "$LOCK")" "owner-1"
+run 3 "another owner bails"             env -u CLAUDE_CODE_SESSION_ID PLUGIN_MAINT_OWNER=owner-2 bash "$SCRIPT" acquire
+run 0 "release by the same owner, from a different process" env -u CLAUDE_CODE_SESSION_ID PLUGIN_MAINT_OWNER=owner-1 bash "$SCRIPT" release
+check "lockfile removed" "$([ -f "$LOCK" ] || echo gone)" "gone"
+
 rm -f "$LOCK"
 echo
 echo "plugin-maintenance-lock: pass=$pass fail=$fail"

@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.5.0
+
+### Added
+- **`pin-plugin` — point a plugin at a local checkout while you work on it.** Noticing a bug in a plugin you maintain meant leaving what you were doing, because the session loads that plugin from its read-only marketplace cache. `pin <plugin> <checkout>` repoints the plugin's `installPath` at your checkout and records the marketplace install it displaced; `unpin` restores it, and `list` shows what's pinned. The script lives inside the plugin at a version-scoped path and isn't on `PATH`; the docs show how to name it once. (#9)
+- Pinning is a **between-sessions shell script, not a slash command.** `installPath` is resolved once at session startup and `/reload-plugins` doesn't re-resolve it, so a pin can't move the session that applies it — you exit, pin, and start the sessions that need the checkout. An in-session entrypoint could only tell you to restart, which is why there isn't one.
+- A pin is a **declared exception to the reconcile**, not a manifest edit that hopes to survive one. `claude plugin update` repoints `installPath` at a fresh cache dir and shipshape arms marketplace auto-update every launch, so `/plugin-maintenance` now skips a pinned plugin's update and prune (including the origin cache dir `unpin` restores to), leaves it installed when it's absent from the desired set, and re-asserts pins after the update pass. The new `PIN` requirements in the SPEC carry the contract.
+- `scripts/pin-plugin` owns the mechanism — validation, the `installPath` surgery, atomic writes to both JSON files, and the maintenance lock — matching how `plugin-cache-in-use.sh` and `plugin-maintenance-lock.sh` own theirs. It validates before its first write, so a bad checkout path leaves no half-applied state, and where two writes are unavoidable it takes the order whose failure leftover self-corrects. 81 hermetic tests.
+- Every refusal `pin-plugin` makes is one where guessing would cost you the plugin: a checkout declaring a *different* plugin (it would load under the pinned plugin's record, replacing it), a plugin with install records under several scopes (rewriting one is a coin flip that can clobber a team-shared record), a plugin that has left the manifest (the write would invent an install record for something not installed), and a bare name matching two marketplaces. An unreadable pins file is refused the same way rather than read as "nothing is pinned" — that answer would let the maintenance run update, prune, and uninstall the very plugin the pin exists to hold.
+- `plugin-maintenance-lock.sh` takes a `PLUGIN_MAINT_OWNER` identity. Its default is the Claude Code session, which a between-sessions script doesn't have, and the pid fallback names one lock process rather than the caller — so acquire and release disagreed and the lock leaked, blocking every later maintenance run for the full stale window.
+
+### Changed
+- The report vocabulary distinguishes the two kinds of hold: 🔒 is a cache dir a live session still has open (it frees itself when that session exits), 📌 is a plugin pinned to a checkout (held until you unpin). "Pinned" previously described the lease case as well, which now reads as the wrong one.
+
+### Fixed
+- The docs' description of the update step said plugins update "in parallel". They've run serially since 0.4.0 — parallel updates of a single marketplace collide on its re-clone — matching `RCON-08` and the skill's Step 2.
+
 ## 0.4.4
 
 ### Changed

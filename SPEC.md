@@ -22,7 +22,8 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
 - **Scope** — a plugin's origin: **user** (personal, safe to reconcile),
   **project** (checked into a repo, team-shared), or **local**.
 - **Version cache** — `~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/`;
-  a per-version on-disk copy loaded at the startup of any session pinned to it.
+  a per-version on-disk copy loaded at the startup of any session that resolved
+  to it.
 - **Data dir** — `~/.claude/plugins/data/<plugin>-<marketplace>/` (hyphen-joined);
   may hold accumulated user state.
 - **`.in_use` lease** — a per-version reference count: each running session
@@ -33,6 +34,14 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
 - **Marketplace auto-update** — `extraKnownMarketplaces.<name>.autoUpdate` in
   settings.json; when true, a marketplace refreshes and updates its plugins at
   startup.
+- **Load location** — a plugin's `installPath` in the install manifest; Claude
+  Code loads the plugin from there at session startup.
+- **Pin** — a declared exception to reconciliation: a plugin's load location
+  repointed at a local checkout, recorded with the `origin` (load location and
+  version) it displaced. Held out of update and prune until unpinned.
+- **Pins file** — `~/.claude/plugins/.shipshape-pins.json`; a map of
+  `<plugin>@<marketplace>` → `{checkout, origin, pinnedAt}`. Written by
+  `scripts/pin-plugin`, read by the maintenance run.
 
 ## Requirements
 
@@ -54,7 +63,7 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   once via `claude plugin marketplace update` before updating individual
   plugins.
 - [RCON-08] shipshape shall update plugins serially, one at a time, not in a
-  parallel batch.
+  parallel batch. (Pinned plugins are excluded — PIN-17.)
 - [RCON-09] If a plugin update fails with a transient error, then shipshape
   shall retry it once serially and report the real outcome.
 - [RCON-10] Where a desired plugin is not installed, shipshape shall offer to
@@ -97,7 +106,8 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
 - [PRUN-08] shipshape shall treat a missing or unparseable lease `procStart` as
   in use.
 - [PRUN-09] When a cache dir is empty, or an orphan/stale cache with no live
-  lease, shipshape shall delete it without prompting.
+  lease, shipshape shall delete it without prompting. (Pinned plugins' dirs are
+  never deleted — PIN-18.)
 - [PRUN-10] If a data dir to be removed is non-empty, then shipshape shall ask
   first, quoting its size and a sample of file names.
 - [PRUN-11] shipshape shall never delete the parent `cache/<marketplace>/` or
@@ -118,6 +128,72 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   jq is required and exit without changes.
 - [AUTO-06] The maintenance run shall report each marketplace's auto-update
   status without writing it.
+
+### PIN — Local-checkout pins
+
+- [PIN-01] When the user pins a plugin, shipshape shall record the pin in the
+  pins file with the checkout path and the `origin` load location and version it
+  displaced, and shall repoint the plugin's load location at the checkout.
+- [PIN-02] shipshape shall validate that a checkout contains a readable
+  `.claude-plugin/plugin.json` before recording a pin.
+- [PIN-03] If a pin's checkout fails validation, then shipshape shall fail
+  without writing either the pins file or the install manifest.
+- [PIN-04] Where no checkout path is given, shipshape shall use the current
+  directory, and only when that directory is itself a valid plugin checkout.
+- [PIN-05] If the named plugin has more than one install record, then shipshape
+  shall refuse the pin and report the record count.
+- [PIN-06] If a bare plugin name resolves to more than one marketplace, then
+  shipshape shall refuse the operation and list the qualified candidates.
+- [PIN-07] If a plugin is already pinned to a different checkout, then shipshape
+  shall refuse the pin rather than overwrite the recorded origin.
+- [PIN-08] When a plugin is pinned to the checkout it already holds, shipshape
+  shall re-assert the load location and report the pin as unchanged.
+- [PIN-09] shipshape shall hold the install manifest's recorded `version` at the
+  pin's origin version for as long as the plugin is pinned, so the origin cache
+  dir keeps matching the recorded version and prune never classifies it stale.
+- [PIN-10] When the user unpins a plugin, shipshape shall restore the recorded
+  origin load location and remove the pins-file entry.
+- [PIN-11] If the recorded origin is absent from disk, then shipshape shall
+  refuse to unpin and shall keep the pin recorded.
+- [PIN-12] shipshape shall report the current pins on request, and shall answer
+  whether a given plugin is pinned via exit status.
+- [PIN-13] When a reconcile re-asserts pins, shipshape shall repoint every pinned
+  plugin whose load location or recorded version has drifted from the pin, and
+  report each one.
+- [PIN-14] If a pinned plugin is absent from the install manifest, has gained a
+  second install record, or its checkout is no longer valid, then a re-assert
+  shall warn, leave both the pin and the load location alone, and carry on with
+  the remaining pins.
+- [PIN-15] shipshape shall acquire the maintenance lock for a pin, unpin, or
+  re-assert, and shall accept an explicit opt-out for a caller already holding
+  it.
+- [PIN-16] shipshape shall replace the pins file and the install manifest
+  atomically, and shall refuse to write either if the result is not valid JSON.
+- [PIN-17] The maintenance run shall exclude a pinned plugin from the update
+  pass and shall re-assert pins after it.
+- [PIN-18] The maintenance run shall never prune a pinned plugin's cache or data
+  dirs, including its recorded origin version.
+- [PIN-19] The maintenance run shall not uninstall a pinned plugin that is
+  absent from the desired set, and shall report it as skipped.
+- [PIN-20] shipshape shall document that a pin takes effect for sessions started
+  after it and that a running session keeps the copy it loaded.
+- [PIN-21] Pinning shall be exposed as a shell script run between sessions, not
+  as a slash command: `installPath` is resolved once at startup and
+  `/reload-plugins` does not re-resolve it, so an in-session entrypoint could
+  only instruct the user to restart.
+- [PIN-22] If a checkout declares a different plugin than the one being pinned,
+  then shipshape shall refuse the pin, because the checkout would load under the
+  pinned plugin's install record and displace it.
+- [PIN-23] shipshape shall repoint only a plugin with exactly one install record,
+  and shall refuse rather than create an install record for a plugin absent from
+  the manifest.
+- [PIN-24] If the pins file cannot be read as the recorded pin set, then shipshape
+  shall fail and report it, and shall never treat it as an empty pin set.
+- [PIN-25] Where a bare plugin name resolves to more than one pin, shipshape shall
+  refuse the query as a usage error rather than answer for one of them.
+- [PIN-26] shipshape shall present one maintenance-lock identity across a pin's
+  acquire and release, so a pin run outside a Claude Code session releases the
+  lock it took.
 
 ### RPRT — Reporting & output model
 

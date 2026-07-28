@@ -16,8 +16,11 @@ A shared emoji vocabulary ties the surfaces together — the same marker means t
 | ➕ | installed · 🗑️ uninstalled |
 | 💤 | installed but **disabled** (a deliberate state, left as-is) |
 | ⏭️ | skipped (team-shared, or shared on-disk install) |
-| 🔒 | stale cache pinned by a live session (not pruned) · 🧹 pruned |
+| 🔒 | stale cache held by a live session (not pruned) · 🧹 pruned |
+| 📌 | pinned to a local checkout (held out of update and prune) |
 | ⚠️ | needs your judgment (orphan data dir, shared-install anomaly) |
+
+Two different holds, two different markers: 🔒 is a cache dir a live session still has open, which frees itself when that session exits; 📌 is a plugin the user pinned to a local checkout with `scripts/pin-plugin`, which is held until they unpin. Keep "pinned" for the second sense only.
 
 ## 1. Inventory summary + plan table
 
@@ -75,7 +78,7 @@ List **every enabled plugin on its own row** in the updates table. A maintenance
 | oss-registry | browserkit | —       | 🔄 refreshed |
 | oss-registry | devkit     | —       | 🔄 refreshed |
 
-🔒 Cache — 23 stale dirs (~166M) pinned by live sessions; 🧹 0 pruned (they free up as those sessions exit).
+🔒 Cache — 23 stale dirs (~166M) held by live sessions; 🧹 0 pruned (they free up as those sessions exit).
 ```
 
 (No data line here — there were no genuine orphan data dirs. `-inline` dirs, if present, are silently ignored.)
@@ -91,6 +94,12 @@ When plugins actually changed, the movers show their version transition in the s
 | acme-tools   | trailhead  | 0.8.0 → 0.9.0   | ⬆️ updated   |
 | oss-registry | uikit      | —               | 🔄 refreshed |
 | oss-registry | devkit     | —               | 🔄 refreshed |
+```
+
+A plugin pinned to a local checkout gets a row like any other, marked 📌 with the checkout in place of a version — the point of the row is that the reader can see *why* it wasn't updated:
+
+```text
+| acme-tools   | tidydiff   | ~/src/tidydiff  | 📌 pinned    |
 ```
 
 Close with the **one action the user takes** — `/reload-plugins` if anything changed on disk, or an explicit "nothing changed, no reload needed" if not. If nothing changed at all — no updates, no installs, no uninstalls, no prune — the report is just the composition line plus that one closing line; don't pad it.
