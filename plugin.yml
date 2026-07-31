@@ -23,7 +23,7 @@ suite:
   activations: [user, session]
   gloss: Everything stowed, secured, and ready for sea.
   pitch: "Keeps your other plugins current and your plugin dir tidy — out-of-date tooling is its own kind of risk."
-  what: "Reconciles the plugins you have installed against the set you've declared, updates them, and reaps the stale caches and orphan data dirs that uninstall leaves behind — without touching a version a live session still holds. A load-time hook turns on marketplace auto-update so plugins keep themselves current."
+  what: "Reconciles the plugins you have installed against the set you've declared, updates them, and reaps the stale caches and orphan data dirs that uninstall leaves behind — without touching a version a live session still holds. Load-time hooks turn on marketplace auto-update so plugins keep themselves current, and hand Claude your re-training instructions the first session after Claude Code itself changes version."
   cmds:
     - ["/plugin-maintenance", "Reconcile, update, and prune your installed plugins"]
   # Skill-anchored previews shown live on the docs site; the session: below is
@@ -33,8 +33,9 @@ suite:
     skills:
       plugin-maintenance: Reconcile installed Claude Code plugins against your desired set (enabledPlugins in settings.json) — update what stays, install/uninstall to match, and prune stale caches and orphan data dirs.
     hooks:
+      claude-code-version-callbacks: SessionStart — Emit your re-training instructions when Claude Code's version changes.
       enforce-autoupdate: SessionStart — Enforce marketplace auto-update.
-      hooks: 'Hook wiring: SessionStart→enforce-autoupdate (*).'
+      hooks: 'Hook wiring: SessionStart→enforce-autoupdate (*), claude-code-version-callbacks (*).'
   # <<< shipyard:describe <<<
   examples:
     - label: "/plugin-maintenance"

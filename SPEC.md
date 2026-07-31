@@ -4,7 +4,8 @@ shipshape is a Claude Code plugin that maintains your *other* Claude Code
 plugins — reconciling installed plugins against your declared desired set,
 updating what stays, pruning the stale caches and orphan data dirs that
 uninstall leaves behind, and arming marketplace auto-update so plugins keep
-themselves current.
+themselves current. It also watches Claude Code's own version, handing Claude
+your re-training instructions the first session after it changes.
 
 Requirements use [EARS syntax](https://alistairmavin.com/ears) — each is one of:
 Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
@@ -33,6 +34,19 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
 - **Marketplace auto-update** — `extraKnownMarketplaces.<name>.autoUpdate` in
   settings.json; when true, a marketplace refreshes and updates its plugins at
   startup.
+- **Plugin data dir** — `${CLAUDE_PLUGIN_DATA}`, the per-plugin directory Claude
+  Code guarantees survives plugin updates. shipshape's own state belongs here
+  rather than in a version cache, which an update abandons and a prune removes.
+- **Callback document** — `${CLAUDE_PLUGIN_DATA}/on-claude-code-version-change.md`;
+  what the user wants done when Claude Code's version changes, written as
+  instructions. Emitted into the session unaltered apart from its comments, so
+  the commands it names are the commands that run.
+- **Document content** — the document's lines with HTML comments and leading
+  blank lines removed. One test of content decides both whether the document is
+  filled in and what gets emitted, which is what lets the seeded template
+  explain itself without the explanation arriving as an instruction.
+- **Unfilled document** — a callback document with no content. The seeded
+  template is unfilled by construction.
 
 ## Requirements
 
@@ -118,6 +132,36 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   jq is required and exit without changes.
 - [AUTO-06] The maintenance run shall report each marketplace's auto-update
   status without writing it.
+
+### CALL — Claude Code version-change callbacks
+
+- [CALL-01] When a session starts, the version-callback hook shall compare the
+  version reported by `claude --version` against the version recorded on the
+  previous run.
+- [CALL-02] The version-callback hook shall record the current version in the
+  plugin data dir on every run that reads a version, whether or not callbacks
+  fire.
+- [CALL-03] Where the callback document is absent, the version-callback hook
+  shall seed it with an unfilled template naming what to write in it.
+- [CALL-04] When no version has been recorded yet, the version-callback hook
+  shall record the current version and report the callback document's path
+  without emitting callbacks.
+- [CALL-05] When the recorded version differs from the current version, the
+  version-callback hook shall emit the callback document's content, led by a
+  line naming the recorded and current versions and an instruction to follow it
+  now.
+- [CALL-06] The version-callback hook shall treat any difference in the version
+  string as a change, including a patch bump.
+- [CALL-07] While the recorded version matches the current version, the
+  version-callback hook shall exit without output.
+- [CALL-08] If the callback document is unfilled, then the version-callback hook
+  shall record the version and emit nothing.
+- [CALL-09] The version-callback hook shall record the new version before
+  emitting, so one version change fires exactly once.
+- [CALL-10] If `${CLAUDE_PLUGIN_DATA}` is unset, then the version-callback hook
+  shall report that it is required and exit without writing state.
+- [CALL-11] If `claude` is absent from PATH or fails to report a version, then
+  the version-callback hook shall report that and exit without writing state.
 
 ### RPRT — Reporting & output model
 

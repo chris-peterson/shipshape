@@ -4,7 +4,7 @@ Tracks coverage of the requirements in [SPEC.md](./SPEC.md) against the single
 in-repo implementation. Status vocabulary: **Covered** · **Partial** ·
 **Missing** · **Contradicts**.
 
-**Coverage: 40/40 requirements Covered (100%)**
+**Coverage: 51/51 requirements Covered (100%)**
 
 ## RCON — Reconciliation
 
@@ -58,6 +58,22 @@ in-repo implementation. Status vocabulary: **Covered** · **Partial** ·
 | AUTO-04 | Covered | hooks/enforce-autoupdate.sh |
 | AUTO-05 | Covered | hooks/enforce-autoupdate.sh |
 | AUTO-06 | Covered | skills/plugin-maintenance/SKILL.md:116 |
+
+## CALL — Claude Code version-change callbacks
+
+| ID      | Status  | Location |
+|---------|---------|----------|
+| CALL-01 | Covered | hooks/claude-code-version-callbacks.sh:49,113 |
+| CALL-02 | Covered | hooks/claude-code-version-callbacks.sh:101,118 |
+| CALL-03 | Covered | hooks/claude-code-version-callbacks.sh:65 |
+| CALL-04 | Covered | hooks/claude-code-version-callbacks.sh:100 |
+| CALL-05 | Covered | hooks/claude-code-version-callbacks.sh:122 |
+| CALL-06 | Covered | hooks/claude-code-version-callbacks.sh:114 |
+| CALL-07 | Covered | hooks/claude-code-version-callbacks.sh:114 |
+| CALL-08 | Covered | hooks/claude-code-version-callbacks.sh:85,120 |
+| CALL-09 | Covered | hooks/claude-code-version-callbacks.sh:118 |
+| CALL-10 | Covered | hooks/claude-code-version-callbacks.sh:32 |
+| CALL-11 | Covered | hooks/claude-code-version-callbacks.sh:37,49 |
 
 ## RPRT — Reporting & output model
 
