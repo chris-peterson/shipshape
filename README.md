@@ -7,47 +7,9 @@ maintains your *other* Claude Code plugins — a `/plugin-maintenance` skill tha
 reconciles and prunes, plus a `SessionStart` hook that enforces marketplace
 auto-update. See the docs for usage.
 
-## Repo layout
-
-```text
-.claude-plugin/plugin.json            plugin manifest
-hooks/hooks.json                      SessionStart hook registration
-hooks/enforce-autoupdate.sh           arms marketplace auto-update at load
-skills/plugin-maintenance/SKILL.md    the maintenance skill
-docs/                                 docsify site (deployed to Pages)
-```
-
-## Testing the hook
-
-The `SessionStart` hook produces no terminal output on its own. To see it
-fire, launch with `--debug` and look for its `[DEBUG] Hook SessionStart`
-line:
-
-```bash
-claude --debug
-```
-
-```text
-2026-06-11T21:43:35.505Z [DEBUG] Hook SessionStart:startup (SessionStart) success:
-# shipshape: marketplace auto-update enabled
-
-Set autoUpdate=true in ~/.claude/settings.json for:
-  - chris-peterson
-  - claude-plugins-official
-
-Takes effect on the next Claude Code launch.
-```
-
-The hook is idempotent — once every marketplace is auto-updating, it exits as
-a no-op and the line above won't appear.
-
-## Local docs preview
-
-```bash
-just docs
-```
-
-Runs `docsify serve docs --open`.
+Repo layout, the `just` targets, and the conventions this codebase holds itself
+to are in [AGENTS.md](./AGENTS.md) — the same file the agents read. Requirements
+are in [SPEC.md](./SPEC.md), their coverage in [STATUS.md](./STATUS.md).
 
 ## License
 
