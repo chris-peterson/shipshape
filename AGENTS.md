@@ -58,6 +58,7 @@ bash scripts/tests/<name>.test.sh    # one suite
 plugin.yml                          canonical descriptor — manifest, marketplace entry, docs copy
 skills/plugin-maintenance/SKILL.md  the maintenance skill — the prompt is the implementation
 hooks/enforce-autoupdate.sh         SessionStart hook that arms marketplace auto-update
+hooks/claude-code-version.sh        SessionStart hook that announces a Claude Code version change and emits your callback document; --ack dismisses
 scripts/plugin-cache-in-use.sh      lease liveness — exit 0 in use, exit 1 delete-eligible
 scripts/plugin-maintenance-lock.sh  the cooperative reconcile lock
 scripts/tests/                      bash suites, one per script
@@ -104,3 +105,9 @@ Never hand-edit a generated file; edit its source and run `just generate`.
 - **`.in_use` lease** — a `{"pid","procStart"}` file each running session drops
   against the version it loaded.
 - **Maintenance lock** — the cooperative lock held for a reconcile's duration.
+- **Version marker** — `${CLAUDE_PLUGIN_DATA}/acknowledged-version`, the Claude
+  Code version the user has *acknowledged*. Not the last one seen: that
+  distinction is what makes an announcement outlive the session it appears in.
+- **Callback document** — `${CLAUDE_PLUGIN_DATA}/on-claude-code-version-change.md`,
+  the user's own instructions for a version change. Seeded as comments only, and
+  a comments-only document runs nothing.

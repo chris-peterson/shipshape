@@ -4,7 +4,8 @@ shipshape is a Claude Code plugin that maintains your *other* Claude Code
 plugins — reconciling installed plugins against your declared desired set,
 updating what stays, pruning the stale caches and orphan data dirs that
 uninstall leaves behind, and arming marketplace auto-update so plugins keep
-themselves current.
+themselves current. It also watches Claude Code's own version, announcing a
+change and handing Claude the re-training instructions you wrote for it.
 
 Requirements use [EARS syntax](https://alistairmavin.com/ears) — each is one of:
 Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
@@ -33,74 +34,89 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
 - **Marketplace auto-update** — `extraKnownMarketplaces.<name>.autoUpdate` in
   settings.json; when true, a marketplace refreshes and updates its plugins at
   startup.
+- **Plugin data dir** — `${CLAUDE_PLUGIN_DATA}`, the per-plugin directory Claude
+  Code guarantees survives plugin updates. shipshape's own state belongs here
+  rather than in a version cache, which an update abandons and a prune removes.
+- **Version marker** — `${CLAUDE_PLUGIN_DATA}/acknowledged-version`; the Claude
+  Code version the user has acknowledged. A newer running version is *pending*.
+- **Callback document** — `${CLAUDE_PLUGIN_DATA}/on-claude-code-version-change.md`;
+  what the user wants done when Claude Code's version changes, written as
+  instructions. Emitted as model context unaltered apart from its comments, so
+  the commands it names are the commands that run.
+- **Document content** — the document's lines with HTML comment spans and
+  leading blank lines removed. One test of content decides both whether the
+  document is filled in and what gets emitted, which is what lets the seeded
+  template explain itself without the explanation arriving as an instruction.
+- **Unfilled document** — a callback document with no content. The seeded
+  template is unfilled by construction.
 
 ## Requirements
 
-### RCON — Reconciliation
+### RECON — Reconciliation
 
-- [RCON-01] When a maintenance run begins, shipshape shall acquire a
+- [RECON-01] When a maintenance run begins, shipshape shall acquire a
   cooperative maintenance lock before performing any mutating plugin operation.
-- [RCON-02] If the maintenance lock is held by another live session, then
+- [RECON-02] If the maintenance lock is held by another live session, then
   shipshape shall stop and report the holding session without reconciling.
-- [RCON-03] The maintenance lock shall be re-entrant within a session and shall
+- [RECON-03] The maintenance lock shall be re-entrant within a session and shall
   be stolen once older than the stale threshold.
-- [RCON-04] When a maintenance run exits by any path, shipshape shall release
+- [RECON-04] When a maintenance run exits by any path, shipshape shall release
   the maintenance lock before completing.
-- [RCON-05] shipshape shall build the installed set from `claude plugin list`
+- [RECON-05] shipshape shall build the installed set from `claude plugin list`
   and the desired set from `enabledPlugins` in `~/.claude/settings.json`.
-- [RCON-06] shipshape shall diff the installed set against the desired set,
+- [RECON-06] shipshape shall diff the installed set against the desired set,
   classifying each plugin as current, extra, or missing.
-- [RCON-07] When updating plugins, shipshape shall refresh every marketplace
+- [RECON-07] When updating plugins, shipshape shall refresh every marketplace
   once via `claude plugin marketplace update` before updating individual
   plugins.
-- [RCON-08] shipshape shall update plugins serially, one at a time, not in a
+- [RECON-08] shipshape shall update plugins serially, one at a time, not in a
   parallel batch.
-- [RCON-09] If a plugin update fails with a transient error, then shipshape
+- [RECON-09] If a plugin update fails with a transient error, then shipshape
   shall retry it once serially and report the real outcome.
-- [RCON-10] Where a desired plugin is not installed, shipshape shall offer to
+- [RECON-10] Where a desired plugin is not installed, shipshape shall offer to
   install it and ask before installing.
-- [RCON-11] When an installed user-scope plugin is not in the desired set,
+- [RECON-11] When an installed user-scope plugin is not in the desired set,
   shipshape shall uninstall it and verify against the install manifest that its
   key is gone.
-- [RCON-12] When reconciliation changes plugins on disk, shipshape shall ask
+- [RECON-12] When reconciliation changes plugins on disk, shipshape shall ask
   the user to run `/reload-plugins` in this and any other active session.
-- [RCON-13] If reconciliation made no changes and pruning removed nothing, then
+- [RECON-13] If reconciliation made no changes and pruning removed nothing, then
   shipshape shall skip the reload step.
 
-### GARD — Guardrails
+### GUARD — Guardrails
 
-- [GARD-01] If an extra plugin has project scope, then shipshape shall skip it
+- [GUARD-01] If an extra plugin has project scope, then shipshape shall skip it
   with a warning and not uninstall it.
-- [GARD-02] If an extra plugin's key is absent from `installed_plugins.json`
+- [GUARD-02] If an extra plugin's key is absent from `installed_plugins.json`
   while another row for the same plugin name is present, then shipshape shall
   treat it as a shared on-disk install and skip uninstalling it.
-- [GARD-03] shipshape shall gate every uninstall on the install manifest rather
+- [GUARD-03] shipshape shall gate every uninstall on the install manifest rather
   than on `claude plugin list` and the desired set alone.
 
-### PRUN — Pruning
+### PRUNE — Pruning
 
-- [PRUN-01] When reconciliation completes, shipshape shall scan the cache and
+- [PRUNE-01] When reconciliation completes, shipshape shall scan the cache and
   data directories and classify each entry against the currently installed set.
-- [PRUN-02] shipshape shall classify a cache dir whose `<plugin>@<marketplace>`
+- [PRUNE-02] shipshape shall classify a cache dir whose `<plugin>@<marketplace>`
   is no longer installed as an orphan cache.
-- [PRUN-03] shipshape shall classify a cache dir whose version does not match
+- [PRUNE-03] shipshape shall classify a cache dir whose version does not match
   the installed version as a stale-version cache.
-- [PRUN-04] shipshape shall classify a data dir whose slug matches no installed
+- [PRUNE-04] shipshape shall classify a data dir whose slug matches no installed
   plugin as an orphan data dir.
-- [PRUN-05] If a data dir slug ends in `-inline`, then shipshape shall ignore
+- [PRUNE-05] If a data dir slug ends in `-inline`, then shipshape shall ignore
   it entirely and omit it from the report.
-- [PRUN-06] If a cache version dir has a live `.in_use` lease, then shipshape
+- [PRUNE-06] If a cache version dir has a live `.in_use` lease, then shipshape
   shall never delete it and shall report it as skipped (in use).
-- [PRUN-07] shipshape shall determine lease liveness via
+- [PRUNE-07] shipshape shall determine lease liveness via
   `plugin-cache-in-use.sh` (exit 0 = in use, exit 1 = delete-eligible) and act
   on that verdict without auditing it.
-- [PRUN-08] shipshape shall treat a missing or unparseable lease `procStart` as
+- [PRUNE-08] shipshape shall treat a missing or unparseable lease `procStart` as
   in use.
-- [PRUN-09] When a cache dir is empty, or an orphan/stale cache with no live
+- [PRUNE-09] When a cache dir is empty, or an orphan/stale cache with no live
   lease, shipshape shall delete it without prompting.
-- [PRUN-10] If a data dir to be removed is non-empty, then shipshape shall ask
+- [PRUNE-10] If a data dir to be removed is non-empty, then shipshape shall ask
   first, quoting its size and a sample of file names.
-- [PRUN-11] shipshape shall never delete the parent `cache/<marketplace>/` or
+- [PRUNE-11] shipshape shall never delete the parent `cache/<marketplace>/` or
   `data/` directories.
 
 ### AUTO — Auto-update enforcement
@@ -119,20 +135,59 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
 - [AUTO-06] The maintenance run shall report each marketplace's auto-update
   status without writing it.
 
-### RPRT — Reporting & output model
+### VERSION — Claude Code version changes
 
-- [RPRT-01] shipshape shall present a run using three surfaces: an inventory
+- [VERSION-01] When a session starts, the version hook shall compare the running
+  Claude Code version against the version marker.
+- [VERSION-02] While the running version differs from the marker, the version hook
+  shall show the user a banner at every session start, naming both versions and
+  linking the changelog entry for the running version.
+- [VERSION-03] When the banner is shown, the version hook shall leave the marker
+  unchanged, so the announcement outlives the session it appears in.
+- [VERSION-04] The version hook shall deliver the banner on its user-visible channel
+  and the callback document and dismissal instruction as model context.
+- [VERSION-05] While the running version differs from the marker, the version hook
+  shall emit the callback document's content as an instruction to carry out
+  before anything else.
+- [VERSION-06] Where the callback document is absent, the version hook shall seed it
+  with an unfilled template naming what to write in it.
+- [VERSION-07] If the callback document is unfilled, then the version hook shall
+  show the banner and emit no instructions.
+- [VERSION-08] The version hook shall treat any difference in the version string as
+  a change, including a patch bump.
+- [VERSION-09] When invoked with `--ack <version>`, the version hook shall record
+  that version in the marker and report what it recorded.
+- [VERSION-10] The version hook shall carry the announced version and the plugin
+  data dir in the dismissal instruction it emits, since neither reaches the
+  process that runs it.
+- [VERSION-11] Where no version has been acknowledged yet, or the marker is not a
+  version, the version hook shall write the marker without showing a banner.
+- [VERSION-12] Where `SHIPSHAPE_VERSION_NOTICE` is `off`, the version hook shall
+  exit without reading or writing the marker.
+- [VERSION-13] The version hook shall read the running version from `claude
+  --version`'s stdout alone, so output on stderr is never parsed as a version.
+- [VERSION-14] If the running version cannot be determined, or `CLAUDE_PLUGIN_DATA`
+  is unset, or `jq` is not on PATH, then the version hook shall report the reason
+  on stderr and leave the marker unchanged.
+- [VERSION-15] If a comment in the callback document is never closed, then the
+  version hook shall report it on stderr rather than fall silent.
+- [VERSION-16] If `--ack` cannot record the version, then the version hook shall
+  exit non-zero rather than report a dismissal that didn't happen.
+
+### REPORT — Reporting & output model
+
+- [REPORT-01] shipshape shall present a run using three surfaces: an inventory
   summary + plan table, the native task list, and a final report.
-- [RPRT-02] shipshape shall lead both the opening summary and the closing
+- [REPORT-02] shipshape shall lead both the opening summary and the closing
   report with the same composition line (installed / enabled / disabled).
-- [RPRT-03] shipshape shall tag statuses with the shared emoji vocabulary.
-- [RPRT-04] shipshape shall list every enabled plugin on its own row in the
+- [REPORT-03] shipshape shall tag statuses with the shared emoji vocabulary.
+- [REPORT-04] shipshape shall list every enabled plugin on its own row in the
   updates report rather than collapsing unchanged ones into a count.
-- [RPRT-05] shipshape shall report stale-version caches by exception as a
+- [REPORT-05] shipshape shall report stale-version caches by exception as a
   single count-and-size line, reserving table rows for genuine orphans.
-- [RPRT-06] shipshape shall report outcomes only — no per-tool-call preambles,
+- [REPORT-06] shipshape shall report outcomes only — no per-tool-call preambles,
   no narrated investigation.
-- [RPRT-07] shipshape shall report only the current run's plugin maintenance
+- [REPORT-07] shipshape shall report only the current run's plugin maintenance
   and no unrelated work.
 
 ## Future Requirements
