@@ -1,6 +1,6 @@
 {
   "name": "shipshape",
-  "version": "0.4.4",
+  "version": "0.5.0",
   "description": "Keep your Claude Code plugins up to date \u2014 reconcile installed plugins against your desired set, update them, and prune stale caches.",
   "author": {
     "name": "chris-peterson"

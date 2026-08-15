@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.5.0
+
+### Added
+- shipshape now tells you when **Claude Code itself** changed version, and runs whatever you want done about it. A new `SessionStart` hook opens the session with one line naming both versions and linking that release's changelog entry (`Claude Code 2.1.226 → 2.1.227 · …#21227`). It repeats every session until you've acknowledged it, so an update can't scroll past unread in a session you opened for something else — and acknowledging it in conversation, asking what changed, or reading the entry together is what clears it. There's nothing to type. Installing shipshape records the version you're already on, so the first session is quiet.
+- On that same version change, Claude is handed a document you wrote about what to do next. Your rules, skills, hooks, and plugin manifests were written against a particular Claude Code, and an upgrade can quietly invalidate a hook event's schema, a settings key, or a frontmatter field. Write the commands you want run into `~/.claude/plugins/data/shipshape-<marketplace>/on-claude-code-version-change.md` (it's created for you, and one holding only comments runs nothing) and they're carried out at the top of the first session after an upgrade. The document reaches Claude as you wrote it, so it can carry the reasoning for a step, not just the command. Silence the whole thing with `SHIPSHAPE_VERSION_NOTICE=off` in the `env` block of `~/.claude/settings.json`.
+
+### Changed
+- The docs site now carries shipshape's requirements at [`/spec`](https://chris-peterson.github.io/shipshape/#/spec), backed by a new `SPEC.md` written in [EARS syntax](https://alistairmavin.com/ears) and a `STATUS.md` recording where each of the 56 requirements is implemented. If you want to know what shipshape promises about pruning a cache a live session still holds, or when it refuses to uninstall something, that's now written down rather than inferred from the skill prompt.
+- The maintenance report's worked examples use invented marketplace and plugin names, so nothing in the documentation reads as a real plugin being flagged as an orphan.
+
+### Other
+- Build tooling moved to [shipyard](https://github.com/chris-peterson/shipyard): `plugin.json`, the hook registration, and most of the docs site are generated from `plugin.yml` and `hooks/hooks.yml`, and a preview gate on every PR shows the pending projection. For contributors this replaces the hand-maintained artifacts and the pre-commit hook — edit the source, run `just generate`.
+- Contributor conventions moved into `AGENTS.md` (the same file the agents read), with `CLAUDE.md` pointing at it.
+
 ## 0.4.4
 
 ### Changed
