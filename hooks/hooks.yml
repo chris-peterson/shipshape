@@ -4,3 +4,7 @@ hooks:
     matcher: '*'
     command: 'bash "${CLAUDE_PLUGIN_ROOT}/hooks/enforce-autoupdate.sh"'
     description: Enforce marketplace auto-update.
+  - event: SessionStart
+    matcher: '*'
+    command: 'bash "${CLAUDE_PLUGIN_ROOT}/hooks/claude-code-version.sh"'
+    description: Announce a Claude Code version change and run your re-training instructions.
