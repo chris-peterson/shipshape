@@ -4,7 +4,7 @@ Tracks coverage of the requirements in [SPEC.md](./SPEC.md) against the single
 in-repo implementation. Status vocabulary: **Covered** · **Partial** ·
 **Missing** · **Contradicts**.
 
-**Coverage: 56/56 requirements Covered (100%)**
+**Coverage: 62/62 requirements Covered (100%)**
 
 ## RECON — Reconciliation
 
@@ -67,18 +67,24 @@ in-repo implementation. Status vocabulary: **Covered** · **Partial** ·
 | VERSION-02  | Covered | hooks/claude-code-version.sh (banner) |
 | VERSION-03  | Covered | hooks/claude-code-version.sh (banner) |
 | VERSION-04  | Covered | hooks/claude-code-version.sh (emit) |
-| VERSION-05  | Covered | hooks/claude-code-version.sh (`content`, emit) |
+| VERSION-05  | Covered | hooks/claude-code-version.sh (emit) |
 | VERSION-06  | Covered | hooks/claude-code-version.sh (seed) |
-| VERSION-07  | Covered | hooks/claude-code-version.sh (`content`) |
+| VERSION-07  | Covered | hooks/claude-code-version.sh (guide mode) |
 | VERSION-08  | Covered | hooks/claude-code-version.sh (banner) |
 | VERSION-09  | Covered | hooks/claude-code-version.sh (ack mode) |
-| VERSION-10  | Covered | hooks/claude-code-version.sh (emit) |
+| VERSION-10  | Covered | hooks/claude-code-version.sh (status mode) |
 | VERSION-11  | Covered | hooks/claude-code-version.sh (marker read) |
 | VERSION-12  | Covered | hooks/claude-code-version.sh (opt-out) |
 | VERSION-13  | Covered | hooks/claude-code-version.sh (`read_version`) |
 | VERSION-14  | Covered | hooks/claude-code-version.sh (`bail`) |
 | VERSION-15  | Covered | hooks/claude-code-version.sh (`content` END) |
 | VERSION-16  | Covered | hooks/claude-code-version.sh (`bail`) |
+| VERSION-17  | Covered | skills/claude-code-version/SKILL.md (Pick the mode) |
+| VERSION-18  | Covered | skills/claude-code-version/SKILL.md (Mode 1) |
+| VERSION-19  | Covered | skills/claude-code-version/SKILL.md (Mode 2) |
+| VERSION-20  | Covered | skills/claude-code-version/SKILL.md (Mode 3, steps 1-3) |
+| VERSION-21  | Covered | skills/claude-code-version/SKILL.md (Mode 3, opening) |
+| VERSION-22  | Covered | skills/claude-code-version/SKILL.md (Start with the facts) |
 
 ## REPORT — Reporting & output model
 

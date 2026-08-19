@@ -5,7 +5,8 @@ plugins — reconciling installed plugins against your declared desired set,
 updating what stays, pruning the stale caches and orphan data dirs that
 uninstall leaves behind, and arming marketplace auto-update so plugins keep
 themselves current. It also watches Claude Code's own version, announcing a
-change and handing Claude the re-training instructions you wrote for it.
+change and, when you acknowledge it, running the re-training instructions you
+wrote for one.
 
 Requirements use [EARS syntax](https://alistairmavin.com/ears) — each is one of:
 Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
@@ -39,16 +40,24 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   rather than in a version cache, which an update abandons and a prune removes.
 - **Version marker** — `${CLAUDE_PLUGIN_DATA}/acknowledged-version`; the Claude
   Code version the user has acknowledged. A newer running version is *pending*.
-- **Callback document** — `${CLAUDE_PLUGIN_DATA}/on-claude-code-version-change.md`;
+- **Version-change guide** — `${CLAUDE_PLUGIN_DATA}/on-claude-code-version-change.md`;
   what the user wants done when Claude Code's version changes, written as
-  instructions. Emitted as model context unaltered apart from its comments, so
-  the commands it names are the commands that run.
-- **Document content** — the document's lines with HTML comment spans and
-  leading blank lines removed. One test of content decides both whether the
-  document is filled in and what gets emitted, which is what lets the seeded
-  template explain itself without the explanation arriving as an instruction.
-- **Unfilled document** — a callback document with no content. The seeded
-  template is unfilled by construction.
+  instructions. Carried out unaltered apart from its comments, so the commands
+  it names are the commands that run.
+- **Guide content** — the guide's lines with HTML comment spans and leading
+  blank lines removed. One test of content decides both whether the guide is
+  filled in and what gets carried out, which is what lets the seeded template
+  explain itself without the explanation arriving as an instruction.
+- **Unfilled guide** — a guide with no content. The seeded template is unfilled
+  by construction.
+- **Version skill** — `/claude-code-version`; everything a user does about a
+  version change: read or set the guide, walk what's new, and acknowledge the
+  upgrade. It reaches the hook through `${CLAUDE_PLUGIN_ROOT}`, which Claude
+  Code resolves when the skill loads, so no shipshape version is baked into a
+  path.
+- **Acknowledgement** — recording the running version in the marker, which
+  clears the banner. The guide runs at that moment and only then, so the skill
+  is the only path that acknowledges.
 
 ## Requirements
 
@@ -140,39 +149,56 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
 - [VERSION-01] When a session starts, the version hook shall compare the running
   Claude Code version against the version marker.
 - [VERSION-02] While the running version differs from the marker, the version hook
-  shall show the user a banner at every session start, naming both versions and
-  linking the changelog entry for the running version.
+  shall show the user a banner at every session start, naming both versions,
+  linking the changelog entry for the running version, and naming the version
+  skill.
 - [VERSION-03] When the banner is shown, the version hook shall leave the marker
   unchanged, so the announcement outlives the session it appears in.
 - [VERSION-04] The version hook shall deliver the banner on its user-visible channel
-  and the callback document and dismissal instruction as model context.
-- [VERSION-05] While the running version differs from the marker, the version hook
-  shall emit the callback document's content as an instruction to carry out
-  before anything else.
-- [VERSION-06] Where the callback document is absent, the version hook shall seed it
-  with an unfilled template naming what to write in it.
-- [VERSION-07] If the callback document is unfilled, then the version hook shall
-  show the banner and emit no instructions.
+  and the handoff to the version skill as model context.
+- [VERSION-05] The version hook shall not emit the guide's content, since it fires
+  at every session start while a version is pending and the guide is a one-time
+  upgrade errand.
+- [VERSION-06] Where the guide is absent, the version hook shall seed it with an
+  unfilled template naming what to write in it.
+- [VERSION-07] When invoked with `--guide`, the version hook shall print the
+  guide's content and nothing else.
 - [VERSION-08] The version hook shall treat any difference in the version string as
   a change, including a patch bump.
 - [VERSION-09] When invoked with `--ack <version>`, the version hook shall record
   that version in the marker and report what it recorded.
-- [VERSION-10] The version hook shall carry the announced version and the plugin
-  data dir in the dismissal instruction it emits, since neither reaches the
-  process that runs it.
+- [VERSION-10] When invoked with `--status`, the version hook shall report the
+  acknowledged and running versions, whether one is pending, the changelog entry
+  for the running version, and the guide's path and filled state, without
+  writing the marker.
 - [VERSION-11] Where no version has been acknowledged yet, or the marker is not a
   version, the version hook shall write the marker without showing a banner.
 - [VERSION-12] Where `SHIPSHAPE_VERSION_NOTICE` is `off`, the version hook shall
-  exit without reading or writing the marker.
+  skip the announcement without reading or writing the marker, while `--ack`,
+  `--status`, and `--guide` still answer.
 - [VERSION-13] The version hook shall read the running version from `claude
   --version`'s stdout alone, so output on stderr is never parsed as a version.
 - [VERSION-14] If the running version cannot be determined, or `CLAUDE_PLUGIN_DATA`
   is unset, or `jq` is not on PATH, then the version hook shall report the reason
   on stderr and leave the marker unchanged.
-- [VERSION-15] If a comment in the callback document is never closed, then the
-  version hook shall report it on stderr rather than fall silent.
-- [VERSION-16] If `--ack` cannot record the version, then the version hook shall
-  exit non-zero rather than report a dismissal that didn't happen.
+- [VERSION-15] If a comment in the guide is never closed, then the version hook
+  shall report it on stderr rather than fall silent.
+- [VERSION-16] If a mode other than the announcement cannot answer, then the
+  version hook shall exit non-zero rather than report a result it didn't produce.
+- [VERSION-17] When the version skill is invoked without a mode, shipshape shall
+  report the acknowledged and running versions and offer the skill's three modes.
+- [VERSION-18] When the user asks to see or change the guide, shipshape shall show
+  it and shall write their instructions into it only once they approve the text.
+- [VERSION-19] When the user asks what changed, shipshape shall walk the changelog
+  entries after the acknowledged version through the running version, without
+  acknowledging as a side effect.
+- [VERSION-20] When the user acknowledges an upgrade, shipshape shall carry out the
+  guide's content before recording the version, and shall leave the version
+  unacknowledged if a step fails.
+- [VERSION-21] Where no version is pending, shipshape shall not carry out the guide.
+- [VERSION-22] The version skill shall address the version hook and the plugin
+  data dir by placeholder rather than by literal path, so it survives a
+  shipshape update.
 
 ### REPORT — Reporting & output model
 

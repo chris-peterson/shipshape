@@ -6,8 +6,9 @@ shipshape is a Claude Code plugin for maintaining your *other* Claude Code
 plugins: a `/plugin-maintenance` skill that reconciles your installed plugins
 and reaps the clutter Claude Code leaves behind, plus load-time hooks that turn
 on marketplace auto-update so plugins stay current on their own, and tell you
-when Claude Code itself has moved to a new version — running whatever you want
-done about it.
+when Claude Code itself has moved to a new version — with a
+`/claude-code-version` skill that walks you through what's new and runs whatever
+you wanted done about it.
 
 ## In action
 
@@ -94,31 +95,50 @@ changelog. And the staleness it leaves in your own AI artifacts — the rules,
 skills, hooks, and plugin manifests you wrote against the version before it, whose
 hook schemas, settings keys, and frontmatter fields may not mean what they did.
 
-A second `SessionStart` hook watches for it and handles both.
+A second `SessionStart` hook watches for it, and `/claude-code-version` is where
+you deal with it.
 
 ### The banner
 
 When the version has moved, the next session opens with one line naming both
-versions and linking that release's changelog entry:
+versions, linking that release's changelog entry, and naming the command that
+handles it:
 
 ```text
-Claude Code 2.1.226 → 2.1.227 · https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md#21227
+Claude Code 2.1.226 → 2.1.227 · https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md#21227 · /claude-code-version to review and clear
 ```
 
-It stays up until you've taken it in: every session repeats the line while the
-version is unacknowledged, so an update doesn't scroll past unread in a session
-you opened to do something else. Acknowledging it in conversation, asking what
-changed, or reading the changelog dismisses it — Claude is told how to record
-the version you're now on. There's nothing for you to type.
+It stays up until the new version is **acknowledged**: every session repeats the
+line while it isn't, so an update doesn't scroll past unread in a session you
+opened to do something else. Ask what changed, tell Claude you've seen it, or
+ask it to deal with the upgrade, and it runs the skill for you — most of the
+time there's nothing for you to type. Type it yourself when the cue doesn't land
+and the line is still there next session.
 
 The first session after installing shipshape records the version you're on and
 says nothing, since there's no delta to report yet.
 
-### Your re-training instructions
+### `/claude-code-version`
 
-On that same version change, Claude is handed a document you wrote about what
-to do next. It's created for you, so you never have to guess its name — look in
-your shipshape data dir after the first session:
+One skill, and it picks what to do from what you asked for:
+
+| Ask for | What happens |
+|---|---|
+| your guide | Shows the instructions that run on a version change, and writes new ones once you've approved the text |
+| what's new | Walks the changelog entries between the version you acknowledged and the one you're running |
+| acknowledge, dismiss, "handled" | Runs your guide, records the version, and the banner is gone |
+
+Acknowledging is the only thing that runs your guide, and the only thing that
+clears the banner — asking what's new leaves it up. It's a skill rather than a
+shell line you could copy from here on purpose: shipshape's own version is in
+the path to the hook it calls, so anything literal would stop resolving at the
+next update.
+
+### Your version-change guide
+
+What Claude should do about an upgrade is a document you write. It's created for
+you, so you never have to guess its name — look in your shipshape data dir after
+the first session:
 
 ```text
 ~/.claude/plugins/data/shipshape-<marketplace>/on-claude-code-version-change.md
@@ -137,11 +157,19 @@ Re-train my AI artifacts against this Claude Code version:
 Everything you write reaches Claude unaltered apart from HTML comments, which
 are dropped — that's what keeps the template's own explanation from arriving as
 an instruction, and it leaves you a place for notes to yourself. Handing Claude
-the text *is* the mechanism: a hook cannot invoke a slash command itself, but a
-`SessionStart` hook's context is something Claude acts on, so the commands your
+the text *is* the mechanism: nothing here can invoke a slash command on your
+behalf, but text Claude reads is text Claude acts on, so the commands your
 document names are the commands that run. That also means the document can carry
 the reasoning, not just a list. Say why a step matters and Claude has it at the
 point of doing the work.
+
+It runs when you acknowledge the upgrade, once. The hook that spots the version
+change fires at every session start until you do, which is right for a banner
+and wrong for an errand — so the announcement and the errand are separated, and
+acknowledging is what joins them.
+
+You don't have to open the file yourself: `/claude-code-version` will show it to
+you and write what you dictate.
 
 ### What happens when
 
@@ -149,8 +177,9 @@ point of doing the work.
 |---|---|
 | First session after installing | The version is recorded, the document is created. Nothing else. |
 | Version unchanged | Silent. |
-| Version changed, document still all comments | The banner, repeating until acknowledged. |
-| Version changed, document written | The banner, plus your instructions carried out. |
+| Version changed | The banner, repeating every session until acknowledged. |
+| You acknowledge, document written | Your instructions carried out, then the banner clears. |
+| You acknowledge, document still all comments | Nothing to run; the banner clears. |
 | After it's acknowledged | Silent, until the next version change. |
 
 Any difference in the version string counts, patch bumps included, so `2.1.220 →
@@ -162,7 +191,7 @@ updates](https://code.claude.com/docs/en/plugins-reference#persistent-data-direc
 A version cache would not survive: an update moves shipshape to a new version
 dir, and `/plugin-maintenance` prunes the old one.
 
-To silence the whole thing, set `SHIPSHAPE_VERSION_NOTICE` to `off` in the `env`
+To silence the banner, set `SHIPSHAPE_VERSION_NOTICE` to `off` in the `env`
 block of `~/.claude/settings.json`:
 
 ```json
