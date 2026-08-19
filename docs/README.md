@@ -1,6 +1,6 @@
 # <img src="favicon.svg" alt="shipshape" width="64" height="64" style="vertical-align: middle"> shipshape
 
-Know what's changing in your Claude Code harness, and keep it current.
+[_home.md](_home.md ":include")
 
 Your **harness** is everything wrapped around the model that decides how well it
 works for you: Claude Code itself, the plugins you've installed, and the rules,
@@ -27,16 +27,9 @@ has two jobs about that: tell you what changed, and keep what it can current.
 ## In action
 
 A new Claude Code arrives without a word about it, plugins drift out of date, and
-an uninstall leaves cache and data dirs to deal with:
+an uninstall takes the data dir with it:
 
 <div class="cw-session" data-cw-session="session"></div>
-
-## Install
-
-```bash
-claude plugin marketplace add chris-peterson/claude-marketplace
-claude plugin install shipshape@chris-peterson
-```
 
 ## The `/plugin-maintenance` skill
 
@@ -71,11 +64,6 @@ It lists **every enabled plugin** — each gets a row with its version and resul
 so you can confirm each plugin's disposition at a glance rather than re-running
 `claude plugin list`. Only caches are reported by exception (stale-version dirs
 are routine noise).
-
-Two runs, two outcomes — a reconcile with work to do, and a settled machine
-where there's nothing left but to keep auto-update armed:
-
-<div class="cw-session" data-cw-session="examples"></div>
 
 ### Cache and data dirs, on your schedule instead of theirs
 
