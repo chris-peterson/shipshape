@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
-# SessionStart hook: announce a Claude Code version change, and hand Claude the
-# re-training instructions you wrote for it.
+# SessionStart hook: announce a Claude Code version change, and hand the
+# handling to the skill that runs the instructions you wrote for it.
 #
 #   claude-code-version.sh              the hook — announce while a version is unacknowledged
-#   claude-code-version.sh --ack [ver]  dismiss: record `ver` (default: the running version)
+#   claude-code-version.sh --ack [ver]  acknowledge: record `ver` (default: the running version)
+#   claude-code-version.sh --status     report both versions and the guide, as JSON
+#   claude-code-version.sh --guide      print the guide's content (nothing when unfilled)
 #
 # Claude Code updates itself between launches. Two things go unnoticed when it
 # does: the change itself, which turns a new behavior into a mystery until you
@@ -19,17 +21,18 @@
 # shipshape the acknowledgement of whatever version you're already on.
 #
 # The two halves land on the two channels a SessionStart hook has. The banner
-# goes out as `systemMessage`, the only hook output Claude Code shows the user.
-# `additionalContext` carries what Claude acts on: your document's instructions,
-# and how to dismiss the banner — which a banner has no affordance of its own to
-# do. So acknowledging the update in conversation, or having the instructions
-# carried out, is what clears it.
+# goes out as `systemMessage`, the only hook output Claude Code shows the user,
+# and it names `/claude-code-version` so the person reading it has something to
+# act on. `additionalContext` carries the same handoff for Claude: what moved,
+# and the skill to run once the user has taken the update in.
 #
-# A hook cannot invoke a slash command, but `additionalContext` *is* context
-# Claude acts on, which is what makes the document the mechanism: whatever it
-# names is what runs, and it can carry the reasoning rather than just a list.
-# Its comments are dropped on the way out, so the seeded template can explain
-# itself without the explanation arriving as an instruction.
+# The guide the user wrote is dispatched by that skill, not emitted here. A hook
+# cannot invoke a slash command, so handing over the document's text was once
+# the only way to make it run — but this hook fires at every session start while
+# a version is unacknowledged, and a one-time upgrade errand then ran again in
+# every window that opened before someone dismissed the banner. Acknowledgement
+# is the moment the errand belongs to, and the skill owns that moment: it reads
+# the guide through `--guide`, carries it out, then records the version.
 #
 # State and document both live under $CLAUDE_PLUGIN_DATA, the directory Claude
 # Code guarantees survives plugin updates
@@ -49,9 +52,11 @@ VERSION_RE='^[0-9][0-9A-Za-z.+-]*$'
 mode=hook
 ack_version=""
 case "${1:-}" in
-  "")     ;;
-  --ack)  mode=ack; ack_version="${2:-}" ;;
-  *)      printf 'usage: %s [--ack [version]]\n' "$SELF" >&2; exit 2 ;;
+  "")        ;;
+  --ack)     mode=ack; ack_version="${2:-}" ;;
+  --status)  mode=status ;;
+  --guide)   mode=guide ;;
+  *)         printf 'usage: %s [--ack [version] | --status | --guide]\n' "$SELF" >&2; exit 2 ;;
 esac
 
 if [ "$mode" = hook ] && [ "${SHIPSHAPE_VERSION_NOTICE:-on}" = "off" ]; then
@@ -59,10 +64,11 @@ if [ "$mode" = hook ] && [ "${SHIPSHAPE_VERSION_NOTICE:-on}" = "off" ]; then
 fi
 
 # A hook reports and stands down: erroring every session start is noise, and the
-# same convention covers a missing jq in enforce-autoupdate.sh. `--ack` failing
-# to record is the caller's problem to see, since nothing was dismissed.
+# same convention covers a missing jq in enforce-autoupdate.sh. The other modes
+# have a caller waiting on an answer, so a missing prerequisite is theirs to
+# see — nothing was recorded and nothing can be reported.
 bail() {
-  [ "$mode" = ack ] && exit 1
+  [ "$mode" = hook ] || exit 1
   exit 0
 }
 
@@ -71,8 +77,8 @@ if [ -z "${CLAUDE_PLUGIN_DATA:-}" ]; then
   bail
 fi
 
-# The callback document is arbitrary user markdown, so the emitted JSON is built
-# by jq rather than printf — there is no escaping to get right by hand.
+# The emitted JSON carries a banner and a handoff naming both versions, so it is
+# built by jq rather than printf — there is no escaping to get right by hand.
 if ! command -v jq >/dev/null 2>&1; then
   printf 'shipshape: jq is not on PATH; version notice skipped.\n' >&2
   bail
@@ -106,10 +112,10 @@ read_version() {
 }
 
 if [ "$mode" = ack ]; then
-  # The version to record is the one that was announced, passed through the
-  # emitted instruction. Claude Code can update its own binary mid-session, so
-  # re-reading it here would record a version the user was never shown and
-  # silently swallow that change.
+  # The version to record is the one that was announced, passed through by the
+  # skill. Claude Code can update its own binary mid-session, so re-reading it
+  # here would record a version the user was never shown and silently swallow
+  # that change.
   if [ -z "$ack_version" ]; then
     ack_version="$(read_version)" || bail
   elif ! [[ "$ack_version" =~ $VERSION_RE ]]; then
@@ -121,8 +127,6 @@ if [ "$mode" = ack ]; then
   exit 0
 fi
 
-current="$(read_version)" || bail
-
 # Seeded whenever absent, so the name never has to be guessed. Comment lines
 # only: until a real line is added, content() reads it as unfilled.
 if [ ! -e "$CALLBACKS" ]; then
@@ -130,8 +134,8 @@ if [ ! -e "$CALLBACKS" ]; then
   cat > "$CALLBACKS" <<'TEMPLATE'
 <!-- shipshape: what to do when Claude Code's version changes. -->
 <!-- Write instructions here, naming the commands you want run. They are
-     handed to Claude at the start of the first session after an upgrade.
-     For example:
+     carried out once, when you acknowledge the upgrade with
+     /claude-code-version. For example:
 
        Re-train my AI artifacts against this Claude Code version:
          1. /my-retrain-command
@@ -144,7 +148,7 @@ fi
 
 # The document's lines with HTML comment spans and leading blanks removed. One
 # test of content decides both whether the document is filled in and what gets
-# emitted, so the seeded template explains itself without becoming an
+# carried out, so the seeded template explains itself without becoming an
 # instruction. Spans are matched across the line rather than at its start, so an
 # inline `<!-- note -->` neither leaks nor takes the instruction beside it with
 # it.
@@ -172,20 +176,46 @@ content() {
     }
     END {
       # Silence with no signal is the failure mode here: an unclosed comment
-      # swallows the rest of the document, and the hook would just go quiet.
+      # swallows the rest of the document, and the reader would just go quiet.
       if (inc) print "shipshape: unclosed <!-- in " FILENAME "; the rest of the document was read as a comment." > "/dev/stderr"
     }
   ' "$CALLBACKS"
 }
 
+if [ "$mode" = guide ]; then
+  content
+  exit 0
+fi
+
 acknowledged=""
 if [ -f "$marker" ]; then
   acknowledged="$(cat "$marker")"
-  # Validated like `current`: the marker sits in a user-writable directory, and
-  # a mangled one would otherwise be announced as the version you came from.
+  # Validated like the running version: the marker sits in a user-writable
+  # directory, and a mangled one would otherwise be announced as the version you
+  # came from.
   if ! [[ "$acknowledged" =~ $VERSION_RE ]]; then
     acknowledged=""
   fi
+fi
+
+current="$(read_version)" || bail
+
+# GitHub slugifies the changelog's `## 2.1.227` heading by dropping the dots.
+entry="$CHANGELOG#${current//./}"
+
+if [ "$mode" = status ]; then
+  # A query never writes: an unacknowledged version stays unacknowledged, so
+  # asking what's pending can't be what dismisses it.
+  filled=false
+  if [ -n "$(content)" ]; then filled=true; fi
+  jq -n --arg ack "$acknowledged" --arg cur "$current" --arg entry "$entry" \
+        --arg guide "$CALLBACKS" --argjson filled "$filled" \
+    '{acknowledged: (if $ack == "" then null else $ack end),
+      current: $cur,
+      pending: ($ack != "" and $ack != $cur),
+      changelog: $entry,
+      guide: {path: $guide, filled: $filled}}'
+  exit 0
 fi
 
 if [ "$acknowledged" = "$current" ]; then
@@ -199,30 +229,22 @@ if [ -z "$acknowledged" ]; then
   exit 0
 fi
 
-# The marker stays put: the notice repeats each session until `--ack` clears it.
-# GitHub slugifies the changelog's `## 2.1.227` heading by dropping the dots.
-banner="Claude Code $acknowledged → $current · $CHANGELOG#${current//./}"
+# The marker stays put: the notice repeats each session until it's acknowledged.
+#
+# The skill is what gets named, rather than a shell command: a slash command is
+# short enough to sit on the line, it carries no path to go stale when shipshape
+# updates, and it's the path that runs the user's guide.
+banner="Claude Code $acknowledged → $current · $entry · /claude-code-version to review and clear"
 
-context="Claude Code moved from $acknowledged to $current. The banner announcing it repeats every session until dismissed."
-instructions="$(content)"
-if [ -n "$instructions" ]; then
-  context="$context
+context="Claude Code moved from $acknowledged to $current. The banner announcing it repeats every session until the version is acknowledged.
 
-The user's re-training instructions for a version change follow. Carry them out
-now, before anything else:
-
-$instructions"
-fi
-context="$context
-
-Dismiss the banner by running:
-
-    CLAUDE_PLUGIN_DATA=$(printf '%q' "$CLAUDE_PLUGIN_DATA") bash $(printf '%q' "$SELF") --ack $current
-
-Run it once the user has acknowledged the update — the instructions above have
-been carried out, they ask what changed and you show them the changelog entry,
-or they say thanks and move on. Don't run it unprompted while they haven't seen
-it."
+shipshape's \`claude-code-version\` skill handles it: it walks what changed,
+carries out the version-change instructions the user wrote, and records the
+version, which is what clears the banner. Invoke it once the user has taken the
+update in — they ask what changed, they ask you to deal with it, or they say
+thanks and move on. Don't invoke it unprompted while they haven't seen the
+banner, and don't record the version any other way: the instructions run at
+acknowledgement, so acknowledging around the skill silently drops them."
 
 jq -nc --arg banner "$banner" --arg context "$context" \
   '{systemMessage: $banner, hookSpecificOutput: {hookEventName: "SessionStart", additionalContext: $context}}'

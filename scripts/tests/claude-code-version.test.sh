@@ -7,10 +7,11 @@
 # the *absence* of CLAUDE_PLUGIN_DATA run under `env -u`, since inheriting a
 # real one would write to it.
 #
-# Covers what the hook promises: silence on a first run and at steady state, a
-# banner that repeats every session until `--ack` dismisses it, the callback
-# document emitted as model context on the same delta, and a conservative no-op
-# whenever a prerequisite is missing.
+# Covers what the script promises: silence on a first run and at steady state, a
+# banner that repeats every session until it's acknowledged, a handoff to the
+# skill rather than the guide's own text, `--guide` reading the document back
+# with its comments stripped, `--status` as a read-only view of both versions,
+# and a conservative no-op whenever a prerequisite is missing.
 
 set -uo pipefail
 
@@ -56,6 +57,13 @@ hook() {  # run the hook; sets OUT (stdout), ERR (stderr), RC. Extra args pass t
   OUT=$(env PATH="$BIN:$PATH" CLAUDE_PLUGIN_DATA="$DATA" "$@" bash "$SCRIPT" 2>"$err"); RC=$?
   ERR=$(cat "$err"); rm -f "$err"
 }
+run() {  # run the script with $@ as its arguments; sets OUT, ERR, RC
+  local err; err=$(mktemp "$FIXTURES/err.XXXXXX")
+  OUT=$(env PATH="$BIN:$PATH" CLAUDE_PLUGIN_DATA="$DATA" bash "$SCRIPT" "$@" 2>"$err"); RC=$?
+  ERR=$(cat "$err"); rm -f "$err"
+}
+status() { run --status; }
+guide() { run --guide; }
 ack() {  # $@ — arguments after --ack
   OUT=$(env PATH="$BIN:$PATH" CLAUDE_PLUGIN_DATA="$DATA" bash "$SCRIPT" --ack "$@" 2>&1); RC=$?
 }
@@ -80,21 +88,23 @@ check "unchanged version is silent"          "$OUT"      ""
 check "unchanged version keeps marker"       "$(marker)" "2.1.0"
 check "unchanged version keeps document"     "$(cat "$CALLBACKS")" "$before"
 
-# --- Version moved, document unfilled: banner only, no instructions. ---
+# --- Version moved: the banner, and a handoff to the skill. ---
 stub 2.1.1
 hook
 check "changed version exits 0"              "$RC"       "0"
 check "banner is valid JSON"                 "$(field 'has("systemMessage")')" "true"
 contains "banner names both versions"        "$(field '.systemMessage')" "2.1.0 → 2.1.1"
 contains "banner links the new entry"        "$(field '.systemMessage')" "CHANGELOG.md#211"
+contains "banner names the command to run"   "$(field '.systemMessage')" "/claude-code-version"
 check "unacknowledged version stays pending" "$(marker)" "2.1.0"
 check "context is tagged SessionStart"       "$(field '.hookSpecificOutput.hookEventName')" "SessionStart"
-lacks "unfilled document adds no instructions" "$(ctx)" "before anything else"
-
-# --- The model is told how to dismiss it, with everything the command needs. ---
-contains "context names the ack command"     "$(ctx)" "--ack 2.1.1"
-contains "ack command carries the data dir"  "$(ctx)" "CLAUDE_PLUGIN_DATA=$DATA"
+contains "context names both versions"       "$(ctx)" "moved from 2.1.0 to 2.1.1"
+contains "context hands off to the skill"    "$(ctx)" "claude-code-version\` skill"
 contains "context says it repeats"           "$(ctx)" "repeats every session"
+
+# --- Acknowledgement runs the guide, so the hook offers no shortcut past it. ---
+lacks "context offers no raw ack command"    "$(ctx)" "--ack"
+lacks "context leaks no data dir path"       "$(ctx)" "CLAUDE_PLUGIN_DATA="
 
 # --- Undismissed, so the next session banners again. ---
 hook
@@ -105,14 +115,14 @@ stub 2.1.2
 hook
 contains "banner spans both updates"         "$(field '.systemMessage')" "2.1.0 → 2.1.2"
 
-# --- The emitted ack command works as emitted: this is the dismissal path. ---
-# It runs with CLAUDE_PLUGIN_DATA cleared from the environment, the way a Bash
-# tool call sees it — the variable reaches hook processes, not arbitrary shells.
-cmd=$(printf '%s' "$(ctx)" | sed -n 's/^ *\(CLAUDE_PLUGIN_DATA=.*--ack .*\)$/\1/p')
-OUT=$(env -u CLAUDE_PLUGIN_DATA PATH="$BIN:$PATH" "$BASH_BIN" -c "$cmd" 2>&1); RC=$?
-check "emitted ack command exits 0"          "$RC"       "0"
-contains "emitted ack reports the version"   "$OUT"      "2.1.2"
-check "emitted ack records the version"      "$(marker)" "2.1.2"
+# --- The dismissal path in the shape the skill runs it: the data dir arrives as
+# an assignment prefix, since the variable reaches hook processes and not the
+# shell a Bash tool call runs in. ---
+OUT=$(env -u CLAUDE_PLUGIN_DATA PATH="$BIN:$PATH" "$BASH_BIN" -c \
+  "CLAUDE_PLUGIN_DATA=$DATA $BASH_BIN $SCRIPT --ack 2.1.2" 2>&1); RC=$?
+check "skill's ack command exits 0"          "$RC"       "0"
+contains "skill's ack reports the version"   "$OUT"      "2.1.2"
+check "skill's ack records the version"      "$(marker)" "2.1.2"
 hook
 check "session after ack is silent"          "$OUT"      ""
 
@@ -127,16 +137,18 @@ contains "the swallowed update still lands"  "$(field '.systemMessage')" "2.1.3 
 ack                                           # bare --ack falls back to the running version
 check "bare ack records the running version" "$(marker)" "2.1.9"
 
-# --- A filled document rides the same delta, as model context. ---
+# --- A filled guide is read through --guide, never emitted by the hook. ---
 setup 2.1.0
 hook
 fill
 stub 2.2.0
 hook
 contains "banner still names the versions"   "$(field '.systemMessage')" "2.1.0 → 2.2.0"
-contains "document instructions emitted"     "$(ctx)" "/my-retrain-command"
-contains "framed as instructions to follow"  "$(ctx)" "before anything else"
-lacks "instructions stay out of the banner"  "$(field '.systemMessage')" "/my-retrain-command"
+lacks "hook keeps the guide out of context"  "$(ctx)" "/my-retrain-command"
+lacks "hook keeps the guide out of the banner" "$(field '.systemMessage')" "/my-retrain-command"
+guide
+check "--guide exits 0"                      "$RC"       "0"
+check "--guide prints the instructions"      "$OUT"      "Re-train the artifacts: /my-retrain-command"
 
 # --- A patch bump fires too (any change in the version string). ---
 ack 2.2.0
@@ -146,7 +158,7 @@ contains "patch bump fires"                  "$(field '.systemMessage')" "2.2.0 
 
 # --- Comments dropped; instructions around them survive, inline ones included. ---
 cat > "$CALLBACKS" <<'DOC'
-<!-- a note to myself the hook should not pass on -->
+<!-- a note to myself the guide should not pass on -->
 
 Step one: /first-command <!-- an inline aside -->
 <!-- multi-line note
@@ -154,52 +166,80 @@ Step one: /first-command <!-- an inline aside -->
      end of note --> Step two: /second-command
 Step three: /third-command
 DOC
-ack 2.2.1
-stub 2.3.0
-hook
-contains "content before a comment survives" "$(ctx)" "Step one: /first-command"
-contains "content after an inline close survives" "$(ctx)" "Step two: /second-command"
-contains "plain lines survive"               "$(ctx)" "Step three: /third-command"
-lacks "standalone comments are dropped"      "$(ctx)" "note to myself"
-lacks "inline comments are dropped"          "$(ctx)" "an inline aside"
-lacks "multi-line comment bodies are dropped" "$(ctx)" "still a note"
+guide
+contains "content before a comment survives" "$OUT" "Step one: /first-command"
+contains "content after an inline close survives" "$OUT" "Step two: /second-command"
+contains "plain lines survive"               "$OUT" "Step three: /third-command"
+lacks "standalone comments are dropped"      "$OUT" "note to myself"
+lacks "inline comments are dropped"          "$OUT" "an inline aside"
+lacks "multi-line comment bodies are dropped" "$OUT" "still a note"
 
 # --- An unclosed comment is surfaced rather than silently swallowing the rest. ---
 printf 'Step one: /first-command\n<!-- oops, never closed\nStep two: /second-command\n' > "$CALLBACKS"
-ack 2.3.0
-stub 2.3.1
-hook
+guide
 contains "unclosed comment is reported"      "$ERR" "unclosed <!--"
-contains "text before it still emits"        "$(ctx)" "Step one: /first-command"
+contains "text before it still emits"        "$OUT" "Step one: /first-command"
 
 # --- Comments and blanks only reads as unfilled. ---
 printf '<!-- just a note -->\n\n<!-- and another -->\n' > "$CALLBACKS"
-ack 2.3.1
-stub 2.4.0
+guide
+check "comments-and-blanks-only reads empty" "$OUT" ""
+status
+check "unfilled guide is reported unfilled"  "$(field '.guide.filled')" "false"
 hook
-lacks "comments-and-blanks-only adds nothing" "$(ctx)" "before anything else"
-contains "but the banner still fires"        "$(field '.systemMessage')" "2.3.1 → 2.4.0"
+contains "but the banner still fires"        "$(field '.systemMessage')" "2.2.0 → 2.2.1"
 
-# --- A document holding JSON metacharacters survives the emit intact. ---
+# --- A document holding JSON metacharacters survives both readers intact. ---
 printf 'Run "/quote-command" \\ then check <tag> & done\n' > "$CALLBACKS"
-ack 2.4.0
-stub 2.5.0
-hook
-check "quoted document keeps valid JSON"     "$(field 'has("systemMessage")')" "true"
-contains "quotes and backslashes survive"    "$(ctx)" 'Run "/quote-command" \ then check <tag> & done'
+guide
+check "quotes and backslashes survive"       "$OUT" 'Run "/quote-command" \ then check <tag> & done'
+status
+check "quoted document keeps valid JSON"     "$(field '.guide.filled')" "true"
 
-# --- Deleting the document re-seeds it rather than disabling the hook. ---
+# --- Deleting the document re-seeds it rather than disabling the feature. ---
 rm "$CALLBACKS"
 hook
 check "deleted document is re-seeded"        "$([ -f "$CALLBACKS" ] && echo present)" "present"
+rm "$CALLBACKS"
+guide
+check "--guide re-seeds it too"              "$([ -f "$CALLBACKS" ] && echo present)" "present"
 
-# --- Opt-out: no banner and no state touched, even with a version pending. ---
+# --- --status: the read-only view every mode of the skill starts from. ---
+setup 2.1.0
+hook                                          # records 2.1.0, seeds the document
+status
+check "--status exits 0"                     "$RC"       "0"
+check "--status reports the acknowledged"    "$(field '.acknowledged')" "2.1.0"
+check "--status reports the running version" "$(field '.current')"      "2.1.0"
+check "settled machine is not pending"       "$(field '.pending')"      "false"
+check "--status reports the guide path"      "$(field '.guide.path')"   "$CALLBACKS"
+check "seeded guide reads as unfilled"       "$(field '.guide.filled')" "false"
+stub 2.1.1
+status
+check "a moved version is pending"           "$(field '.pending')"      "true"
+check "--status links the running entry"     "$(field '.changelog')"    "https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md#211"
+check "--status leaves the marker alone"     "$(marker)"                "2.1.0"
+fill
+status
+check "a written guide reads as filled"      "$(field '.guide.filled')" "true"
+
+# --- Nothing acknowledged yet: reported as null, not as a pending upgrade. ---
+setup 2.1.0
+status
+check "unrecorded marker reports null"       "$(field '.acknowledged')" "null"
+check "unrecorded marker is not pending"     "$(field '.pending')"      "false"
+check "--status records nothing"             "$(marker)"                "absent"
+
+# --- Opt-out silences the banner, not the modes the user asked for. ---
 setup 2.1.0
 hook                                          # seed the marker
 stub 2.1.1
 hook SHIPSHAPE_VERSION_NOTICE=off
 check "opt-out prints no banner"             "$OUT"      ""
 check "opt-out leaves the marker alone"      "$(marker)" "2.1.0"
+OUT=$(env PATH="$BIN:$PATH" CLAUDE_PLUGIN_DATA="$DATA" SHIPSHAPE_VERSION_NOTICE=off \
+  bash "$SCRIPT" --status 2>/dev/null); RC=$?
+check "opt-out still answers --status"       "$(field '.pending')" "true"
 hook                                          # re-enabled: the pending delta still lands
 contains "re-enabled banner shows the delta" "$(field '.systemMessage')" "2.1.0 → 2.1.1"
 
@@ -209,8 +249,10 @@ OUT=$(env -u CLAUDE_PLUGIN_DATA PATH="$BIN:$PATH" "$BASH_BIN" "$SCRIPT" 2>/dev/n
 check "missing data dir exits 0"             "$RC"       "0"
 check "missing data dir prints no banner"    "$OUT"      ""
 check "missing data dir writes nothing"      "$(marker)" "absent"
-OUT=$(env -u CLAUDE_PLUGIN_DATA PATH="$BIN:$PATH" "$BASH_BIN" "$SCRIPT" --ack 2.1.0 2>/dev/null); RC=$?
-check "ack without a data dir fails loudly"  "$RC"       "1"
+for arg in --ack --status --guide; do
+  env -u CLAUDE_PLUGIN_DATA PATH="$BIN:$PATH" "$BASH_BIN" "$SCRIPT" "$arg" >/dev/null 2>&1; RC=$?
+  check "$arg without a data dir fails loudly" "$RC" "1"
+done
 
 # --- `claude` unreachable: conservative no-op, marker untouched. ---
 setup 2.1.0
@@ -219,6 +261,8 @@ OUT=$(env PATH=/nonexistent CLAUDE_PLUGIN_DATA="$DATA" "$BASH_BIN" "$SCRIPT" 2>/
 check "unreachable claude exits 0"           "$RC"       "0"
 check "unreachable claude is silent"         "$OUT"      ""
 check "unreachable claude keeps marker"      "$(marker)" "2.1.0"
+env PATH=/nonexistent CLAUDE_PLUGIN_DATA="$DATA" "$BASH_BIN" "$SCRIPT" --status >/dev/null 2>&1; RC=$?
+check "unreachable claude fails --status"    "$RC"       "1"
 
 # --- Version read off stdout only: a warning on stderr is not the version. ---
 setup 2.1.0

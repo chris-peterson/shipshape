@@ -57,8 +57,9 @@ bash scripts/tests/<name>.test.sh    # one suite
 ```text
 plugin.yml                          canonical descriptor — manifest, marketplace entry, docs copy
 skills/plugin-maintenance/SKILL.md  the maintenance skill — the prompt is the implementation
+skills/claude-code-version/         everything a user does about a version change: the guide, what's new, acknowledge
 hooks/enforce-autoupdate.sh         SessionStart hook that arms marketplace auto-update
-hooks/claude-code-version.sh        SessionStart hook that announces a Claude Code version change and emits your callback document; --ack dismisses
+hooks/claude-code-version.sh        SessionStart hook that announces a Claude Code version change; also the skill's --status, --guide, and --ack
 scripts/plugin-cache-in-use.sh      lease liveness — exit 0 in use, exit 1 delete-eligible
 scripts/plugin-maintenance-lock.sh  the cooperative reconcile lock
 scripts/tests/                      bash suites, one per script
@@ -108,6 +109,14 @@ Never hand-edit a generated file; edit its source and run `just generate`.
 - **Version marker** — `${CLAUDE_PLUGIN_DATA}/acknowledged-version`, the Claude
   Code version the user has *acknowledged*. Not the last one seen: that
   distinction is what makes an announcement outlive the session it appears in.
-- **Callback document** — `${CLAUDE_PLUGIN_DATA}/on-claude-code-version-change.md`,
+- **Version-change guide** — `${CLAUDE_PLUGIN_DATA}/on-claude-code-version-change.md`,
   the user's own instructions for a version change. Seeded as comments only, and
-  a comments-only document runs nothing.
+  a comments-only guide runs nothing.
+- **Version skill** — `/claude-code-version`, the one place a version change is
+  handled: read or set the guide, walk what's new, acknowledge. The hook
+  announces and stops there, so the skill is what runs the guide — a one-time
+  errand doesn't belong on a hook that fires every session until it's cleared.
+  It's a skill rather than a documented shell line because
+  `${CLAUDE_PLUGIN_ROOT}` resolves in skill content: the path to the hook
+  carries shipshape's own version, so anything literal goes stale at the next
+  update. It's model-invocable, which is what lets the hook's handoff reach it.

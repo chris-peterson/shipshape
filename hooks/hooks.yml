@@ -7,4 +7,4 @@ hooks:
   - event: SessionStart
     matcher: '*'
     command: 'bash "${CLAUDE_PLUGIN_ROOT}/hooks/claude-code-version.sh"'
-    description: Announce a Claude Code version change and run your re-training instructions.
+    description: Announce a Claude Code version change, and hand it to /claude-code-version.
