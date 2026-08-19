@@ -21,6 +21,7 @@
 # `date` dialect on this box can parse, and jq being absent entirely (which is
 # surfaced on stderr, not swallowed).
 
+# covers: PRUNE-07
 set -euo pipefail
 
 dir="${1:?usage: plugin-cache-in-use.sh <version-dir>}"

@@ -22,6 +22,7 @@
 # Env:    PLUGIN_MAINT_LOCK   override the lockfile path (tests)
 #         PLUGIN_MAINT_STALE  override the stale threshold in seconds (default 1800)
 
+# covers: RECON-01, RECON-03
 set -euo pipefail
 
 cmd="${1:-}"

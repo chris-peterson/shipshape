@@ -4,96 +4,105 @@ Tracks coverage of the requirements in [SPEC.md](./SPEC.md) against the single
 in-repo implementation. Status vocabulary: **Covered** · **Partial** ·
 **Missing** · **Contradicts**.
 
-**Coverage: 62/62 requirements Covered (100%)**
+**Coverage: 63/63 requirements Covered (100%)**
+**Evidence pointers:** file
+
+Location holds the file. To find the spot inside it, grep for the requirement
+id: every covering site carries a `covers:` marker naming the ids implemented
+there, as an HTML comment under the heading in markdown and a `#` comment above
+the block in shell. `grep -rn 'covers:.*RECON-08' skills hooks scripts` is the
+lookup. Keeping the id in the source rather than restating each heading here
+means an edit can't leave the two disagreeing.
 
 ## RECON — Reconciliation
 
 | ID          | Status  | Location |
 |-------------|---------|----------|
-| RECON-01    | Covered | skills/plugin-maintenance/SKILL.md:80; scripts/plugin-maintenance-lock.sh |
-| RECON-02    | Covered | skills/plugin-maintenance/SKILL.md:84 |
-| RECON-03    | Covered | skills/plugin-maintenance/SKILL.md:86; scripts/plugin-maintenance-lock.sh |
-| RECON-04    | Covered | skills/plugin-maintenance/SKILL.md:226 |
-| RECON-05    | Covered | skills/plugin-maintenance/SKILL.md:93 |
-| RECON-06    | Covered | skills/plugin-maintenance/SKILL.md:100 |
-| RECON-07    | Covered | skills/plugin-maintenance/SKILL.md:125 |
-| RECON-08    | Covered | skills/plugin-maintenance/SKILL.md:131 |
-| RECON-09    | Covered | skills/plugin-maintenance/SKILL.md:136 |
-| RECON-10    | Covered | skills/plugin-maintenance/SKILL.md:147 |
-| RECON-11    | Covered | skills/plugin-maintenance/SKILL.md:144 |
-| RECON-12    | Covered | skills/plugin-maintenance/SKILL.md:234 |
-| RECON-13    | Covered | skills/plugin-maintenance/SKILL.md:243 |
+| RECON-01   | Covered | skills/plugin-maintenance/SKILL.md; scripts/plugin-maintenance-lock.sh |
+| RECON-02   | Covered | skills/plugin-maintenance/SKILL.md |
+| RECON-03   | Covered | skills/plugin-maintenance/SKILL.md; scripts/plugin-maintenance-lock.sh |
+| RECON-04   | Covered | skills/plugin-maintenance/SKILL.md |
+| RECON-05   | Covered | skills/plugin-maintenance/SKILL.md |
+| RECON-06   | Covered | skills/plugin-maintenance/SKILL.md |
+| RECON-07   | Covered | skills/plugin-maintenance/SKILL.md |
+| RECON-08   | Covered | skills/plugin-maintenance/SKILL.md |
+| RECON-09   | Covered | skills/plugin-maintenance/SKILL.md |
+| RECON-10   | Covered | skills/plugin-maintenance/SKILL.md |
+| RECON-11   | Covered | skills/plugin-maintenance/SKILL.md |
+| RECON-11a  | Covered | skills/plugin-maintenance/SKILL.md |
+| RECON-12   | Covered | skills/plugin-maintenance/SKILL.md |
+| RECON-13   | Covered | skills/plugin-maintenance/SKILL.md |
 
 ## GUARD — Guardrails
 
 | ID          | Status  | Location |
 |-------------|---------|----------|
-| GUARD-01    | Covered | skills/plugin-maintenance/SKILL.md:145 |
-| GUARD-02    | Covered | skills/plugin-maintenance/SKILL.md:143 |
-| GUARD-03    | Covered | skills/plugin-maintenance/SKILL.md:30 |
+| GUARD-01   | Covered | skills/plugin-maintenance/SKILL.md |
+| GUARD-02   | Covered | skills/plugin-maintenance/SKILL.md |
+| GUARD-03   | Covered | skills/plugin-maintenance/SKILL.md |
 
 ## PRUNE — Pruning
 
 | ID          | Status  | Location |
 |-------------|---------|----------|
-| PRUNE-01    | Covered | skills/plugin-maintenance/SKILL.md:153 |
-| PRUNE-02    | Covered | skills/plugin-maintenance/SKILL.md:166 |
-| PRUNE-03    | Covered | skills/plugin-maintenance/SKILL.md:167 |
-| PRUNE-04    | Covered | skills/plugin-maintenance/SKILL.md:168 |
-| PRUNE-05    | Covered | skills/plugin-maintenance/SKILL.md:169 |
-| PRUNE-06    | Covered | skills/plugin-maintenance/SKILL.md:173 |
-| PRUNE-07    | Covered | skills/plugin-maintenance/SKILL.md:181; scripts/plugin-cache-in-use.sh |
-| PRUNE-08    | Covered | skills/plugin-maintenance/SKILL.md:177 |
-| PRUNE-09    | Covered | skills/plugin-maintenance/SKILL.md:215 |
-| PRUNE-10    | Covered | skills/plugin-maintenance/SKILL.md:216 |
-| PRUNE-11    | Covered | skills/plugin-maintenance/SKILL.md:219 |
+| PRUNE-01   | Covered | skills/plugin-maintenance/SKILL.md |
+| PRUNE-02   | Covered | skills/plugin-maintenance/SKILL.md |
+| PRUNE-03   | Covered | skills/plugin-maintenance/SKILL.md |
+| PRUNE-04   | Covered | skills/plugin-maintenance/SKILL.md |
+| PRUNE-05   | Covered | skills/plugin-maintenance/SKILL.md |
+| PRUNE-06   | Covered | skills/plugin-maintenance/SKILL.md |
+| PRUNE-07   | Covered | skills/plugin-maintenance/SKILL.md; scripts/plugin-cache-in-use.sh |
+| PRUNE-08   | Covered | skills/plugin-maintenance/SKILL.md |
+| PRUNE-09   | Covered | skills/plugin-maintenance/SKILL.md |
+| PRUNE-10   | Covered | skills/plugin-maintenance/SKILL.md |
+| PRUNE-11   | Covered | skills/plugin-maintenance/SKILL.md |
 
 ## AUTO — Auto-update enforcement
 
 | ID          | Status  | Location |
 |-------------|---------|----------|
-| AUTO-01     | Covered | hooks/enforce-autoupdate.sh |
-| AUTO-02     | Covered | hooks/enforce-autoupdate.sh |
-| AUTO-03     | Covered | hooks/enforce-autoupdate.sh |
-| AUTO-04     | Covered | hooks/enforce-autoupdate.sh |
-| AUTO-05     | Covered | hooks/enforce-autoupdate.sh |
-| AUTO-06     | Covered | skills/plugin-maintenance/SKILL.md:116 |
+| AUTO-01    | Covered | hooks/enforce-autoupdate.sh |
+| AUTO-02    | Covered | hooks/enforce-autoupdate.sh |
+| AUTO-03    | Covered | hooks/enforce-autoupdate.sh |
+| AUTO-04    | Covered | hooks/enforce-autoupdate.sh |
+| AUTO-05    | Covered | hooks/enforce-autoupdate.sh |
+| AUTO-06    | Covered | skills/plugin-maintenance/SKILL.md |
 
 ## VERSION — Claude Code version changes
 
 | ID          | Status  | Location |
 |-------------|---------|----------|
-| VERSION-01  | Covered | hooks/claude-code-version.sh (`read_version`) |
-| VERSION-02  | Covered | hooks/claude-code-version.sh (banner) |
-| VERSION-03  | Covered | hooks/claude-code-version.sh (banner) |
-| VERSION-04  | Covered | hooks/claude-code-version.sh (emit) |
-| VERSION-05  | Covered | hooks/claude-code-version.sh (emit) |
-| VERSION-06  | Covered | hooks/claude-code-version.sh (seed) |
-| VERSION-07  | Covered | hooks/claude-code-version.sh (guide mode) |
-| VERSION-08  | Covered | hooks/claude-code-version.sh (banner) |
-| VERSION-09  | Covered | hooks/claude-code-version.sh (ack mode) |
-| VERSION-10  | Covered | hooks/claude-code-version.sh (status mode) |
-| VERSION-11  | Covered | hooks/claude-code-version.sh (marker read) |
-| VERSION-12  | Covered | hooks/claude-code-version.sh (opt-out) |
-| VERSION-13  | Covered | hooks/claude-code-version.sh (`read_version`) |
-| VERSION-14  | Covered | hooks/claude-code-version.sh (`bail`) |
-| VERSION-15  | Covered | hooks/claude-code-version.sh (`content` END) |
-| VERSION-16  | Covered | hooks/claude-code-version.sh (`bail`) |
-| VERSION-17  | Covered | skills/claude-code-version/SKILL.md (Pick the mode) |
-| VERSION-18  | Covered | skills/claude-code-version/SKILL.md (Mode 1) |
-| VERSION-19  | Covered | skills/claude-code-version/SKILL.md (Mode 2) |
-| VERSION-20  | Covered | skills/claude-code-version/SKILL.md (Mode 3, steps 1-3) |
-| VERSION-21  | Covered | skills/claude-code-version/SKILL.md (Mode 3, opening) |
-| VERSION-22  | Covered | skills/claude-code-version/SKILL.md (Start with the facts) |
+| VERSION-01 | Covered | hooks/claude-code-version.sh |
+| VERSION-02 | Covered | hooks/claude-code-version.sh |
+| VERSION-03 | Covered | hooks/claude-code-version.sh |
+| VERSION-04 | Covered | hooks/claude-code-version.sh |
+| VERSION-05 | Covered | hooks/claude-code-version.sh |
+| VERSION-06 | Covered | hooks/claude-code-version.sh |
+| VERSION-07 | Covered | hooks/claude-code-version.sh |
+| VERSION-08 | Covered | hooks/claude-code-version.sh |
+| VERSION-09 | Covered | hooks/claude-code-version.sh |
+| VERSION-10 | Covered | hooks/claude-code-version.sh |
+| VERSION-11 | Covered | hooks/claude-code-version.sh |
+| VERSION-12 | Covered | hooks/claude-code-version.sh |
+| VERSION-13 | Covered | hooks/claude-code-version.sh |
+| VERSION-14 | Covered | hooks/claude-code-version.sh |
+| VERSION-15 | Covered | hooks/claude-code-version.sh |
+| VERSION-16 | Covered | hooks/claude-code-version.sh |
+| VERSION-17 | Covered | skills/claude-code-version/SKILL.md |
+| VERSION-18 | Covered | skills/claude-code-version/SKILL.md |
+| VERSION-19 | Covered | skills/claude-code-version/SKILL.md |
+| VERSION-20 | Covered | skills/claude-code-version/SKILL.md |
+| VERSION-21 | Covered | skills/claude-code-version/SKILL.md |
+| VERSION-22 | Covered | skills/claude-code-version/SKILL.md |
 
 ## REPORT — Reporting & output model
 
 | ID          | Status  | Location |
 |-------------|---------|----------|
-| REPORT-01   | Covered | skills/plugin-maintenance/SKILL.md:59; skills/plugin-maintenance/references/output-format.md |
-| REPORT-02   | Covered | skills/plugin-maintenance/SKILL.md:61 |
-| REPORT-03   | Covered | skills/plugin-maintenance/references/output-format.md |
-| REPORT-04   | Covered | skills/plugin-maintenance/SKILL.md:71 |
-| REPORT-05   | Covered | skills/plugin-maintenance/SKILL.md:191 |
-| REPORT-06   | Covered | skills/plugin-maintenance/SKILL.md:64 |
-| REPORT-07   | Covered | skills/plugin-maintenance/SKILL.md:70 |
+| REPORT-01  | Covered | skills/plugin-maintenance/SKILL.md; skills/plugin-maintenance/references/output-format.md |
+| REPORT-02  | Covered | skills/plugin-maintenance/SKILL.md |
+| REPORT-03  | Covered | skills/plugin-maintenance/references/output-format.md |
+| REPORT-04  | Covered | skills/plugin-maintenance/SKILL.md |
+| REPORT-05  | Covered | skills/plugin-maintenance/SKILL.md |
+| REPORT-06  | Covered | skills/plugin-maintenance/SKILL.md |
+| REPORT-07  | Covered | skills/plugin-maintenance/SKILL.md |

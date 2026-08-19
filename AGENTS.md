@@ -5,10 +5,10 @@ what's changing in it, and that it stays current. It covers Claude Code itself
 (announcing a version change, walking the changelog delta, running the
 instructions they wrote for an upgrade) and their *other* plugins (reconciling
 what's installed against what they declared, updating it, pruning the stale
-caches and orphan data dirs an uninstall leaves behind, arming marketplace
-auto-update). What the skills do for a *user* lives on the docs site
-(https://chris-peterson.github.io/shipshape); this file is for working on the
-plugin itself.
+version caches an update leaves behind and the data dirs an uninstall would
+have deleted unasked, arming marketplace auto-update). What the skills do for a
+*user* lives on the docs site (https://chris-peterson.github.io/shipshape);
+this file is for working on the plugin itself.
 
 `SPEC.md` is the requirement source of record and `STATUS.md` is its coverage
 ledger. A change to behavior updates the requirement and the ledger in the same
@@ -67,7 +67,7 @@ scripts/plugin-cache-in-use.sh      lease liveness — exit 0 in use, exit 1 del
 scripts/plugin-maintenance-lock.sh  the cooperative reconcile lock
 scripts/tests/                      bash suites, one per script
 SPEC.md / STATUS.md                 requirements and their coverage
-docs/                               docsify site (index.html, _sidebar.md, favicon are source)
+docs/                               docsify site (_sidebar.md, README.md, favicon are source)
 ```
 
 `.claude-plugin/plugin.json`, `hooks/hooks.json`, `plugin.yml`'s `suite.describe`

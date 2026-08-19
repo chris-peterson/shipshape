@@ -5,9 +5,10 @@ know what's changing in it, and that it stays current. Claude Code itself:
 announcing a version change, walking the changelog entries you skipped, and,
 when you acknowledge the upgrade, running the re-training instructions you wrote
 for one. Your *other* plugins: reconciling installed plugins against your
-declared desired set, updating what stays, pruning the stale caches and orphan
-data dirs that uninstall leaves behind, and arming marketplace auto-update so
-plugins keep themselves current.
+declared desired set, updating what stays, pruning the stale version caches an
+update leaves behind and the data dirs an uninstall would have deleted
+unasked, and arming marketplace auto-update so plugins keep themselves
+current.
 
 Requirements use [EARS syntax](https://alistairmavin.com/ears) — each is one of:
 Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
@@ -94,10 +95,15 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
 - [RECON-10] Where a desired plugin is not installed, shipshape shall offer to
   install it and ask before installing.
 - [RECON-11] When an installed user-scope plugin is not in the desired set,
-  shipshape shall uninstall it and verify against the install manifest that its
-  key is gone.
+  shipshape shall uninstall it with `--keep-data` and verify against the install
+  manifest that its key is gone.
+- [RECON-11a] shipshape shall never let an uninstall delete a data dir: an
+  uninstall from a plugin's last remaining scope deletes
+  `${CLAUDE_PLUGIN_DATA}` by default, so the data dir reaches the prune step
+  and its confirmation (PRUNE-10) rather than being removed unasked.
 - [RECON-12] When reconciliation changes plugins on disk, shipshape shall ask
-  the user to run `/reload-plugins` in this and any other active session.
+  the user to run `/reload-plugins` in this and any other active session, and
+  shall name the `--force` rerun that a prompt-cache warning requires.
 - [RECON-13] If reconciliation made no changes and pruning removed nothing, then
   shipshape shall skip the reload step.
 
@@ -139,9 +145,10 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
 
 ### AUTO — Auto-update enforcement
 
-- [AUTO-01] When a session starts, the auto-update hook shall set
-  `autoUpdate: true` for every known marketplace under `extraKnownMarketplaces`
-  in `~/.claude/settings.json`.
+- [AUTO-01] When a session starts, the auto-update hook shall read the
+  registered marketplaces from `~/.claude/plugins/known_marketplaces.json` and
+  set `autoUpdate: true` on each one's `extraKnownMarketplaces` entry in
+  `~/.claude/settings.json`, creating that entry where it does not exist.
 - [AUTO-02] The auto-update hook shall write only when a marketplace is missing
   the flag, leaving settings unchanged at steady state.
 - [AUTO-03] The auto-update hook shall preserve existing `extraKnownMarketplaces`

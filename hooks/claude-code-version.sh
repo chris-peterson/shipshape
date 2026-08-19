@@ -59,6 +59,7 @@ case "${1:-}" in
   *)         printf 'usage: %s [--ack [version] | --status | --guide]\n' "$SELF" >&2; exit 2 ;;
 esac
 
+# covers: VERSION-12
 if [ "$mode" = hook ] && [ "${SHIPSHAPE_VERSION_NOTICE:-on}" = "off" ]; then
   exit 0
 fi
@@ -67,6 +68,7 @@ fi
 # same convention covers a missing jq in enforce-autoupdate.sh. The other modes
 # have a caller waiting on an answer, so a missing prerequisite is theirs to
 # see — nothing was recorded and nothing can be reported.
+# covers: VERSION-14, VERSION-16
 bail() {
   [ "$mode" = hook ] || exit 1
   exit 0
@@ -97,6 +99,7 @@ record() {  # $1 version — written via a temp file so a concurrent reader neve
 # stderr is dropped rather than folded in: a node warning or an update notice
 # printed ahead of the version would otherwise be parsed *as* the version, and a
 # warning that varies per run (a PID) would announce a change every session.
+# covers: VERSION-01, VERSION-13
 read_version() {
   local reported
   if ! reported="$(claude --version 2>/dev/null)"; then
@@ -111,6 +114,7 @@ read_version() {
   printf '%s' "$reported"
 }
 
+# covers: VERSION-09
 if [ "$mode" = ack ]; then
   # The version to record is the one that was announced, passed through by the
   # skill. Claude Code can update its own binary mid-session, so re-reading it
@@ -129,6 +133,7 @@ fi
 
 # Seeded whenever absent, so the name never has to be guessed. Comment lines
 # only: until a real line is added, content() reads it as unfilled.
+# covers: VERSION-06
 if [ ! -e "$CALLBACKS" ]; then
   mkdir -p "$CLAUDE_PLUGIN_DATA"
   cat > "$CALLBACKS" <<'TEMPLATE'
@@ -152,6 +157,7 @@ fi
 # instruction. Spans are matched across the line rather than at its start, so an
 # inline `<!-- note -->` neither leaks nor takes the instruction beside it with
 # it.
+# covers: VERSION-15
 content() {
   awk '
     {
@@ -182,6 +188,7 @@ content() {
   ' "$CALLBACKS"
 }
 
+# covers: VERSION-07
 if [ "$mode" = guide ]; then
   content
   exit 0
@@ -203,6 +210,7 @@ current="$(read_version)" || bail
 # GitHub slugifies the changelog's `## 2.1.227` heading by dropping the dots.
 entry="$CHANGELOG#${current//./}"
 
+# covers: VERSION-10, VERSION-11
 if [ "$mode" = status ]; then
   # A query never writes: an unacknowledged version stays unacknowledged, so
   # asking what's pending can't be what dismisses it.
@@ -234,8 +242,10 @@ fi
 # The skill is what gets named, rather than a shell command: a slash command is
 # short enough to sit on the line, it carries no path to go stale when shipshape
 # updates, and it's the path that runs the user's guide.
+# covers: VERSION-02, VERSION-03, VERSION-08
 banner="Claude Code $acknowledged → $current · $entry · /claude-code-version to review and clear"
 
+# covers: VERSION-04, VERSION-05
 context="Claude Code moved from $acknowledged to $current. The banner announcing it repeats every session until the version is acknowledged.
 
 shipshape's \`claude-code-version\` skill handles it: it walks what changed,

@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 Reconcile installed Claude Code plugins against the **desired set** declared in `~/.claude/settings.json` (`enabledPlugins`), then update what stays, install what's missing, uninstall what doesn't belong, and prune stale caches and data dirs.
 
-The `claude plugin uninstall` command does **not** prune `~/.claude/plugins/cache/` or `~/.claude/plugins/data/`. This skill does, but only with confirmation — data dirs may hold user state worth preserving.
+Claude Code clears both directories on its own schedule, and what this skill changes is the timing. An uninstall deletes the plugin's data dir right away without asking, so Step 3 passes `--keep-data` to keep it for Step 5 to ask about. A superseded version cache it only marks orphaned, and a background sweep removes it around 14 days later, so pruning here reclaims two weeks of disk the user would otherwise carry. Confirmation before deletion is the point: data dirs may hold user state worth preserving.
 
 ## Source of truth
 
@@ -20,6 +20,7 @@ The `claude plugin uninstall` command does **not** prune `~/.claude/plugins/cach
 Plugins with **Scope: project** are checked into a repo's `.claude/settings.json` and shared with the team. **Do not uninstall them** — `claude plugin uninstall` will fail with a clear error. Report them as "skipped (team-shared)" and move on. User-scope plugins are personal and safe to reconcile.
 
 ## Guardrail: a plugin shared by two marketplaces
+<!-- covers: GUARD-03 -->
 
 The same plugin can be published to more than one marketplace — a public marketplace and a separate mirror, say. When both are registered (common while migrating from one to the other), `claude plugin list` shows two rows for that plugin — `foo@marketplace-a` and `foo@marketplace-b` — but `installed_plugins.json` records the install **once**, under whichever marketplace it was installed from. The other row points at that same on-disk install.
 
@@ -57,10 +58,12 @@ flowchart TD
 ```
 
 ## Output model: composition-first, scannable surfaces
+<!-- covers: REPORT-01, REPORT-02 -->
 
 Don't narrate the run as a scroll of per-plugin lines. Use three surfaces: an **inventory summary + plan table** up front, the **native task list** for progress, and a **scannable final report** at the end. Both the opening summary and the closing report lead with the same composition line (installed / enabled / disabled) and share one emoji vocabulary, so the run reads as one coherent thing.
 
 ### Voice: report outcomes, not your reasoning
+<!-- covers: REPORT-04, REPORT-06, REPORT-07 -->
 
 The user cares about **what changed and what they must do next** — not how you figured it out. Do the reasoning silently and emit only results.
 
@@ -73,6 +76,7 @@ The user cares about **what changed and what they must do next** — not how you
 The detailed specs for these three surfaces — the shared emoji vocabulary, the plan/progress/report layouts, and the terminal-is-append-only rationale behind them — live in **[references/output-format.md](references/output-format.md)**. Read it before rendering; the rest of this file assumes that vocabulary.
 
 ## Step 0: Take the maintenance lock
+<!-- covers: RECON-01, RECON-02, RECON-03 -->
 
 `claude plugin` has **no concurrency control**: install/update/uninstall all mutate the same shared state — the install manifest, the per-marketplace git clones, the per-version caches — with no locking. Two reconciles, or a reconcile overlapping another session's plugin operations, can interleave and leave that state in a mix neither intended (an uninstall in one session racing an update in another). So take a cooperative lock for the duration of the reconcile:
 
@@ -86,6 +90,7 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-maintenance-lock.sh" acquire
 Release it in Step 6, on every exit path. The lock self-clears if this run crashes (a lock older than the stale threshold is treated as abandoned and stolen by the next run), so a missed release degrades to a stale-lock steal, not a permanent block.
 
 ## Step 1: Inventory
+<!-- covers: RECON-05, RECON-06, AUTO-06 -->
 
 These are read-only reads of disk state — safe to run in parallel (the concurrency hazard is only among *mutating* `claude plugin` operations, handled in Step 2):
 
@@ -107,15 +112,20 @@ jq '.plugins | keys' ~/.claude/plugins/installed_plugins.json
 
 The manifest keys by the same `<plugin>@<marketplace>` form. A `claude plugin list` row whose key is absent here shares another marketplace's single on-disk install.
 
-While you have the marketplace state, note **auto-update** coverage for the final report — a marketplace is auto-updating when its `extraKnownMarketplaces.<name>.autoUpdate` is `true` in `~/.claude/settings.json`:
+While you have the marketplace state, note **auto-update** coverage for the final report. The registered marketplaces are the keys of `~/.claude/plugins/known_marketplaces.json`; a marketplace is auto-updating when `extraKnownMarketplaces.<name>.autoUpdate` is `true` in `~/.claude/settings.json`. Read the two together, the way the hook does, so a marketplace that has no settings entry at all still gets a row:
 
 ```bash
-jq '.extraKnownMarketplaces | to_entries | map({(.key): (.value.autoUpdate // false)}) | add' ~/.claude/settings.json
+jq -rn --slurpfile k ~/.claude/plugins/known_marketplaces.json --slurpfile s ~/.claude/settings.json '
+  (($s[0].extraKnownMarketplaces // {}) as $ex
+   | $k[0] | keys[] | "\(.): \(($ex[.].autoUpdate // false))")'
 ```
+
+Enumerating `extraKnownMarketplaces` alone would report the wrong set and fail on the state that matters most: a marketplace missing from it is the one the hook is about to arm, and it shows up as no row rather than `false`, while a settings file with no such key at all makes the whole expression error.
 
 shipshape's `SessionStart` hook enforces this — it arms any marketplace missing the flag, effective next launch — so the skill only **reports** status here; it doesn't write. Surface any marketplace still showing `false` so the user knows the hook will pick it up.
 
 ## Step 2: Update plugins
+<!-- covers: RECON-07, RECON-08, RECON-09 -->
 
 **Do not blanket-parallelize updates.** `claude plugin update` refreshes the plugin's marketplace by re-cloning it; run several updates for plugins from the *same* marketplace at once (the common case) and the clones collide (`destination path already exists and is not an empty directory`), so some updates fail with `Plugin not found` and are silently skipped in the parallel output. The marketplace isn't damaged — a sequential retry succeeds immediately — but the failure hides in the noise.
 
@@ -138,10 +148,13 @@ Updates are fast and network-bound, and with the marketplaces already refreshed 
 Track the pass on the **native task list** (surface 2 in references/output-format.md) — mark the `Update plugins` task `in_progress` before the first update, `completed` after the last. Don't emit a line per plugin; the results land in the final report (Step 3).
 
 ## Step 3: Reconcile differences
+<!-- covers: RECON-10, RECON-11, RECON-11a, GUARD-01, GUARD-02 -->
 
 - **Extras** (installed, not desired):
   - **Shared on-disk install** (see the guardrail above — the extra's key is absent from `installed_plugins.json` while another row for the same plugin name is present) → **do not uninstall.** Removing this marketplace key deletes the plugin's only install record, taking the enabled copy with it. Surface it as a warning with the manifest-vs-list evidence and let the user resolve it deliberately (re-point `enabledPlugins`, or uninstall and reinstall from the desired marketplace). Report as "skipped (shared install)".
-  - **User-scope** → `claude plugin uninstall <plugin>@<marketplace> -y`, then confirm against the manifest: re-read `installed_plugins.json` and check the key is gone. The uninstall reports success regardless, so verify the effect rather than trusting the message.
+  - **User-scope** → `claude plugin uninstall <plugin>@<marketplace> -y --keep-data`, then confirm against the manifest: re-read `installed_plugins.json` and check the key is gone. The uninstall reports success regardless, so verify the effect rather than trusting the message.
+
+    `--keep-data` is not optional. Uninstalling from a plugin's last remaining scope deletes its `${CLAUDE_PLUGIN_DATA}` directory, so without the flag Step 3 destroys accumulated user state before Step 5 gets to ask about it. Keeping the dir hands it to Step 4, which classifies it as an orphan, and to Step 5, which asks before removing anything non-empty. A data dir the user agrees to lose is one they were shown first.
   - **Project-scope** → skip with a warning ("team-shared via repo settings; remove from the repo's `.claude/settings.json` instead")
 - **Missing** (desired, not installed):
   - Offer to install: `claude plugin install <plugin>@<marketplace>`
@@ -150,6 +163,7 @@ Track the pass on the **native task list** (surface 2 in references/output-forma
 The reconcile outcomes feed the **final report** (surface 3 in references/output-format.md) — the scannable, emoji-tagged status block, opening with the same composition line and reporting reconcile / updates / cache / data. Statuses map to the shared vocabulary: ⬆️ updated · ✅ current · ⏭️ skipped (team-shared / shared install) · 🗑️ uninstalled · ➕ install? (missing). List every enabled plugin on its own row rather than collapsing a remainder into a count; if nothing changed at all, the report is the composition line plus a one-line "nothing to reconcile."
 
 ## Step 4: Scan caches and data dirs
+<!-- covers: PRUNE-01, PRUNE-02, PRUNE-03, PRUNE-04, PRUNE-05 -->
 
 After reconcile, scan both directories. The cache layout is `~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/`. The data layout is `~/.claude/plugins/data/<plugin>-<marketplace>/` (note: hyphen-joined, not `@`).
 
@@ -164,11 +178,12 @@ find ~/.claude/plugins/data -mindepth 1 -maxdepth 1 -type d
 Classify every entry against the **currently installed** set (use `claude plugin list` again — the inventory just changed):
 
 - **Orphan cache** — `<plugin>@<marketplace>` no longer installed. Delete-eligible (subject to the `.in_use` check below).
-- **Stale version cache** — `<plugin>@<marketplace>` is installed but `<version>` doesn't match the current installed version. Delete-eligible (subject to the `.in_use` check below). Nothing prunes these automatically — left alone they accumulate, and since each version dir is loaded at the startup of any session pinned to it, that's wasted disk and a heavier plugin set. Running this skill is what keeps the cache at one version per plugin.
-- **Orphan data dir** — `<plugin>-<marketplace>` slug doesn't match any installed plugin. This is the orphan class nothing else cleans: `claude plugin uninstall` doesn't remove data dirs, and the version-cache lifecycle never touches them. Flag a genuine orphan (a slug for a plugin that's truly gone) so the user can decide whether the data still matters.
+- **Stale version cache** — `<plugin>@<marketplace>` is installed but `<version>` doesn't match the current installed version. Delete-eligible (subject to the `.in_use` check below). An update marks the superseded dir orphaned and a background sweep removes it around 14 days later, so these accumulate for as long as that grace period lasts. Running this skill is what keeps the cache at one version per plugin now rather than two weeks from now.
+- **Orphan data dir** — `<plugin>-<marketplace>` slug doesn't match any installed plugin. Either a plugin Step 3 uninstalled with `--keep-data`, or one removed outside this skill by an uninstall that ran with `--keep-data` too. Flag it so the user can decide whether the data still matters; Step 5 asks before removing anything non-empty.
 - **`-inline` data dir** — **ignore it.** A `<plugin>-inline` slug is a benign artifact of testing a plugin locally (an inline/skills-dir install), not an orphan and not drift. Don't flag it, don't count it, don't offer to remove it — leave it alone and omit it from the report entirely.
 
 ### Respect `.in_use` leases
+<!-- covers: PRUNE-06, PRUNE-07, PRUNE-08, REPORT-05 -->
 
 Each plugin version dir carries an `.in_use/` directory in which every running session drops a lease file — `{"pid":<n>,"procStart":"<ts>"}`. It's a reference count: a version dir is **live** if any lease names a running process **whose start time still matches the lease's `procStart`**. **Never delete a cache dir with a live lease** — another session loaded that version at startup and is still using its hooks/skills; pruning it breaks that session until it restarts. A lease whose PID is dead is stale and safe to ignore (a platform sweep, recorded in `~/.claude/plugins/.last_inuse_sweep`, eventually clears dead leases).
 
@@ -210,6 +225,7 @@ When a genuine orphan cache/data dir is present, table only those:
 ```
 
 ## Step 5: Clean up (with confirmation)
+<!-- covers: PRUNE-09, PRUNE-10, PRUNE-11 -->
 
 - **Live-leased cache dirs** (the `.in_use` check above passed) — **never delete**, regardless of class. A live session is loaded from it; pruning breaks that session. Report as "skipped (in use)".
 - **Empty cache dirs and orphan/stale caches with no live lease** — safe to delete; do it without asking.
@@ -219,6 +235,7 @@ When a genuine orphan cache/data dir is present, table only those:
 Use `rm -rf` only after explicit confirmation for non-empty dirs. Never delete the parent `cache/<marketplace>/` or `data/` directories themselves.
 
 ## Step 6: Reload plugins
+<!-- covers: RECON-04, RECON-12, RECON-13 -->
 
 **First, release the maintenance lock from Step 0** — the mutating work is done, so hold it no longer than necessary (the reload is a human action outside this run):
 
@@ -232,13 +249,17 @@ Installs, uninstalls, and updates change plugins on disk but don't take effect i
 
 ```text
 Ask the user to run /reload-plugins in this session — and in any other active
-Claude Code session, since each loads plugins independently.
+Claude Code session, since each loads plugins independently. If it warns that
+the reload will re-read the conversation, it has skipped: rerun it as
+/reload-plugins --force.
 ```
+
+Name the `--force` rerun in the ask, not after the user reports the warning. A reload that would invalidate the prompt cache warns and does nothing until it's rerun with the flag, so a plain "run `/reload-plugins`" can leave the reconcile unapplied while reading as done.
 
 Two notes worth stating in the report:
 
 - **Other running sessions still need their own reload.** This reconcile only landed in the session that ran it; every other live session keeps the plugin set it loaded at startup until it reloads or restarts. (Their *loaded* version dirs were protected from pruning by the `.in_use` check in Step 5 — they're stale, not broken.)
-- **Reload is rarely needed going forward.** With marketplace auto-update on (shipshape's `SessionStart` hook), every new session loads the current set at launch. This step matters mainly for the session that just ran a manual reconcile.
+- **Auto-update makes reloads routine, not rare.** Claude Code checks for marketplace and plugin updates *after* a session starts, with a random delay of up to ten minutes, so a session launches on whatever was on disk and picks the new versions up either through a reload it prompts for or at the next launch. With shipshape's `SessionStart` hook arming auto-update, expect that prompt in ordinary sessions — this step isn't only for the session that ran a manual reconcile.
 
 Skip this entirely if Step 3 made no changes and Step 5 pruned nothing — there's nothing to reload.
 
@@ -249,7 +270,7 @@ claude plugin list                                    # inventory
 claude plugin marketplace update                       # refresh all marketplaces once (do before updates)
 claude plugin update <plugin>@<marketplace>           # update (run serialized, not in parallel)
 claude plugin install <plugin>@<marketplace>          # install
-claude plugin uninstall <plugin>@<marketplace> -y     # uninstall (fails on project-scope)
+claude plugin uninstall <plugin>@<marketplace> -y --keep-data   # uninstall, keeping the data dir for Step 5 to ask about
 claude plugin --help                                  # full subcommand list (includes prune, enable, disable)
 ```
 

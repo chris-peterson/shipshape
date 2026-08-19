@@ -1,2 +1,7 @@
 - [Home](/)
-- [SPEC](/spec)
+- Skills
+  - [Plugin maintenance](/skills/plugin-maintenance)
+  - [Claude Code version](/skills/claude-code-version)
+- [Hooks](/hooks)
+- [Specification](/spec)
+- [Coverage](/status)

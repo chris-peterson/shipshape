@@ -1,4 +1,5 @@
 # Output format: composition-first, scannable surfaces
+<!-- covers: REPORT-01, REPORT-03 -->
 
 Don't narrate the run as a scroll of per-plugin lines. Use three surfaces: an **inventory summary + plan table** up front, the **native task list** for progress, and a **scannable final report** at the end. Both the opening summary and the closing report lead with the same composition line (installed / enabled / disabled) and share one emoji vocabulary, so the run reads as one coherent thing.
 

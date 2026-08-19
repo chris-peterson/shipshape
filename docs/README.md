@@ -11,9 +11,9 @@ has two jobs about that: tell you what changed, and keep what it can current.
 
 | What moves | What shipshape does about it |
 |---|---|
-| Claude Code itself | a `SessionStart` hook banners a version change, and `/claude-code-version` walks what's new, runs the instructions you wrote for an upgrade, and clears the banner |
-| Your installed plugins | `/plugin-maintenance` reconciles them against your `enabledPlugins`, updates what stays, and reaps the caches and data dirs `uninstall` leaves behind |
-| Your marketplaces | a second `SessionStart` hook arms `autoUpdate`, so plugins keep themselves current without you asking |
+| Claude Code itself | the `claude-code-version` hook posts a banner when the version moves, and `/claude-code-version` walks what's new, runs the instructions you wrote for an upgrade, and clears the banner |
+| Your installed plugins | `/plugin-maintenance` reconciles them against your `enabledPlugins`, updates what stays, and prunes the caches and data dirs an uninstall leaves for later |
+| Your marketplaces | the `enforce-autoupdate` hook arms `autoUpdate`, so plugins keep themselves current without you asking |
 
 > [!TIP]
 > [Thoughtworks' Technology Radar](https://www.thoughtworks.com/radar) (Vol. 34,
@@ -27,7 +27,7 @@ has two jobs about that: tell you what changed, and keep what it can current.
 ## In action
 
 A new Claude Code arrives without a word about it, plugins drift out of date, and
-`uninstall` leaves clutter behind:
+an uninstall leaves cache and data dirs to deal with:
 
 <div class="cw-session" data-cw-session="session"></div>
 
@@ -49,15 +49,23 @@ Run it from inside Claude Code whenever you want to tidy up:
 It reconciles **installed** plugins against the **desired** set you've declared
 in `~/.claude/settings.json` (`enabledPlugins`), then:
 
-1. **Inventory** — list what's installed (`claude plugin list`) and read your
+1. **Lock** — take a cooperative maintenance lock, since `claude plugin` has no
+   concurrency control of its own. If another session is already reconciling,
+   the run stops and names it rather than interleaving.
+2. **Inventory** — list what's installed (`claude plugin list`) and read your
    desired set.
-2. **Update** — `claude plugin update` every plugin in both sets, in parallel.
-3. **Reconcile** — uninstall user-scope extras, offer to install what's
+3. **Update** — `claude plugin update` every plugin in both sets, one at a
+   time. Updating in parallel makes plugins from the same marketplace collide
+   over its clone, and the failures hide in the output.
+4. **Reconcile** — uninstall user-scope extras, offer to install what's
    missing, and skip plugins it shouldn't remove (team-shared project-scope
    ones, and a plugin whose two marketplace rows share one on-disk install).
-4. **Scan & prune** — find orphan and stale-version caches and orphan data
+5. **Scan & prune** — find orphan and stale-version caches and orphan data
    dirs, auto-delete the safe ones, and ask before removing anything that may
    hold user state.
+6. **Reload** — plugins on disk aren't the plugins your session is running, so
+   it hands you `/reload-plugins` to apply them. Only you can type it, and it
+   reaches only the session you type it in.
 
 It lists **every enabled plugin** — each gets a row with its version and result,
 so you can confirm each plugin's disposition at a glance rather than re-running
@@ -69,13 +77,19 @@ where there's nothing left but to keep auto-update armed:
 
 <div class="cw-session" data-cw-session="examples"></div>
 
-### What it cleans that nothing else does
+### Cache and data dirs, on your schedule instead of theirs
 
-`claude plugin uninstall` removes a plugin but leaves its cache and **data**
-directories behind. Claude Code maintains per-version `.in_use` leases and
-sweeps dead ones, but it doesn't reap orphaned data dirs or stale versions left
-by updates. shipshape closes that gap — and it respects live `.in_use` leases,
-so it never prunes a version another running session is still using.
+Claude Code cleans up after an uninstall, but not at the moments you'd want. It
+deletes the plugin's **data** directory as part of the uninstall, without
+asking, and that's where accumulated state lives. It leaves the superseded
+**version cache** in place, marked orphaned, for a background sweep to remove
+about 14 days later.
+
+`/plugin-maintenance` inverts both. Its own uninstalls pass `--keep-data`, so a
+data dir survives to be reported and you decide whether it goes. And it prunes
+stale version caches now rather than two weeks from now, so the cache holds one
+version per plugin. It reads each version's live `.in_use` leases first, so it
+never prunes a version another running session is still loaded from.
 
 > [!TIP]
 > The desired set is your own `enabledPlugins`. Curate that map and
@@ -83,17 +97,27 @@ so it never prunes a version another running session is still using.
 
 ## Auto-update
 
-Updating plugins by hand is the problem shipshape exists to remove. Once
-installed, a `SessionStart` hook arms **marketplace auto-update**: it sets
-`autoUpdate: true` for every known marketplace under
-[`extraKnownMarketplaces`](https://code.claude.com/docs/en/discover-plugins) in
-`~/.claude/settings.json` — the surface Claude Code reads at startup to refresh
-marketplaces and update their plugins.
+The `enforce-autoupdate` hook arms **marketplace auto-update** at session start,
+so you stop updating plugins by hand. It reads your registered marketplaces from
+`~/.claude/plugins/known_marketplaces.json` and, for each one, sets
+`autoUpdate: true` on its
+[`extraKnownMarketplaces`](https://code.claude.com/docs/en/discover-plugins#configure-auto-updates)
+entry in `~/.claude/settings.json`, creating the entry when there isn't one.
+
+That flag is worth arming because the default is off for everything you didn't
+get from Anthropic: official marketplaces auto-update out of the box, third-party
+and local ones don't, and the only other way to turn it on is one marketplace at
+a time through the `/plugin` interface.
 
 Settings are read before hooks run, so the change takes effect on the **next**
 launch; from then on each marketplace keeps itself current. The write is
 idempotent — it happens only when a marketplace is missing the flag, so a
 settled setup is a silent no-op.
+
+Auto-update runs *after* a session starts, with a random delay of up to ten
+minutes, so the session you're in keeps the versions it launched with. When
+something updates you'll get a prompt to run `/reload-plugins`; otherwise the new
+versions are there at your next launch.
 
 > [!NOTE]
 > If your `~/.claude/settings.json` is generated or synced from another source,
@@ -109,7 +133,7 @@ changelog. And the staleness it leaves in your own AI artifacts — the rules,
 skills, hooks, and plugin manifests you wrote against the version before it, whose
 hook schemas, settings keys, and frontmatter fields may not mean what they did.
 
-A second `SessionStart` hook watches for it, and `/claude-code-version` is where
+The `claude-code-version` hook watches for it, and `/claude-code-version` is where
 you deal with it.
 
 ### The banner
@@ -123,11 +147,10 @@ Claude Code 2.1.226 → 2.1.227 · https://github.com/anthropics/claude-code/blo
 ```
 
 It stays up until the new version is **acknowledged**: every session repeats the
-line while it isn't, so an update doesn't scroll past unread in a session you
-opened to do something else. Ask what changed, tell Claude you've seen it, or
-ask it to deal with the upgrade, and it runs the skill for you — most of the
-time there's nothing for you to type. Type it yourself when the cue doesn't land
-and the line is still there next session.
+line until you do, so an update doesn't scroll past unread in a session you
+opened to do something else. Ask what changed, say you've seen it, or ask Claude
+to handle the upgrade, and it runs the skill. Type `/claude-code-version`
+yourself if the line is still there next session.
 
 The first session after installing shipshape records the version you're on and
 says nothing, since there's no delta to report yet.
@@ -158,7 +181,7 @@ the first session:
 ~/.claude/plugins/data/shipshape-<marketplace>/on-claude-code-version-change.md
 ```
 
-It arrives holding one comment explaining itself, and **a document with nothing
+It arrives holding only comments explaining what to write, and **a document with nothing
 but comments runs nothing**. Write plain instructions into it, naming the
 commands you want run:
 

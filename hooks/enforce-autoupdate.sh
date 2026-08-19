@@ -14,6 +14,7 @@
 # session. Existing extraKnownMarketplaces entries and all other settings keys
 # are preserved.
 
+# covers: AUTO-01, AUTO-02, AUTO-03, AUTO-04, AUTO-05
 set -euo pipefail
 
 KNOWN="$HOME/.claude/plugins/known_marketplaces.json"
