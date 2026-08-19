@@ -4,10 +4,10 @@
 
 name: shipshape
 version: 0.5.0
-description: Keep your Claude Code plugins up to date — reconcile installed plugins against your desired set, update them, and prune stale caches.
+description: Know what's changing in your Claude Code harness and keep it current — every Claude Code upgrade handled, every plugin reconciled, updated, and pruned.
 author: chris-peterson
 repository: https://github.com/chris-peterson/shipshape
-keywords: [plugins, maintenance, auto-update, marketplace, claude-code]
+keywords: [plugins, maintenance, auto-update, marketplace, claude-code, upgrades, harness]
 license: MIT
 
 # → marketplace.json entry
@@ -18,15 +18,16 @@ marketplace:
 # → marketplace SPA; keys mirror the SPA's PLUGINS object.
 suite:
   group: safety
-  # Activated by the user (/plugin-maintenance) and by SessionStart hooks that
-  # arm marketplace auto-update and announce a Claude Code version change.
+  # Activated by the user (/plugin-maintenance, /claude-code-version) and by
+  # SessionStart hooks that arm marketplace auto-update and announce a Claude
+  # Code version change.
   activations: [user, session]
   gloss: Everything stowed, secured, and ready for sea.
-  pitch: "Keeps your other plugins current and your plugin dir tidy — out-of-date tooling is its own kind of risk."
-  what: "Reconciles the plugins you have installed against the set you've declared, updates them, and reaps the stale caches and orphan data dirs that uninstall leaves behind — without touching a version a live session still holds. A load-time hook turns on marketplace auto-update so plugins keep themselves current, and a second one announces a Claude Code version change, with a link to that release's changelog; acknowledging the upgrade walks you through what's new and runs the re-training instructions you wrote for one."
+  pitch: "Tells you what changed in your coding harness and keeps it current: Claude Code itself, and the plugins you've installed. Out-of-date tooling is its own kind of risk."
+  what: "Two jobs for the harness you work inside: telling you what changed, and keeping current what it can. Claude Code itself updates between launches, so the next session opens with a banner naming both versions and linking that release's changelog, and /claude-code-version walks you through what changed, runs the re-training instructions you wrote for an upgrade, and clears the banner. Your plugins it maintains directly: reconciling what's installed against the set you've declared, updating them, and reaping the stale caches and orphan data dirs that uninstall leaves behind, without touching a version a live session still holds — plus a load-time hook that arms marketplace auto-update so they keep themselves current."
   cmds:
-    - ["/plugin-maintenance", "Reconcile, update, and prune your installed plugins"]
     - ["/claude-code-version", "Handle a Claude Code upgrade: what's new, your instructions, acknowledge"]
+    - ["/plugin-maintenance", "Reconcile, update, and prune your installed plugins"]
   # Skill-anchored previews shown live on the docs site; the session: below is
   # the at-a-glance flow the hub also reads.
   # >>> shipyard:describe — generated from source by `shipyard gen-describe`; do not edit >>>
@@ -40,6 +41,12 @@ suite:
       hooks: 'Hook wiring: SessionStart→enforce-autoupdate (*), claude-code-version (*).'
   # <<< shipyard:describe <<<
   examples:
+    - label: "/claude-code-version"
+      ac: "--guard"
+      frames:
+        - { t: you, text: "/claude-code-version" }
+        - { t: claude, text: "Claude Code moved 2.1.226 → 2.1.231 since you last acknowledged. Five releases: two touch hook schemas your own hooks use. Want the walkthrough, or should I run your upgrade instructions and clear the banner?" }
+        - { t: status, text: "reads the changelog delta, runs your guide once, records the version" }
     - label: "/plugin-maintenance"
       ac: "--guard"
       frames:
@@ -56,7 +63,9 @@ suite:
     - { t: claude, text: "A couple of your plugins are behind, and one you removed left its data dir behind." }
     - { t: cmd, cmd: "/plugin-maintenance", out: "beacon 1.1.0 → 1.3.0 · moor 0.6.1 → 0.7.0 · 17 already current. Pruned 12 stale caches (~70M); asked before the one non-empty data dir." }
     - { t: event, text: "next launch: marketplace auto-update armed for every marketplace" }
-    - { t: note, text: "From here on, plugins update themselves at startup." }
+    - { t: event, text: "a week later: Claude Code 2.1.226 → 2.1.231 · banner, every session, until you acknowledge it" }
+    - { t: cmd, cmd: "/claude-code-version", out: "Walked the five entries; ran the re-training instructions you wrote. Acknowledged 2.1.231 — banner cleared." }
+    - { t: note, text: "Plugins update themselves at startup, and a Claude Code upgrade stops being something you find out about later." }
 
 docs:
   code_languages: [bash, json]

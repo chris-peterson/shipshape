@@ -1,12 +1,13 @@
 # shipshape — Specification
 
-shipshape is a Claude Code plugin that maintains your *other* Claude Code
-plugins — reconciling installed plugins against your declared desired set,
-updating what stays, pruning the stale caches and orphan data dirs that
-uninstall leaves behind, and arming marketplace auto-update so plugins keep
-themselves current. It also watches Claude Code's own version, announcing a
-change and, when you acknowledge it, running the re-training instructions you
-wrote for one.
+shipshape is a Claude Code plugin with two goals for your **harness**: that you
+know what's changing in it, and that it stays current. Claude Code itself:
+announcing a version change, walking the changelog entries you skipped, and,
+when you acknowledge the upgrade, running the re-training instructions you wrote
+for one. Your *other* plugins: reconciling installed plugins against your
+declared desired set, updating what stays, pruning the stale caches and orphan
+data dirs that uninstall leaves behind, and arming marketplace auto-update so
+plugins keep themselves current.
 
 Requirements use [EARS syntax](https://alistairmavin.com/ears) — each is one of:
 Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
@@ -14,6 +15,14 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
 
 ## Concepts
 
+- **Harness** — everything wrapped around the model that decides how well it works
+  for a user: the Claude Code install, the plugins enabled in it, and the rules,
+  skills, and hooks they wrote. [Thoughtworks' Technology
+  Radar](https://www.thoughtworks.com/radar) (Vol. 34, theme *Putting coding
+  agents on a leash*) scopes the term to the *controls* in that set — Agent
+  Skills and the marketplaces distributing them on the feedforward side, quality
+  gates on the feedback side. shipshape's scope is the staleness those controls
+  accumulate, not the controls themselves.
 - **Desired set** — the plugins declared under `enabledPlugins` in
   `~/.claude/settings.json` (a map of `<plugin>@<marketplace>` → bool). The set
   the user has said should be enabled; disk state may have drifted from it.

@@ -1,7 +1,7 @@
 {
   "name": "shipshape",
   "version": "0.5.0",
-  "description": "Keep your Claude Code plugins up to date \u2014 reconcile installed plugins against your desired set, update them, and prune stale caches.",
+  "description": "Know what's changing in your Claude Code harness and keep it current \u2014 every Claude Code upgrade handled, every plugin reconciled, updated, and pruned.",
   "author": {
     "name": "chris-peterson"
   },
@@ -12,7 +12,9 @@
     "maintenance",
     "auto-update",
     "marketplace",
-    "claude-code"
+    "claude-code",
+    "upgrades",
+    "harness"
   ],
   "homepage": "https://chris-peterson.github.io/shipshape/#/"
 }

@@ -1,9 +1,12 @@
 # shipshape
 
-A Claude Code plugin that maintains your *other* Claude Code plugins:
-reconciling what's installed against what you've declared, pruning the stale
-caches and orphan data dirs an uninstall leaves behind, and arming marketplace
-auto-update. What the skill does for a *user* lives on the docs site
+A Claude Code plugin with two goals for a user's **harness**: that they know
+what's changing in it, and that it stays current. It covers Claude Code itself
+(announcing a version change, walking the changelog delta, running the
+instructions they wrote for an upgrade) and their *other* plugins (reconciling
+what's installed against what they declared, updating it, pruning the stale
+caches and orphan data dirs an uninstall leaves behind, arming marketplace
+auto-update). What the skills do for a *user* lives on the docs site
 (https://chris-peterson.github.io/shipshape); this file is for working on the
 plugin itself.
 
@@ -90,6 +93,10 @@ Never hand-edit a generated file; edit its source and run `just generate`.
 
 ## Glossary
 
+- **Harness** — the Claude Code install, its enabled plugins, and the user's own
+  rules, skills, and hooks. shipshape reports what changed in the first, keeps the
+  second current, and hands the third to the guide the user wrote. `SPEC.md`
+  defines the term and cites its industry use.
 - **Desired set** — the plugins declared under `enabledPlugins` in
   `~/.claude/settings.json`. What the user said should be enabled; disk may have
   drifted from it.

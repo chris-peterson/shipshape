@@ -1,19 +1,33 @@
 # <img src="favicon.svg" alt="shipshape" width="64" height="64" style="vertical-align: middle"> shipshape
 
-Keep your Claude Code plugins up to date.
+Know what's changing in your Claude Code harness, and keep it current.
 
-shipshape is a Claude Code plugin for maintaining your *other* Claude Code
-plugins: a `/plugin-maintenance` skill that reconciles your installed plugins
-and reaps the clutter Claude Code leaves behind, plus load-time hooks that turn
-on marketplace auto-update so plugins stay current on their own, and tell you
-when Claude Code itself has moved to a new version — with a
-`/claude-code-version` skill that walks you through what's new and runs whatever
-you wanted done about it.
+Your **harness** is everything wrapped around the model that decides how well it
+works for you: Claude Code itself, the plugins you've installed, and the rules,
+skills, and hooks you wrote. It moves without asking. Claude Code updates itself
+between launches, plugins fall behind the set you declared, and your own
+artifacts were written against whatever version was current that week. shipshape
+has two jobs about that: tell you what changed, and keep what it can current.
+
+| What moves | What shipshape does about it |
+|---|---|
+| Claude Code itself | a `SessionStart` hook banners a version change, and `/claude-code-version` walks what's new, runs the instructions you wrote for an upgrade, and clears the banner |
+| Your installed plugins | `/plugin-maintenance` reconciles them against your `enabledPlugins`, updates what stays, and reaps the caches and data dirs `uninstall` leaves behind |
+| Your marketplaces | a second `SessionStart` hook arms `autoUpdate`, so plugins keep themselves current without you asking |
+
+> [!TIP]
+> [Thoughtworks' Technology Radar](https://www.thoughtworks.com/radar) (Vol. 34,
+> theme *Putting coding agents on a leash*) defines a **coding agent harness** as
+> "controls that guide agents' behavior before code is generated and provide
+> feedback afterwards to enable self-correction" — the feedforward half being
+> Agent Skills and the plugin marketplaces that distribute them. Those controls
+> are only as good as their current version, which is the part shipshape keeps
+> in order.
 
 ## In action
 
-Out-of-date tooling drifts silently and `uninstall` leaves clutter behind. One
-command brings the whole plugin dir back to a known-good state:
+A new Claude Code arrives without a word about it, plugins drift out of date, and
+`uninstall` leaves clutter behind:
 
 <div class="cw-session" data-cw-session="session"></div>
 
