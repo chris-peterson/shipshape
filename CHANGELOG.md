@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.6.0
+
+### Fixed
+
+- Running `/plugin-maintenance` no longer destroys a plugin's data directory. Uninstalling from a plugin's last scope deletes `${CLAUDE_PLUGIN_DATA}` by default, and the reconcile was doing that in its uninstall step, ahead of the confirmation meant to ask you first. Uninstalls now pass `--keep-data`, so accumulated state survives to be reported and you decide whether it goes.
+- `/plugin-maintenance` tells you to rerun `/reload-plugins --force` when a reload warns and skips over the prompt cache, so a reconcile can no longer read as applied while nothing was reloaded.
+- The auto-update report reads your registered marketplaces from `known_marketplaces.json`. A marketplace with no settings entry now shows as not yet armed, where it used to show as nothing at all.
+- The docs site said plugins update in parallel. They update one at a time, which is what keeps two plugins from the same marketplace colliding over its clone.
+- The docs site said an uninstall leaves cache and data directories behind. Claude Code deletes the data directory as part of the uninstall and sweeps a superseded version cache about 14 days later, so what shipshape changes is the timing.
+
+### Changed
+
+- Your version-change guide runs when you acknowledge an upgrade through `/claude-code-version`, not automatically at the first session start after one. 0.5.0's notes described the earlier behavior. The banner still repeats every session until you acknowledge it.
+- The docs site reaches its own pages: the two skills, the hooks, the spec, and the coverage ledger are in the sidebar, and the home page carries the version and the skill listing. Its in-page links resolve, and the example transcripts show figures from real runs.
+
+### Added
+
+- `/claude-code-version` handles a Claude Code version change in one place: read or write the instructions you want run on an upgrade, walk the changelog entries between the version you acknowledged and the one you're running, or acknowledge, which runs your instructions and clears the banner.
+
+### Other
+
+- Local `just docs` and `just check` builds were pinned to a stale generator, so a preview rendered a different site than the one deployed. Contributors now build with the same version CI does.
+- Each requirement in `SPEC.md` is anchored at the code that implements it with a `covers:` marker, so `STATUS.md` cites the file and a grep finds the spot.
+
 ## 0.5.0
 
 ### Added
