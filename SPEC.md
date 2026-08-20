@@ -202,12 +202,15 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
 - [VERSION-16] If a mode other than the announcement cannot answer, then the
   version hook shall exit non-zero rather than report a result it didn't produce.
 - [VERSION-17] When the version skill is invoked without a mode, shipshape shall
-  report the acknowledged and running versions and offer the skill's three modes.
+  report the acknowledged and running versions, summarize what changed, and
+  offer the skill's three modes.
 - [VERSION-18] When the user asks to see or change the guide, shipshape shall show
   it and shall write their instructions into it only once they approve the text.
-- [VERSION-19] When the user asks what changed, shipshape shall walk the changelog
-  entries after the acknowledged version through the running version, without
-  acknowledging as a side effect.
+- [VERSION-19] When the user asks what changed, shipshape shall summarize the
+  changelog entries after the acknowledged version through the running version
+  in one screen, leading with what the user would act on and offering the
+  per-release walk rather than printing it, without acknowledging as a side
+  effect.
 - [VERSION-20] When the user acknowledges an upgrade, shipshape shall carry out the
   guide's content before recording the version, and shall leave the version
   unacknowledged if a step fails.
@@ -215,6 +218,9 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
 - [VERSION-22] The version skill shall address the version hook and the plugin
   data dir by placeholder rather than by literal path, so it survives a
   shipshape update.
+- [VERSION-23] The version skill shall summarize what changed on every path but
+  the guide, so a version is never acknowledged, or offered for acknowledgement,
+  without the user having been shown what it holds.
 
 ### REPORT — Reporting & output model
 

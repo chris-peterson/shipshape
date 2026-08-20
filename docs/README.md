@@ -151,12 +151,13 @@ One skill, and it picks what to do from what you asked for:
 | Ask for | What happens |
 |---|---|
 | your guide | Shows the instructions that run on a version change, and writes new ones once you've approved the text |
-| what's new | Walks the changelog entries between the version you acknowledged and the one you're running |
-| acknowledge, dismiss, "handled" | Runs your guide, records the version, and the banner is gone |
+| what's new | A one-screen summary of what landed between the version you acknowledged and the one you're running, with the per-release walk on request |
+| acknowledge, dismiss, "handled" | Summarizes what changed, runs your guide, records the version, and the banner is gone |
 
-Acknowledging is the only thing that runs your guide, and the only thing that
-clears the banner — asking what's new leaves it up. It's a skill rather than a
-shell line you could copy from here on purpose: shipshape's own version is in
+Everything but the guide opens with that summary, so you see what a version
+holds before you clear it. Acknowledging is the only thing that runs your guide,
+and the only thing that clears the banner — asking what's new leaves it up. It's
+a skill rather than a shell line you could copy from here on purpose: shipshape's own version is in
 the path to the hook it calls, so anything literal would stop resolving at the
 next update.
 
@@ -204,8 +205,8 @@ you and write what you dictate.
 | First session after installing | The version is recorded, the document is created. Nothing else. |
 | Version unchanged | Silent. |
 | Version changed | The banner, repeating every session until acknowledged. |
-| You acknowledge, document written | Your instructions carried out, then the banner clears. |
-| You acknowledge, document still all comments | Nothing to run; the banner clears. |
+| You acknowledge, document written | What changed, your instructions carried out, then the banner clears. |
+| You acknowledge, document still all comments | What changed; nothing to run, and the banner clears. |
 | After it's acknowledged | Silent, until the next version change. |
 
 Any difference in the version string counts, patch bumps included, so `2.1.220 →

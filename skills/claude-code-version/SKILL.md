@@ -44,7 +44,7 @@ commands below.
 document holds nothing but comments, which is what it ships as.
 
 ## Pick the mode
-<!-- covers: VERSION-17 -->
+<!-- covers: VERSION-17, VERSION-23 -->
 
 | What was asked | Mode |
 |---|---|
@@ -52,8 +52,14 @@ document holds nothing but comments, which is what it ships as.
 | "what's new", "what changed", "walk me through it" | [What's new](#mode-2-what-changed) |
 | "handled", "acknowledge", "dismiss", "clear the banner", or the user has taken the update in | [Acknowledge](#mode-3-acknowledge) |
 
-With no argument, report the status line and offer the three. When a banner is
-up, lead with the two versions:
+**Every path but the guide opens with what changed.** Mode 3 and the
+no-argument path both lead with Mode 2's one-screen summary, so a version is
+never cleared, or offered up for clearing, without the user seeing what's in
+it. The guide path is the exception: writing instructions for a future upgrade
+is not handling this one.
+
+With no argument, report the status line, summarize what changed, then offer
+the three. When a banner is up, lead with the two versions:
 
 ```text
 Claude Code 2.1.234 → 2.1.235, unacknowledged. Your version-change guide is written.
@@ -95,34 +101,45 @@ Fetch the `changelog` URL from `--status` and walk the entries **after**
 they landed on. When nothing is pending, walk the entry for `current` instead
 and say that's where they already are.
 
-Report per version, newest first, and keep it to what this user would act on.
-Call out anything that touches the artifacts they write — hook events and
-schemas, settings keys, skill and plugin frontmatter, permission syntax — since
-that staleness is what the guide exists to repair.
+**Report one screen.** The person reading has an upgrade to get through, not a
+changelog to study. Lead with the handful of items *this* user would act on: a
+new skill, command, or tool; a changed default; and anything touching the
+artifacts they write — hook events and schemas, settings keys, skill and plugin
+frontmatter, permission syntax — since that staleness is what the guide exists
+to repair. One line each, naming the version it landed in. Then say how many
+entries you passed over, and offer the per-release walk rather than printing it.
+
+Nothing worth acting on is its own answer: say the releases were internal fixes
+and stop there.
 
 Walking is not acknowledging. End by offering to acknowledge (Mode 3) while
 `pending` is true, and take an assenting reply as the go-ahead.
 
 ## Mode 3: acknowledge
-<!-- covers: VERSION-20, VERSION-21 -->
+<!-- covers: VERSION-20, VERSION-21, VERSION-23 -->
 
 Stop here when `pending` is false: there's no upgrade to handle, and the guide
 is an upgrade errand rather than something to run on request. Say what's
 acknowledged and offer Mode 2.
 
-**1. Read the guide.** Comments are already stripped; empty output means an
+**1. Lead with what changed.** Give Mode 2's one-screen summary before anything
+else. Acknowledging is what clears the banner, so this is the last point at
+which the user sees what they're clearing. Skip it only when they've already
+had the summary this session.
+
+**2. Read the guide.** Comments are already stripped; empty output means an
 unfilled document and nothing to carry out.
 
 ```bash
 CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude-code-version.sh --guide
 ```
 
-**2. Carry it out**, in the order written, before recording anything. It's the
+**3. Carry it out**, in the order written, before recording anything. It's the
 user's own instruction to you. If a step fails or needs a decision, stop and
 ask — leaving the version unacknowledged means the banner brings them back to
 it, where recording first would bury a half-run upgrade.
 
-**3. Record the version.** Use the version the user was *shown* — the one this
+**4. Record the version.** Use the version the user was *shown* — the one this
 session's banner and hook context name. Fall back to `current` from `--status`
 only when this session carries no banner, which is the case when they're acting
 on one they saw earlier. Claude Code can update its own binary mid-session, and
@@ -132,7 +149,7 @@ recording a version nobody was shown swallows that change.
 CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude-code-version.sh --ack <version>
 ```
 
-**4. Report** what ran and what was recorded. The script prints its own line;
+**5. Report** what ran and what was recorded. The script prints its own line;
 pass it through:
 
 ```text
