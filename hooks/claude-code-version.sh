@@ -7,12 +7,13 @@
 #   claude-code-version.sh --status     report both versions and the guide, as JSON
 #   claude-code-version.sh --guide      print the guide's content (nothing when unfilled)
 #
-# Claude Code updates itself between launches. Two things go unnoticed when it
-# does: the change itself, which turns a new behavior into a mystery until you
-# think to check `claude --version` against the changelog; and the staleness it
-# leaves in your AI artifacts, whose hook schemas, settings keys, and skill
-# frontmatter were written against the version before it. Both key off the same
-# comparison, so they're one hook: one `claude --version`, one marker, one emit.
+# Claude Code updates itself in the background, and the new version takes effect
+# at the next launch. Two things go unnoticed when it does: the change itself,
+# which turns a new behavior into a mystery until you think to check
+# `claude --version` against the changelog; and the staleness it leaves in your
+# AI artifacts, whose hook schemas, settings keys, and skill frontmatter were
+# written against the version before it. Both key off the same comparison, so
+# they're one hook: one `claude --version`, one marker, one emit.
 #
 # The marker holds the version the user has *acknowledged*, not the one last
 # seen, so a version change survives the session it appears in — a session

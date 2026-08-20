@@ -5,7 +5,7 @@
 Your **harness** is everything wrapped around the model that decides how well it
 works for you: Claude Code itself, the plugins you've installed, and the rules,
 skills, and hooks you wrote. It moves without asking. Claude Code updates itself
-between launches, plugins fall behind the set you declared, and your own
+in the background, plugins fall behind the set you declared, and your own
 artifacts were written against whatever version was current that week. shipshape
 has two jobs about that: tell you what changed, and keep what it can current.
 
@@ -114,8 +114,9 @@ versions are there at your next launch.
 
 ## When Claude Code changes version
 
-Claude Code updates itself between launches without saying much about it. Two
-things go unnoticed when it does. The change itself, which turns a new behavior
+Claude Code updates itself in the background, and the new version takes effect
+at your next launch. Its own notice tells you an update installed, not what's in
+it, so two things go unnoticed. The change itself, which turns a new behavior
 into a mystery until you think to check `claude --version` against the
 changelog. And the staleness it leaves in your own AI artifacts — the rules,
 skills, hooks, and plugin manifests you wrote against the version before it, whose
