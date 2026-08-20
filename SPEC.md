@@ -106,6 +106,14 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   shall name the `--force` rerun that a prompt-cache warning requires.
 - [RECON-13] If reconciliation made no changes and pruning removed nothing, then
   shipshape shall skip the reload step.
+- [RECON-14] If an install or update fails because a marketplace-declared
+  command was not accepted — a `headersHelper` minting the archive fetch's
+  headers, or a `command` source printing the plugin directory — then shipshape
+  shall report the plugin as needing the user's own terminal, quoting the
+  command line to run there, and shall not retry it as a transient failure.
+  `-y` cannot stand in for that acceptance: Claude Code ignores the flag inside
+  a session, and the skill's shell has no TTY to prompt on, so the command is
+  printed and declined.
 
 ### GUARD — Guardrails
 

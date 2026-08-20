@@ -125,7 +125,7 @@ Enumerating `extraKnownMarketplaces` alone would report the wrong set and fail o
 shipshape's `SessionStart` hook enforces this — it arms any marketplace missing the flag, effective next launch — so the skill only **reports** status here; it doesn't write. Surface any marketplace still showing `false` so the user knows the hook will pick it up.
 
 ## Step 2: Update plugins
-<!-- covers: RECON-07, RECON-08, RECON-09 -->
+<!-- covers: RECON-07, RECON-08, RECON-09, RECON-14 -->
 
 **Do not blanket-parallelize updates.** `claude plugin update` refreshes the plugin's marketplace by re-cloning it; run several updates for plugins from the *same* marketplace at once (the common case) and the clones collide (`destination path already exists and is not an empty directory`), so some updates fail with `Plugin not found` and are silently skipped in the parallel output. The marketplace isn't damaged — a sequential retry succeeds immediately — but the failure hides in the noise.
 
@@ -141,6 +141,10 @@ Then update each plugin **serialized** — one at a time, not a parallel batch:
 claude plugin update <plugin>@<marketplace>
 ```
 
+**A marketplace-declared command is a hard stop, not a retry.** A catalog entry may declare a `headersHelper` (a command that mints the HTTP headers for the plugin's archive fetch) or a `command` source (a command that prints the plugin directory). Claude Code runs either one only against the user's explicit acceptance, and it will not take that acceptance from inside a session: this pass has no TTY to prompt on, so the command is printed, not accepted, and the update fails with `fetches its archive through a headersHelper command that was not run` or `… has not been reviewed yet, so it was not run`. The plugin was not updated.
+
+`-y` doesn't reach it — inside a Claude Code session the flag is ignored outright (`-y/--yes is ignored inside a Claude Code session`), so passing it changes only which warning prints. Report the plugin ⌨️ **needs your terminal** and quote the one line for the user to run in their own shell, where the prompt appears and they can review the command before accepting it. Don't retry it as a transient failure: the refusal is a standing consent gap, and a retry prints the same warning.
+
 Updates are fast and network-bound, and with the marketplaces already refreshed each one is cheap; the clone-collision cost far outweighs the parallelism. (If speed ever matters on a large set, the only safe parallelism is across *distinct* marketplaces — never two updates of the same marketplace at once.)
 
 **Surface and retry failures — never lose one in the output.** If an update reports `Plugin not found` or another transient error, retry it once serially and reflect the real outcome in the final report. An update that stays failed is a row the user needs to see, not a silent gap.
@@ -148,7 +152,7 @@ Updates are fast and network-bound, and with the marketplaces already refreshed 
 Track the pass on the **native task list** (surface 2 in references/output-format.md) — mark the `Update plugins` task `in_progress` before the first update, `completed` after the last. Don't emit a line per plugin; the results land in the final report (Step 3).
 
 ## Step 3: Reconcile differences
-<!-- covers: RECON-10, RECON-11, RECON-11a, GUARD-01, GUARD-02 -->
+<!-- covers: RECON-10, RECON-11, RECON-11a, RECON-14, GUARD-01, GUARD-02 -->
 
 - **Extras** (installed, not desired):
   - **Shared on-disk install** (see the guardrail above — the extra's key is absent from `installed_plugins.json` while another row for the same plugin name is present) → **do not uninstall.** Removing this marketplace key deletes the plugin's only install record, taking the enabled copy with it. Surface it as a warning with the manifest-vs-list evidence and let the user resolve it deliberately (re-point `enabledPlugins`, or uninstall and reinstall from the desired marketplace). Report as "skipped (shared install)".
@@ -159,8 +163,9 @@ Track the pass on the **native task list** (surface 2 in references/output-forma
 - **Missing** (desired, not installed):
   - Offer to install: `claude plugin install <plugin>@<marketplace>`
   - Ask before installing — the desired set may be aspirational or out-of-date.
+  - If the install fails on a marketplace-declared command (see Step 2), report it ⌨️ **needs your terminal** with the same line for the user's own shell. Their yes to the offer can't stand in for the acceptance Claude Code requires at the prompt.
 
-The reconcile outcomes feed the **final report** (surface 3 in references/output-format.md) — the scannable, emoji-tagged status block, opening with the same composition line and reporting reconcile / updates / cache / data. Statuses map to the shared vocabulary: ⬆️ updated · ✅ current · ⏭️ skipped (team-shared / shared install) · 🗑️ uninstalled · ➕ install? (missing). List every enabled plugin on its own row rather than collapsing a remainder into a count; if nothing changed at all, the report is the composition line plus a one-line "nothing to reconcile."
+The reconcile outcomes feed the **final report** (surface 3 in references/output-format.md) — the scannable, emoji-tagged status block, opening with the same composition line and reporting reconcile / updates / cache / data. Statuses map to the shared vocabulary: ⬆️ updated · ✅ current · ⏭️ skipped (team-shared / shared install) · 🗑️ uninstalled · ➕ install? (missing) · ⌨️ needs your terminal. List every enabled plugin on its own row rather than collapsing a remainder into a count; if nothing changed at all, the report is the composition line plus a one-line "nothing to reconcile."
 
 ## Step 4: Scan caches and data dirs
 <!-- covers: PRUNE-01, PRUNE-02, PRUNE-03, PRUNE-04, PRUNE-05 -->

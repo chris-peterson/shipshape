@@ -19,6 +19,7 @@ A shared emoji vocabulary ties the surfaces together — the same marker means t
 | ⏭️ | skipped (team-shared, or shared on-disk install) |
 | 🔒 | stale cache pinned by a live session (not pruned) · 🧹 pruned |
 | ⚠️ | needs your judgment (orphan data dir, shared-install anomaly) |
+| ⌨️ | needs your terminal (a marketplace-declared command only you can accept) |
 
 ## 1. Inventory summary + plan table
 
