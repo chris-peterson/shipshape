@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.7.0
+
+### Added
+
+- `/claude-code-version` opens with what changed on every path but the guide. Acknowledging an upgrade now summarizes the release before it runs your instructions and clears the banner, so what a version holds reaches you whether or not you think to ask for it.
+
+### Changed
+
+- The what's-new summary is one screen: the handful of items you'd act on, one line each with the version each landed in, and the per-release walk on request rather than printed by default.
+- The docs and the version hook describe Claude Code's self-update as it works. The update installs in the background while a session runs, and the new version takes effect at your next launch.
+
 ## 0.6.0
 
 ### Fixed
