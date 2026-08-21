@@ -51,6 +51,8 @@ just test        # every scripts/tests/*.test.sh
 just check       # validate source and preview the pending projection (no write)
 just generate    # regenerate plugin.json and docs/ from plugin.yml and the sources
 just docs        # serve the docsify site locally
+just plugin-json # regenerate .claude-plugin/plugin.json alone
+just describe    # resync plugin.yml's suite.describe block alone
 
 bash scripts/tests/<name>.test.sh    # one suite
 ```
@@ -93,37 +95,8 @@ Never hand-edit a generated file; edit its source and run `just generate`.
 
 ## Glossary
 
-- **Harness** — the Claude Code install, its enabled plugins, and the user's own
-  rules, skills, and hooks. shipshape reports what changed in the first, keeps the
-  second current, and hands the third to the guide the user wrote. `SPEC.md`
-  defines the term and cites its industry use.
-- **Desired set** — the plugins declared under `enabledPlugins` in
-  `~/.claude/settings.json`. What the user said should be enabled; disk may have
-  drifted from it.
-- **Installed set** — what `claude plugin list` reports, each with a
-  `<plugin>@<marketplace>` key, version, scope, and status.
-- **Install manifest** — `~/.claude/plugins/installed_plugins.json`, the record
-  every uninstall is gated on.
-- **Scope** — a plugin's origin: **user** (personal, safe to reconcile),
-  **project** (checked into a repo, team-shared), or **local**.
-- **Version cache** — `~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/`,
-  the on-disk copy a pinned session loads at startup.
-- **Data dir** — `~/.claude/plugins/data/<plugin>-<marketplace>/`, which may hold
-  accumulated user state. A slug ending `-inline` is ignored entirely.
-- **`.in_use` lease** — a `{"pid","procStart"}` file each running session drops
-  against the version it loaded.
-- **Maintenance lock** — the cooperative lock held for a reconcile's duration.
-- **Version marker** — `${CLAUDE_PLUGIN_DATA}/acknowledged-version`, the Claude
-  Code version the user has *acknowledged*. Not the last one seen: that
-  distinction is what makes an announcement outlive the session it appears in.
-- **Version-change guide** — `${CLAUDE_PLUGIN_DATA}/on-claude-code-version-change.md`,
-  the user's own instructions for a version change. Seeded as comments only, and
-  a comments-only guide runs nothing.
-- **Version skill** — `/claude-code-version`, the one place a version change is
-  handled: read or set the guide, walk what's new, acknowledge. The hook
-  announces and stops there, so the skill is what runs the guide — a one-time
-  errand doesn't belong on a hook that fires every session until it's cleared.
-  It's a skill rather than a documented shell line because
-  `${CLAUDE_PLUGIN_ROOT}` resolves in skill content: the path to the hook
-  carries shipshape's own version, so anything literal goes stale at the next
-  update. It's model-invocable, which is what lets the hook's handoff reach it.
+The terms this codebase runs on are defined in [SPEC.md](./SPEC.md#concepts):
+harness, desired set, installed set, install manifest, scope, version cache,
+data dir, `.in_use` lease, maintenance lock, version marker, version-change
+guide, version skill. The requirements are written against those definitions, so
+that is where they stay current.

@@ -101,10 +101,10 @@ means an edit can't leave the two disagreeing.
 
 | ID          | Status  | Location |
 |-------------|---------|----------|
-| REPORT-01  | Covered | skills/plugin-maintenance/SKILL.md; skills/plugin-maintenance/references/output-format.md |
-| REPORT-02  | Covered | skills/plugin-maintenance/SKILL.md |
+| REPORT-01  | Covered | skills/plugin-maintenance/references/output-format.md |
+| REPORT-02  | Covered | skills/plugin-maintenance/references/output-format.md |
 | REPORT-03  | Covered | skills/plugin-maintenance/references/output-format.md |
-| REPORT-04  | Covered | skills/plugin-maintenance/SKILL.md |
+| REPORT-04  | Covered | skills/plugin-maintenance/references/output-format.md |
 | REPORT-05  | Covered | skills/plugin-maintenance/SKILL.md |
 | REPORT-06  | Covered | skills/plugin-maintenance/SKILL.md |
 | REPORT-07  | Covered | skills/plugin-maintenance/SKILL.md |

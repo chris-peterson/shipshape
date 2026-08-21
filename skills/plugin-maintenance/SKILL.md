@@ -15,10 +15,6 @@ Claude Code clears both directories on its own schedule, and what this skill cha
 - **Desired plugins:** `~/.claude/settings.json` → `enabledPlugins` (a map of `<plugin>@<marketplace>` → bool). This is the set you've declared should be enabled; the disk state may have drifted from it.
 - **Installed plugins:** `claude plugin list` output. Format: each entry has `<plugin>@<marketplace>`, `Version`, `Scope` (user/project/local), `Status` (enabled/disabled).
 
-## Guardrail: project-scope team-shared plugins
-
-Plugins with **Scope: project** are checked into a repo's `.claude/settings.json` and shared with the team. **Do not uninstall them** — `claude plugin uninstall` will fail with a clear error. Report them as "skipped (team-shared)" and move on. User-scope plugins are personal and safe to reconcile.
-
 ## Guardrail: a plugin shared by two marketplaces
 <!-- covers: GUARD-03 -->
 
@@ -58,12 +54,11 @@ flowchart TD
 ```
 
 ## Output model: composition-first, scannable surfaces
-<!-- covers: REPORT-01, REPORT-02 -->
 
-Don't narrate the run as a scroll of per-plugin lines. Use three surfaces: an **inventory summary + plan table** up front, the **native task list** for progress, and a **scannable final report** at the end. Both the opening summary and the closing report lead with the same composition line (installed / enabled / disabled) and share one emoji vocabulary, so the run reads as one coherent thing.
+The run is presented on three surfaces: an inventory summary + plan table up front, the native task list for progress, and a scannable final report at the end. **[references/output-format.md](references/output-format.md)** is the source of truth for all three: the shared emoji vocabulary, the composition line both the summary and the report lead with, the per-surface layouts, and the terminal-is-append-only reasoning behind them. Read it before rendering; the rest of this file assumes that vocabulary.
 
 ### Voice: report outcomes, not your reasoning
-<!-- covers: REPORT-04, REPORT-06, REPORT-07 -->
+<!-- covers: REPORT-06, REPORT-07 -->
 
 The user cares about **what changed and what they must do next** — not how you figured it out. Do the reasoning silently and emit only results.
 
@@ -71,9 +66,7 @@ The user cares about **what changed and what they must do next** — not how you
 - **No narrated investigation.** If a check surprises you — a lease reads as in-use, a version looks off — resolve it with silent tool calls, then report the *conclusion* in one line. Never walk the user through your hypotheses, your `ps` spelunking, or your "that's almost certainly wrong… actually it's correct" reversals. That is internal dialog; it belongs in no message.
 - **Trust the skill's own tooling.** The lock script and `plugin-cache-in-use.sh` return verdicts you act on, not verdicts you audit out loud (see Step 4). If the script says a dir is in use, it's in use — report it and move on.
 - **Stay in scope.** Report only this run's plugin maintenance. Don't append status on unrelated parked work, other sessions' tasks, or what you were doing before the skill was invoked.
-- **The final summary is an emoji-tagged status block, not prose.** Emit it as defined in the output-format reference (surface 3) — composition line first (so the enabled/disabled split is declared, never introduced for the first time at the end), then reconcile / updates / cache / data as short lines or tables, then the one action the user takes (`/reload-plugins`, or "nothing changed"). **List every enabled plugin on its own row** in the updates table with its version and result — the report exists to let the reader confirm each plugin's disposition, so don't collapse the unchanged into a count. Caches stay by-exception (routine noise) — that's the one place counting still applies, not the plugin listing.
-
-The detailed specs for these three surfaces — the shared emoji vocabulary, the plan/progress/report layouts, and the terminal-is-append-only rationale behind them — live in **[references/output-format.md](references/output-format.md)**. Read it before rendering; the rest of this file assumes that vocabulary.
+- **The final summary is an emoji-tagged status block, not prose.** Emit surface 3 as the reference defines it, ending with the one action the user takes (`/reload-plugins`, or "nothing changed").
 
 ## Step 0: Take the maintenance lock
 <!-- covers: RECON-01, RECON-02, RECON-03 -->
@@ -159,13 +152,13 @@ Track the pass on the **native task list** (surface 2 in references/output-forma
   - **User-scope** → `claude plugin uninstall <plugin>@<marketplace> -y --keep-data`, then confirm against the manifest: re-read `installed_plugins.json` and check the key is gone. The uninstall reports success regardless, so verify the effect rather than trusting the message.
 
     `--keep-data` is not optional. Uninstalling from a plugin's last remaining scope deletes its `${CLAUDE_PLUGIN_DATA}` directory, so without the flag Step 3 destroys accumulated user state before Step 5 gets to ask about it. Keeping the dir hands it to Step 4, which classifies it as an orphan, and to Step 5, which asks before removing anything non-empty. A data dir the user agrees to lose is one they were shown first.
-  - **Project-scope** → skip with a warning ("team-shared via repo settings; remove from the repo's `.claude/settings.json` instead")
+  - **Project-scope** → **do not uninstall.** These are checked into a repo's `.claude/settings.json` and shared with the team, so they aren't yours to remove. Skip with a warning ("team-shared via repo settings; remove from the repo's `.claude/settings.json` instead") and report as "skipped (team-shared)". User-scope plugins are the personal ones, safe to reconcile.
 - **Missing** (desired, not installed):
   - Offer to install: `claude plugin install <plugin>@<marketplace>`
   - Ask before installing — the desired set may be aspirational or out-of-date.
   - If the install fails on a marketplace-declared command (see Step 2), report it ⌨️ **needs your terminal** with the same line for the user's own shell. Their yes to the offer can't stand in for the acceptance Claude Code requires at the prompt.
 
-The reconcile outcomes feed the **final report** (surface 3 in references/output-format.md) — the scannable, emoji-tagged status block, opening with the same composition line and reporting reconcile / updates / cache / data. Statuses map to the shared vocabulary: ⬆️ updated · ✅ current · ⏭️ skipped (team-shared / shared install) · 🗑️ uninstalled · ➕ install? (missing) · ⌨️ needs your terminal. List every enabled plugin on its own row rather than collapsing a remainder into a count; if nothing changed at all, the report is the composition line plus a one-line "nothing to reconcile."
+The reconcile outcomes feed the **final report** (surface 3 in references/output-format.md), which defines the emoji each status maps to. If nothing changed at all, the report is the composition line plus a one-line "nothing to reconcile."
 
 ## Step 4: Scan caches and data dirs
 <!-- covers: PRUNE-01, PRUNE-02, PRUNE-03, PRUNE-04, PRUNE-05 -->
@@ -183,7 +176,7 @@ find ~/.claude/plugins/data -mindepth 1 -maxdepth 1 -type d
 Classify every entry against the **currently installed** set (use `claude plugin list` again — the inventory just changed):
 
 - **Orphan cache** — `<plugin>@<marketplace>` no longer installed. Delete-eligible (subject to the `.in_use` check below).
-- **Stale version cache** — `<plugin>@<marketplace>` is installed but `<version>` doesn't match the current installed version. Delete-eligible (subject to the `.in_use` check below). An update marks the superseded dir orphaned and a background sweep removes it around 14 days later, so these accumulate for as long as that grace period lasts. Running this skill is what keeps the cache at one version per plugin now rather than two weeks from now.
+- **Stale version cache** — `<plugin>@<marketplace>` is installed but `<version>` doesn't match the current installed version. Delete-eligible (subject to the `.in_use` check below). Every update leaves one, and they sit there until Claude Code's own sweep gets to them.
 - **Orphan data dir** — `<plugin>-<marketplace>` slug doesn't match any installed plugin. Either a plugin Step 3 uninstalled with `--keep-data`, or one removed outside this skill by an uninstall that ran with `--keep-data` too. Flag it so the user can decide whether the data still matters; Step 5 asks before removing anything non-empty.
 - **`-inline` data dir** — **ignore it.** A `<plugin>-inline` slug is a benign artifact of testing a plugin locally (an inline/skills-dir install), not an orphan and not drift. Don't flag it, don't count it, don't offer to remove it — leave it alone and omit it from the report entirely.
 
