@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.8.0
+
+### Fixed
+
+- A plugin whose install or update needs a command only you can accept — a marketplace's `headersHelper`, which mints the headers for the plugin's archive fetch, or a `command` source, which prints the plugin directory — now comes back as ⌨️ **needs your terminal**, quoting the line to run in your own shell. `/plugin-maintenance` used to read that refusal as a transient failure and retry it, which printed the same warning and left the plugin neither installed nor updated. Passing `-y` doesn't reach it either: Claude Code ignores the flag inside a session.
+
+### Other
+
+- The `/plugin-maintenance` skill and its output-format reference each state the output model once, so the emoji vocabulary and the report layout have a single home. `AGENTS.md` points at `SPEC.md` for the glossary rather than restating it.
+
 ## 0.7.0
 
 ### Added
