@@ -210,8 +210,7 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
 - [VERSION-16] If a mode other than the announcement cannot answer, then the
   version hook shall exit non-zero rather than report a result it didn't produce.
 - [VERSION-17] When the version skill is invoked without a mode, shipshape shall
-  report the acknowledged and running versions, summarize what changed, and
-  offer the skill's three modes.
+  report the acknowledged and running versions and summarize what changed.
 - [VERSION-18] When the user asks to see or change the guide, shipshape shall show
   it and shall write their instructions into it only once they approve the text.
 - [VERSION-19] When the user asks what changed, shipshape shall summarize the
@@ -229,6 +228,11 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
 - [VERSION-23] The version skill shall summarize what changed on every path but
   the guide, so a version is never acknowledged, or offered for acknowledgement,
   without the user having been shown what it holds.
+- [VERSION-24] Where a version is pending, the version skill shall close every
+  path but the guide with a two-option question — acknowledge now, carrying out
+  the guide, or leave it pending — rather than a prose offer.
+- [VERSION-25] Where the guide is filled, the version skill shall precede that
+  question with what acknowledging will run, in at most three lines.
 
 ### REPORT — Reporting & output model
 
