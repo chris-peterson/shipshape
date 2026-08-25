@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.9.0
+
+### Added
+
+- `/plugin-maintenance` reclaims a `cache/<marketplace>/<plugin>/` directory once its last version has been pruned.
+
+### Changed
+
+- Pruning runs from scripts shipped with the plugin. A maintenance run no longer writes a throwaway delete script, no longer stops to ask permission to run it, and removes only what one of your registered marketplaces put there; a plugin you synced from claude.ai is reported and left alone.
+- `/claude-code-version` closes with a two-option question, acknowledge and run your guide or leave it pending, where it used to close with a sentence offering to. Where your guide is filled in, up to three lines above the question say what acknowledging will run.
+
+### Fixed
+
+- Two maintenance runs can no longer reconcile at once. A lock whose age could not be read counted as decades stale, so a second run stole a lock the first had just taken and both proceeded against the same install manifest and caches.
+- A half-written `.in_use` lease no longer costs a live session its plugin. A lease the prune could not parse read as no lease at all, and the cache directory another session was running from was deleted.
+
 ## 0.8.0
 
 ### Fixed
