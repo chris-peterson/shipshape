@@ -161,76 +161,94 @@ Track the pass on the **native task list** (surface 2 in references/output-forma
 The reconcile outcomes feed the **final report** (surface 3 in references/output-format.md), which defines the emoji each status maps to. If nothing changed at all, the report is the composition line plus a one-line "nothing to reconcile."
 
 ## Step 4: Scan caches and data dirs
-<!-- covers: PRUNE-01, PRUNE-02, PRUNE-03, PRUNE-04, PRUNE-05 -->
+<!-- covers: PRUNE-01, PRUNE-02, PRUNE-03, PRUNE-04, PRUNE-05, PRUNE-12 -->
 
-After reconcile, scan both directories. The cache layout is `~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/`. The data layout is `~/.claude/plugins/data/<plugin>-<marketplace>/` (note: hyphen-joined, not `@`).
-
-```bash
-find ~/.claude/plugins/cache -mindepth 3 -maxdepth 3 -type d
-```
+One call walks both directories and classifies everything in them:
 
 ```bash
-find ~/.claude/plugins/data -mindepth 1 -maxdepth 1 -type d
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-cache-scan.sh"
 ```
 
-Classify every entry against the **currently installed** set (use `claude plugin list` again — the inventory just changed):
+It reports by exception — a row per entry that is **not** part of a current install, then a `#totals` line:
 
-- **Orphan cache** — `<plugin>@<marketplace>` no longer installed. Delete-eligible (subject to the `.in_use` check below).
-- **Stale version cache** — `<plugin>@<marketplace>` is installed but `<version>` doesn't match the current installed version. Delete-eligible (subject to the `.in_use` check below). Every update leaves one, and they sit there until Claude Code's own sweep gets to them.
-- **Orphan data dir** — `<plugin>-<marketplace>` slug doesn't match any installed plugin. Either a plugin Step 3 uninstalled with `--keep-data`, or one removed outside this skill by an uninstall that ran with `--keep-data` too. Flag it so the user can decide whether the data still matters; Step 5 asks before removing anything non-empty.
-- **`-inline` data dir** — **ignore it.** A `<plugin>-inline` slug is a benign artifact of testing a plugin locally (an inline/skills-dir install), not an orphan and not drift. Don't flag it, don't count it, don't offer to remove it — leave it alone and omit it from the report entirely.
+```text
+cache/chris-peterson/beacon/2.3.0|stale|prunable|3.1M
+cache/chris-peterson/beacon/2.4.0|stale|in-use|3.2M
+cache/mp/gone-plugin/1.0.0|orphan|prunable|2.1M
+cache/mp/gone-plugin|empty-plugin|prunable|0K
+data/old-plugin-old-mp|orphan-data|nonempty|412K
+#totals stale=1 stale_in_use=1 orphan=1 orphan_in_use=0 empty_plugin=1 orphan_data=1 reclaimable=5.2M
+```
+
+The fields are `path|class|verdict|size`, and the path is the form Step 5 hands back.
+
+| class | What it is |
+|---|---|
+| `stale` | the plugin is installed on a different version; every update leaves one |
+| `orphan` | nothing installed claims this cache at all |
+| `empty-plugin` | a `cache/<mp>/<plugin>/` dir whose versions are all gone |
+| `orphan-data` | a data dir matching no installed plugin |
+
+`verdict` is `prunable` or `in-use` for a cache dir, `empty` or `nonempty` for a data dir. **`prunable` is Step 5's input; nothing else is.**
+
+**The scan is the classification — don't redo it.** It reads `installed_plugins.json`, whose rows record the exact `installPath` behind each install, so a dir is current because the manifest points at it. That settles the shared-install case (see the guardrail above) without comparing version strings. Entries backing a current install are omitted, and a `-inline` data dir never appears at all — it's an artifact of testing a plugin locally, not drift. Don't run your own `find`, don't re-check a verdict, and don't add a row the scan didn't print.
+
+Exit 1 means `jq` is missing or there's no install manifest: nothing was classified. Report that and skip Step 5 rather than pruning off a partial picture.
 
 ### Respect `.in_use` leases
 <!-- covers: PRUNE-06, PRUNE-07, PRUNE-08, REPORT-05 -->
 
-Each plugin version dir carries an `.in_use/` directory in which every running session drops a lease file — `{"pid":<n>,"procStart":"<ts>"}`. It's a reference count: a version dir is **live** if any lease names a running process **whose start time still matches the lease's `procStart`**. **Never delete a cache dir with a live lease** — another session loaded that version at startup and is still using its hooks/skills; pruning it breaks that session until it restarts. A lease whose PID is dead is stale and safe to ignore (a platform sweep, recorded in `~/.claude/plugins/.last_inuse_sweep`, eventually clears dead leases).
+Each version dir carries an `.in_use/` directory in which every running session drops a lease file — `{"pid":<n>,"procStart":"<ts>"}`. It's a reference count: the dir is **live** while any lease names a running process whose start time still matches that lease's `procStart`. A live-leased dir is never deleted — another session loaded that version at startup, and pruning it breaks that session until it restarts.
 
-**Match `procStart`, not just the PID.** The OS recycles PIDs: a dead session's PID gets handed to an unrelated new process, so a `ps -p <pid>` hit alone does **not** prove the lease is live — it false-positives on reuse and wedges the cache dir forever (nothing prunes it). The lease stores `procStart` precisely to disambiguate; the check compares it to the process's actual start time. The script owns the mechanism — the UTC/local timezone gap and the GNU/BSD `date` split included — so its header, not this skill, is the source of truth for how the comparison works.
+`plugin-cache-in-use.sh` owns the comparison, and both scripts call it for you: the scan to set the `in-use` verdict, the prune to re-check immediately before each delete. It's conservative by design — a missing or unparseable `procStart`, or a `date` dialect it can't read, all count as in use, so uncertainty never prunes. Its header is the source of truth for how the comparison works.
 
-That logic ships as a script — call it per version dir; exit `0` means in use (don't prune), `1` means safe to prune. It's conservative by design: a missing/unparseable `procStart` counts as in use, so uncertainty never prunes.
+**Act on the verdict; don't audit it.** A run where every stale dir reads as in-use is normal (background spares and long-lived sessions pin the versions they loaded); it is **not** a signal to go verify the script with your own `ps` calls. If you genuinely suspect a bug, that's a note to file against this skill later — not a live investigation narrated into the run.
 
-**Act on the verdict; don't audit it.** The script already handles PID reuse, the UTC/local gap, and the GNU/BSD `date` split — that's why it's a script and not bash prose in the skill. Take its exit code at face value: exit `0` → skip as in-use, exit `1` → delete-eligible. A run where every stale dir reads as in-use is normal (background spares and long-lived sessions pin the versions they loaded); it is **not** a signal to go verify the script with your own `ps` calls. If you genuinely suspect a bug, that's a note to file against this skill later — not a live investigation narrated into the run.
-
-```bash
-if bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-cache-in-use.sh" "$version_dir"; then
-  : # live lease — skip (in use)
-else
-  : # no live lease — delete-eligible
-fi
-```
-
-(The `.in_use` mechanism is observed from disk, not documented — treat it as a conservative safety check: when a lease looks live, or when you can't confidently prove it dead, don't prune.)
-
-**Report by exception here too.** Stale-version caches are routine — every update leaves one behind — and they're auto-deletable (Step 5), so they don't warrant a row each. Roll them into a single line: count and total size. Reserve table rows for the one class that needs user judgment: a genuine **orphan cache/data dir** (`-inline` dirs don't count — they're ignored). If there are none, a one-line summary is the whole report.
+**Report by exception here too.** Stale-version caches are routine — every update leaves one — and they're auto-deletable, so they don't warrant a row each. Roll them into a single line, count and total size, straight off `#totals`. Reserve table rows for the class that needs user judgment: a genuine **orphan** cache or data dir. If there are none, a one-line summary is the whole report.
 
 ```text
 Stale-version caches: 12 dirs, ~70M — auto-pruned.
 ```
 
-When some or all stale dirs are pinned by a live lease, say so in the same one line — a count, not a roster of which sessions hold what. The holders' PIDs, start times, and command lines are internal; the user needs only that they're pinned and clear on their own:
+When some or all are pinned by a live lease, say so in the same one line — a count, not a roster of which sessions hold what. The holders' PIDs, start times, and command lines are internal; the user needs only that they're pinned and clear on their own:
 
 ```text
 Stale-version caches: 22 dirs, ~10M — skipped, pinned by live sessions (they free up as those sessions exit).
 ```
 
-When a genuine orphan cache/data dir is present, table only those:
+When a genuine orphan is present, table only those:
 
 ```text
 | Path                                     | Class       | Size |
 |------------------------------------------|-------------|------|
-| ~/.claude/plugins/data/old-plugin-old-mp | orphan data | 0    |
+| ~/.claude/plugins/data/old-plugin-old-mp | orphan data | 412K |
 | ~/.claude/plugins/cache/mp/gone-plugin   | orphan cache| 2.1M |
 ```
 
 ## Step 5: Clean up (with confirmation)
-<!-- covers: PRUNE-09, PRUNE-10, PRUNE-11 -->
+<!-- covers: PRUNE-09, PRUNE-10, PRUNE-11, PRUNE-13, PRUNE-14, PRUNE-15 -->
 
-- **Live-leased cache dirs** (the `.in_use` check above passed) — **never delete**, regardless of class. A live session is loaded from it; pruning breaks that session. Report as "skipped (in use)".
-- **Empty cache dirs and orphan/stale caches with no live lease** — safe to delete; do it without asking.
-- **Non-empty data dirs** — **ask first**. They may hold user state (settings, history, accumulated context). Quote the size and a sample of file names so the user can decide.
-- **`-inline` data dirs** — leave them alone. They're benign local-testing artifacts (see Step 4); don't delete them and don't ask about them.
+Hand the prune script every `prunable` path the scan printed, as arguments:
 
-Use `rm -rf` only after explicit confirmation for non-empty dirs. Never delete the parent `cache/<marketplace>/` or `data/` directories themselves.
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-cache-prune.sh" cache/mp/plugin/1.0.0 cache/mp/plugin/1.1.0 cache/mp/gone-plugin
+```
+
+It prints a line per path and a `pruned=… skipped=… freed=…` total, and clears any plugin dir its own deletes left empty.
+
+**Never hand-roll the loop** — no `rm -rf` of your own, no `find -delete`, no one-off script written for the run. The guarantees live in this script: it refuses anything that isn't a cache version dir, a cache plugin dir, or a data dir, which is what puts `cache/<mp>/`, `cache/`, and `data/` out of reach at any depth; it clears an empty plugin dir with `rmdir` rather than a recursive delete; and it re-checks each lease at delete time instead of trusting a scan that may be minutes old.
+
+**A `nonempty` orphan data dir is the one thing to ask about first.** It may hold accumulated user state — settings, history, context. Quote its size and a sample of file names, and pass the flag only on a yes:
+
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-cache-prune.sh" --data-confirmed data/old-plugin-old-mp
+```
+
+Without the flag the script skips it and says why, so a forgotten ask degrades to "nothing happened" rather than to a deleted dir.
+
+An `in-use` path needs no handling — leave it out of the call and report it as skipped. Passing one anyway is safe (the script re-checks and skips it), but the report should say pinned, not pruned.
+
+Exit 2 means a path was refused as malformed. That's a bug in what you passed rather than something the user acts on: the reason is on stderr, nothing at that path was touched, and the valid paths in the same call still went through.
 
 ## Step 6: Reload plugins
 <!-- covers: RECON-04, RECON-12, RECON-13 -->

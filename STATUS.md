@@ -4,7 +4,7 @@ Tracks coverage of the requirements in [SPEC.md](./SPEC.md) against the single
 in-repo implementation. Status vocabulary: **Covered** · **Partial** ·
 **Missing** · **Contradicts**.
 
-**Coverage: 67/67 requirements Covered (100%)**
+**Coverage: 71/71 requirements Covered (100%)**
 **Evidence pointers:** file
 
 Location holds the file. To find the spot inside it, grep for the requirement
@@ -46,17 +46,21 @@ means an edit can't leave the two disagreeing.
 
 | ID          | Status  | Location |
 |-------------|---------|----------|
-| PRUNE-01   | Covered | skills/plugin-maintenance/SKILL.md |
-| PRUNE-02   | Covered | skills/plugin-maintenance/SKILL.md |
-| PRUNE-03   | Covered | skills/plugin-maintenance/SKILL.md |
-| PRUNE-04   | Covered | skills/plugin-maintenance/SKILL.md |
-| PRUNE-05   | Covered | skills/plugin-maintenance/SKILL.md |
-| PRUNE-06   | Covered | skills/plugin-maintenance/SKILL.md |
+| PRUNE-01   | Covered | skills/plugin-maintenance/SKILL.md; scripts/plugin-cache-scan.sh |
+| PRUNE-02   | Covered | skills/plugin-maintenance/SKILL.md; scripts/plugin-cache-scan.sh |
+| PRUNE-03   | Covered | skills/plugin-maintenance/SKILL.md; scripts/plugin-cache-scan.sh |
+| PRUNE-04   | Covered | skills/plugin-maintenance/SKILL.md; scripts/plugin-cache-scan.sh |
+| PRUNE-05   | Covered | skills/plugin-maintenance/SKILL.md; scripts/plugin-cache-scan.sh |
+| PRUNE-06   | Covered | skills/plugin-maintenance/SKILL.md; scripts/plugin-cache-prune.sh |
 | PRUNE-07   | Covered | skills/plugin-maintenance/SKILL.md; scripts/plugin-cache-in-use.sh |
 | PRUNE-08   | Covered | skills/plugin-maintenance/SKILL.md |
-| PRUNE-09   | Covered | skills/plugin-maintenance/SKILL.md |
-| PRUNE-10   | Covered | skills/plugin-maintenance/SKILL.md |
-| PRUNE-11   | Covered | skills/plugin-maintenance/SKILL.md |
+| PRUNE-09   | Covered | skills/plugin-maintenance/SKILL.md; scripts/plugin-cache-prune.sh |
+| PRUNE-10   | Covered | skills/plugin-maintenance/SKILL.md; scripts/plugin-cache-prune.sh |
+| PRUNE-11   | Covered | skills/plugin-maintenance/SKILL.md; scripts/plugin-cache-prune.sh |
+| PRUNE-12   | Covered | skills/plugin-maintenance/SKILL.md; scripts/plugin-cache-scan.sh |
+| PRUNE-13   | Covered | skills/plugin-maintenance/SKILL.md; scripts/plugin-cache-prune.sh |
+| PRUNE-14   | Covered | scripts/plugin-cache-prune.sh |
+| PRUNE-15   | Covered | skills/plugin-maintenance/SKILL.md; scripts/plugin-cache-prune.sh |
 
 ## AUTO — Auto-update enforcement
 

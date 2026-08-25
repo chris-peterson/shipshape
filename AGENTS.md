@@ -34,7 +34,14 @@ lost data:
 - **Project-scope plugins are never uninstalled.** They're checked into someone's
   repo and shared with their team.
 - **The parent `cache/<marketplace>/` and `data/` directories are never
-  deleted**, only entries within them.
+  deleted**, only entries within them. `plugin-cache-prune.sh` enforces that by
+  path shape rather than by a rule the caller has to remember: a cache path needs
+  four segments (a version dir) or three (a plugin dir, cleared with `rmdir`),
+  and a data path two, so no argument reaches a parent.
+- **The skill never writes its own delete loop.** Enumerating, classifying, and
+  deleting are mechanism, and they ship as `plugin-cache-scan.sh` and
+  `plugin-cache-prune.sh`. A loop composed for one run is untested at the moment
+  it runs, and it lands outside the paths a user can grant once.
 - **A non-empty data dir asks first**, quoting its size and a sample of names,
   because that's where accumulated user state lives.
 
@@ -66,6 +73,8 @@ skills/claude-code-version/         everything a user does about a version chang
 hooks/enforce-autoupdate.sh         SessionStart hook that arms marketplace auto-update
 hooks/claude-code-version.sh        SessionStart hook that announces a Claude Code version change; also the skill's --status, --guide, and --ack
 scripts/plugin-cache-in-use.sh      lease liveness — exit 0 in use, exit 1 delete-eligible
+scripts/plugin-cache-scan.sh        classifies cache and data entries against the install manifest
+scripts/plugin-cache-prune.sh       deletes the paths it is handed, and refuses everything else
 scripts/plugin-maintenance-lock.sh  the cooperative reconcile lock
 scripts/tests/                      bash suites, one per script
 SPEC.md / STATUS.md                 requirements and their coverage

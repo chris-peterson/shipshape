@@ -128,7 +128,8 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
 ### PRUNE — Pruning
 
 - [PRUNE-01] When reconciliation completes, shipshape shall scan the cache and
-  data directories and classify each entry against the currently installed set.
+  data directories and classify each entry against the install paths the install
+  manifest records.
 - [PRUNE-02] shipshape shall classify a cache dir whose `<plugin>@<marketplace>`
   is no longer installed as an orphan cache.
 - [PRUNE-03] shipshape shall classify a cache dir whose version does not match
@@ -150,6 +151,19 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   first, quoting its size and a sample of file names.
 - [PRUNE-11] shipshape shall never delete the parent `cache/<marketplace>/` or
   `data/` directories.
+- [PRUNE-12] shipshape shall enumerate and classify cache and data entries via
+  `plugin-cache-scan.sh`, which prints a `path|class|verdict|size` row for each
+  entry no current install claims and a `#totals` line, rather than assembling
+  the walk in the skill.
+- [PRUNE-13] shipshape shall delete only via `plugin-cache-prune.sh`, which
+  re-checks a cache dir's lease immediately before deleting it and clears a
+  plugin dir left empty with `rmdir`.
+- [PRUNE-14] If a path given to `plugin-cache-prune.sh` is not a cache version
+  dir, a cache plugin dir, or a data dir, then the script shall refuse it, leave
+  it untouched, and exit non-zero.
+- [PRUNE-15] Where a data dir to be removed is non-empty, `plugin-cache-prune.sh`
+  shall skip it unless `--data-confirmed` is passed, so the confirmation is the
+  skill's to obtain and the script's to require.
 
 ### AUTO — Auto-update enforcement
 
