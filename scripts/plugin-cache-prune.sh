@@ -18,6 +18,11 @@
 #     session can start between them, loading a version the scan called free.
 #   * Accumulated user state. A non-empty data dir needs --data-confirmed. The
 #     script will not decide that state is disposable; the skill asks the user.
+#   * Origin. The entry must sit under a marketplace in known_marketplaces.json.
+#     `cache/synced/…` holds plugins turned on in claude.ai, which nothing local
+#     installed and nothing local can reinstall, and future origins will look the
+#     same. The scan already withholds these; the check is repeated here so a
+#     caller that builds its own list cannot reach them either.
 #
 # A plugin dir left empty by this run is cleared afterwards without being asked
 # for. Either way the removal goes through `rmdir`, which refuses a directory
@@ -31,7 +36,7 @@
 #
 # Env:    CLAUDE_PLUGINS_DIR  override ~/.claude/plugins (tests)
 
-# covers: PRUNE-06, PRUNE-09, PRUNE-10, PRUNE-11, PRUNE-13, PRUNE-14, PRUNE-15
+# covers: PRUNE-06, PRUNE-09, PRUNE-10, PRUNE-11, PRUNE-13, PRUNE-14, PRUNE-15, PRUNE-16
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -56,6 +61,28 @@ if [ ${#paths[@]} -eq 0 ]; then
   echo "usage: plugin-cache-prune.sh [--data-confirmed] <path>..." >&2
   exit 2
 fi
+
+# The marketplaces this install knows about. Unreadable leaves the set empty,
+# which makes every origin unrecognized and every path a skip.
+registry="$plugins/known_marketplaces.json"
+if [ -f "$registry" ] && command -v jq >/dev/null 2>&1; then
+  marketplaces=$(jq -r 'keys[]' "$registry" 2>/dev/null || true)
+else
+  marketplaces=""
+fi
+
+known_origin() {  # $1 = a marketplace name
+  printf '%s\n' "$marketplaces" | grep -qxF -- "$1"
+}
+
+from_known_marketplace() {  # $1 = a data slug
+  local mp
+  while IFS= read -r mp; do
+    [ -n "$mp" ] || continue
+    case "$1" in *"-$mp") return 0 ;; esac
+  done <<< "$marketplaces"
+  return 1
+}
 
 size_kb() { du -sk "$1" 2>/dev/null | awk '{print $1}' || echo 0; }
 
@@ -93,6 +120,28 @@ for rel in "${paths[@]}"; do
     *) refuse "$rel" "outside cache/ and data/"; continue ;;
   esac
 
+  if [ "$kind" = data ]; then
+    case "$rel" in
+      *-inline)
+        echo "skipped $rel (inline install artifact)"
+        skipped=$((skipped + 1))
+        continue ;;
+    esac
+  fi
+
+  # Not under a marketplace we know: not ours to delete.
+  if [ "$kind" = data ]; then
+    if ! from_known_marketplace "${seg[1]}"; then
+      echo "skipped $rel (origin is not a known marketplace)"
+      skipped=$((skipped + 1))
+      continue
+    fi
+  elif ! known_origin "${seg[1]}"; then
+    echo "skipped $rel (origin '${seg[1]}' is not a known marketplace)"
+    skipped=$((skipped + 1))
+    continue
+  fi
+
   dir="$plugins/$rel"
   if [ ! -d "$dir" ]; then
     echo "absent  $rel"
@@ -118,9 +167,6 @@ for rel in "${paths[@]}"; do
     fi
     touched_parents+=("$(dirname "$dir")")
   else
-    case "$rel" in
-      *-inline) echo "skipped $rel (inline install artifact)"; skipped=$((skipped + 1)); continue ;;
-    esac
     if [ -n "$(ls -A "$dir" 2>/dev/null)" ] && [ "$data_confirmed" -eq 0 ]; then
       echo "skipped $rel (non-empty data dir; needs --data-confirmed)"
       skipped=$((skipped + 1))

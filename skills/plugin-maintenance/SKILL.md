@@ -161,7 +161,7 @@ Track the pass on the **native task list** (surface 2 in references/output-forma
 The reconcile outcomes feed the **final report** (surface 3 in references/output-format.md), which defines the emoji each status maps to. If nothing changed at all, the report is the composition line plus a one-line "nothing to reconcile."
 
 ## Step 4: Scan caches and data dirs
-<!-- covers: PRUNE-01, PRUNE-02, PRUNE-03, PRUNE-04, PRUNE-05, PRUNE-12 -->
+<!-- covers: PRUNE-01, PRUNE-02, PRUNE-03, PRUNE-04, PRUNE-05, PRUNE-12, PRUNE-16 -->
 
 One call walks both directories and classifies everything in them:
 
@@ -176,8 +176,9 @@ cache/chris-peterson/beacon/2.3.0|stale|prunable|3.1M
 cache/chris-peterson/beacon/2.4.0|stale|in-use|3.2M
 cache/mp/gone-plugin/1.0.0|orphan|prunable|2.1M
 cache/mp/gone-plugin|empty-plugin|prunable|0K
+cache/synced/helper/2.0.0|unknown-origin|skipped|1.4M
 data/old-plugin-old-mp|orphan-data|nonempty|412K
-#totals stale=1 stale_in_use=1 orphan=1 orphan_in_use=0 empty_plugin=1 orphan_data=1 reclaimable=5.2M
+#totals stale=1 stale_in_use=1 orphan=1 orphan_in_use=0 empty_plugin=1 orphan_data=1 unknown_origin=1 reclaimable=5.2M
 ```
 
 The fields are `path|class|verdict|size`, and the path is the form Step 5 hands back.
@@ -188,8 +189,11 @@ The fields are `path|class|verdict|size`, and the path is the form Step 5 hands 
 | `orphan` | nothing installed claims this cache at all |
 | `empty-plugin` | a `cache/<mp>/<plugin>/` dir whose versions are all gone |
 | `orphan-data` | a data dir matching no installed plugin |
+| `unknown-origin` | its origin is not a marketplace in `known_marketplaces.json` |
 
-`verdict` is `prunable` or `in-use` for a cache dir, `empty` or `nonempty` for a data dir. **`prunable` is Step 5's input; nothing else is.**
+`verdict` is `prunable`, `in-use`, or `skipped` for a cache dir, and `empty` or `nonempty` for a data dir. **`prunable` is Step 5's input; nothing else is.**
+
+**An `unknown-origin` entry is never pruned.** The top level of `cache/` is a marketplace name everywhere except where Claude Code puts something else there: `synced` holds plugins the user turned on in claude.ai, which nothing local installed and nothing local can reinstall. Those carry no manifest row, so the manifest alone would read them as orphans. They are reported rather than hidden because the same class covers what a marketplace the user removed left behind, and that is worth seeing. Fold the count into the stale-cache line; a row of its own is warranted only where the user asked about one.
 
 **The scan is the classification — don't redo it.** It reads `installed_plugins.json`, whose rows record the exact `installPath` behind each install, so a dir is current because the manifest points at it. That settles the shared-install case (see the guardrail above) without comparing version strings. Entries backing a current install are omitted, and a `-inline` data dir never appears at all — it's an artifact of testing a plugin locally, not drift. Don't run your own `find`, don't re-check a verdict, and don't add a row the scan didn't print.
 
@@ -226,7 +230,7 @@ When a genuine orphan is present, table only those:
 ```
 
 ## Step 5: Clean up (with confirmation)
-<!-- covers: PRUNE-09, PRUNE-10, PRUNE-11, PRUNE-13, PRUNE-14, PRUNE-15 -->
+<!-- covers: PRUNE-09, PRUNE-10, PRUNE-11, PRUNE-13, PRUNE-14, PRUNE-15, PRUNE-16 -->
 
 Hand the prune script every `prunable` path the scan printed, as arguments:
 
@@ -236,7 +240,7 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-cache-prune.sh" cache/mp/plugin/1.0.0
 
 It prints a line per path and a `pruned=… skipped=… freed=…` total, and clears any plugin dir its own deletes left empty.
 
-**Never hand-roll the loop** — no `rm -rf` of your own, no `find -delete`, no one-off script written for the run. The guarantees live in this script: it refuses anything that isn't a cache version dir, a cache plugin dir, or a data dir, which is what puts `cache/<mp>/`, `cache/`, and `data/` out of reach at any depth; it clears an empty plugin dir with `rmdir` rather than a recursive delete; and it re-checks each lease at delete time instead of trusting a scan that may be minutes old.
+**Never hand-roll the loop** — no `rm -rf` of your own, no `find -delete`, no one-off script written for the run. The guarantees live in this script: it refuses anything that isn't a cache version dir, a cache plugin dir, or a data dir, which is what puts `cache/<mp>/`, `cache/`, and `data/` out of reach at any depth; it skips any entry whose origin is not a registered marketplace, so a `synced` plugin survives even if one reaches the call; it clears an empty plugin dir with `rmdir` rather than a recursive delete; and it re-checks each lease at delete time instead of trusting a scan that may be minutes old.
 
 **A `nonempty` orphan data dir is the one thing to ask about first.** It may hold accumulated user state — settings, history, context. Quote its size and a sample of file names, and pass the flag only on a yes:
 

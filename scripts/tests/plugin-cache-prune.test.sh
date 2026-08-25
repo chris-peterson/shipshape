@@ -25,8 +25,10 @@ fixture() {
   mkdir -p "$ROOT/cache/mp1/alpha/0.9.0" "$ROOT/cache/mp1/alpha/1.0.0" \
            "$ROOT/cache/mp1/beta/0.1.0" "$ROOT/cache/mp2/gone/1.0.0" \
            "$ROOT/data/gone-mp2" "$ROOT/data/oldstate-mp3" "$ROOT/data/beta-inline"
+  mkdir -p "$ROOT/cache/synced/helper/2.0.0" "$ROOT/data/helper-synced"
   echo x > "$ROOT/cache/mp1/alpha/0.9.0/file"
   echo state > "$ROOT/data/oldstate-mp3/history.json"
+  printf '{"mp1": {}, "mp2": {}, "mp3": {}}\n' > "$ROOT/known_marketplaces.json"
 }
 prune() { OUT=$(CLAUDE_PLUGINS_DIR="$ROOT" bash "$SCRIPT" "$@" 2>&1); RC=$?; }
 trap 'rm -rf "$ROOT"' EXIT
@@ -111,6 +113,24 @@ fixture
 prune data/beta-inline
 has "inline install artifact" "an -inline data dir is skipped"
 kept "data/beta-inline" "  and survives"
+
+# --- origin: the scan withholds these, and so does the prune -------------------
+fixture
+prune cache/synced/helper/2.0.0
+exited 0 "a cache under an unknown origin is a skip, not an error"
+has "origin 'synced' is not a known marketplace" "  the skip names the origin"
+kept "cache/synced/helper/2.0.0" "  and the running plugin's code survives"
+
+fixture
+prune --data-confirmed data/helper-synced
+has "origin is not a known marketplace" "an unknown-origin data dir is skipped"
+kept "data/helper-synced" "  even with --data-confirmed"
+
+fixture
+rm -f "$ROOT/known_marketplaces.json"
+prune cache/mp1/alpha/0.9.0
+has "not a known marketplace" "no registry means no origin is known"
+kept "cache/mp1/alpha/0.9.0" "  so nothing is deleted"
 
 # --- input handling -----------------------------------------------------------
 fixture

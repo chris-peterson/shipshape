@@ -34,6 +34,12 @@ lost data:
 - **Uninstalls gate on the install manifest**, not on `claude plugin list` and
   the desired set. A key absent from the manifest while another row names the
   same plugin means a shared on-disk install — skip it.
+- **An origin that isn't a registered marketplace is never pruned.** The top of
+  `cache/` is a marketplace name except where Claude Code puts something else
+  there: `synced` is claude.ai's, and nothing local installed it or can put it
+  back. Those carry no install-manifest row, so the manifest alone reads them as
+  orphans. They're reported, not hidden, because the same class catches what a
+  removed marketplace left behind.
 - **Project-scope plugins are never uninstalled.** They're checked into someone's
   repo and shared with their team.
 - **The parent `cache/<marketplace>/` and `data/` directories are never

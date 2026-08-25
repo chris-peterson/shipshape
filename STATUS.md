@@ -4,7 +4,7 @@ Tracks coverage of the requirements in [SPEC.md](./SPEC.md) against the single
 in-repo implementation. Status vocabulary: **Covered** · **Partial** ·
 **Missing** · **Contradicts**.
 
-**Coverage: 72/72 requirements Covered (100%)**
+**Coverage: 73/73 requirements Covered (100%)**
 **Evidence pointers:** file
 
 Location holds the file. To find the spot inside it, grep for the requirement
@@ -62,6 +62,7 @@ means an edit can't leave the two disagreeing.
 | PRUNE-13   | Covered | skills/plugin-maintenance/SKILL.md; scripts/plugin-cache-prune.sh |
 | PRUNE-14   | Covered | scripts/plugin-cache-prune.sh |
 | PRUNE-15   | Covered | skills/plugin-maintenance/SKILL.md; scripts/plugin-cache-prune.sh |
+| PRUNE-16   | Covered | skills/plugin-maintenance/SKILL.md; scripts/plugin-cache-scan.sh; scripts/plugin-cache-prune.sh |
 
 ## AUTO — Auto-update enforcement
 

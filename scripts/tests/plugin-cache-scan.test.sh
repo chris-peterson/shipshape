@@ -29,6 +29,8 @@ mkcache mp2/gone/1.0.0             # orphan — no manifest key at all
 mkcache mp1/robot-sheriff/2.0.0    # current, and a hyphenated plugin name
 mkcache mp2/shared/1.0.0           # current via another marketplace's row
 
+mkcache synced/helper/2.0.0        # origin is not a marketplace at all
+
 mkdir -p "$ROOT/cache/mp2/leftover"          # plugin dir, every version gone
 mkdir -p "$ROOT/cache/mp2/strays"            # same, but holding a stray file
 echo junk > "$ROOT/cache/mp2/strays/.DS_Store"
@@ -38,12 +40,18 @@ mkdata robot-sheriff-mp1           # installed, hyphenated name
 mkdata beta-inline                 # local-testing artifact
 mkdata gone-mp2                    # orphan, empty
 mkdata oldstate-mp3                # orphan, non-empty
+mkdata helper-synced               # data dir of a non-marketplace origin
 echo state > "$ROOT/data/oldstate-mp3/history.json"
 
 # A live lease on 0.8.0: this process's real PID and start time.
 LSTART=$(ps -p $$ -o lstart= | sed 's/^ *//;s/ *$//')
 mkdir -p "$ROOT/cache/mp1/alpha/0.8.0/.in_use"
 printf '{"pid":%s,"procStart":"%s"}' "$$" "$LSTART" > "$ROOT/cache/mp1/alpha/0.8.0/.in_use/lease"
+
+# mp1/mp2/mp3 are marketplaces this install knows about; `synced` is not.
+cat > "$ROOT/known_marketplaces.json" <<'JSON'
+{"mp1": {}, "mp2": {}, "mp3": {}}
+JSON
 
 cat > "$ROOT/installed_plugins.json" <<JSON
 {"plugins":{
@@ -70,7 +78,20 @@ hasnt "beta-inline"                           "an -inline data dir never appears
 
 has   "cache/mp2/leftover|empty-plugin|prunable" "a plugin dir with no versions left"
 hasnt "cache/mp2/strays"                      "a plugin dir holding a stray file is not reported"
-has   "#totals stale=1 stale_in_use=1 orphan=1 orphan_in_use=0 empty_plugin=1 orphan_data=2" "totals line counts each class"
+# An origin that is not a marketplace is nothing shipshape installed and nothing
+# it can reinstall. Report it so a removed marketplace's leftovers stay visible,
+# but never call it prunable.
+has   "cache/synced/helper/2.0.0|unknown-origin|skipped" "a cache under an unknown origin is skipped"
+has   "data/helper-synced|unknown-origin|skipped"        "a data dir of an unknown origin is skipped"
+has   "#totals stale=1 stale_in_use=1 orphan=1 orphan_in_use=0 empty_plugin=1 orphan_data=2 unknown_origin=2 reclaimable=" "totals line counts each class"
+
+# No registry to read: every origin is unrecognized, so nothing is prunable.
+mv "$ROOT/known_marketplaces.json" "$ROOT/known_marketplaces.off"
+OUT=$(CLAUDE_PLUGINS_DIR="$ROOT" bash "$SCRIPT" 2>&1)
+hasnt "|prunable|"           "an unreadable marketplace registry leaves nothing prunable"
+has   "no marketplaces readable" "  and says so"
+mv "$ROOT/known_marketplaces.off" "$ROOT/known_marketplaces.json"
+OUT=$(CLAUDE_PLUGINS_DIR="$ROOT" bash "$SCRIPT" 2>&1)
 
 # No manifest -> nothing can be classified. Fail loudly rather than reporting
 # every cache dir as an orphan, which is what an empty keys set would do.

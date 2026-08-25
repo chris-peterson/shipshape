@@ -169,6 +169,13 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
 - [PRUNE-15] Where a data dir to be removed is non-empty, `plugin-cache-prune.sh`
   shall skip it unless `--data-confirmed` is passed, so the confirmation is the
   skill's to obtain and the script's to require.
+- [PRUNE-16] shipshape shall classify a cache or data entry whose origin is not a
+  marketplace in `known_marketplaces.json` as unknown-origin, report it, and
+  never prune it. `synced` is such an origin: a plugin turned on in claude.ai has
+  no install manifest row, so classifying it by the manifest alone would call it
+  an orphan. Reporting rather than ignoring keeps the leftovers of a removed
+  marketplace visible. If the registry cannot be read, then no origin is
+  recognized and nothing is prunable.
 
 ### AUTO — Auto-update enforcement
 
