@@ -17,9 +17,10 @@
 #         1 = not in use  (safe to prune)
 #
 # Conservative by design: whenever liveness can't be disproven, the answer is IN
-# USE — never prune on doubt. That covers a missing procStart, a procStart no
-# `date` dialect on this box can parse, and jq being absent entirely (which is
-# surfaced on stderr, not swallowed).
+# USE — never prune on doubt. That covers a lease yielding no pid (a torn write
+# from a session that died mid-startup reads exactly this way), a missing
+# procStart, a procStart no `date` dialect on this box can parse, and jq being
+# absent entirely. Each is surfaced on stderr, not swallowed.
 
 # covers: PRUNE-07
 set -euo pipefail
@@ -56,7 +57,14 @@ for lease in "$leases"/*; do
   [ -f "$lease" ] || continue
   pid=$(jq -r '.pid // empty' "$lease" 2>/dev/null || true)
   start=$(jq -r '.procStart // empty' "$lease" 2>/dev/null || true)
-  [ -n "$pid" ] || continue
+
+  # No pid means the lease told us nothing, which is not the same as there being
+  # no lease. Reading it as absent would prune the dir a half-written lease was
+  # in the middle of claiming.
+  if [ -z "$pid" ]; then
+    echo "plugin-cache-in-use: lease '$lease' yields no pid; treating '$dir' as in use" >&2
+    exit 0
+  fi
 
   # PID must name a running process, else this lease is dead.
   lstart=$(ps -p "$pid" -o lstart= 2>/dev/null | sed 's/^ *//;s/ *$//' || true)

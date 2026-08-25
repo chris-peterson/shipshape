@@ -4,7 +4,7 @@ Tracks coverage of the requirements in [SPEC.md](./SPEC.md) against the single
 in-repo implementation. Status vocabulary: **Covered** · **Partial** ·
 **Missing** · **Contradicts**.
 
-**Coverage: 71/71 requirements Covered (100%)**
+**Coverage: 72/72 requirements Covered (100%)**
 **Evidence pointers:** file
 
 Location holds the file. To find the spot inside it, grep for the requirement
@@ -33,6 +33,7 @@ means an edit can't leave the two disagreeing.
 | RECON-12   | Covered | skills/plugin-maintenance/SKILL.md |
 | RECON-13   | Covered | skills/plugin-maintenance/SKILL.md |
 | RECON-14   | Covered | skills/plugin-maintenance/SKILL.md |
+| RECON-15   | Covered | scripts/plugin-maintenance-lock.sh |
 
 ## GUARD — Guardrails
 

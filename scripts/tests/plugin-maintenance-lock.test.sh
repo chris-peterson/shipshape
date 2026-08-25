@@ -38,6 +38,28 @@ env CLAUDE_CODE_SESSION_ID=A bash "$SCRIPT" acquire >/dev/null 2>&1
 run 0 "stale lock is stolen (B, stale=0)"         env CLAUDE_CODE_SESSION_ID=B PLUGIN_MAINT_STALE=0 bash "$SCRIPT" acquire
 check "lock now owned by B" "$(sed -n 's/.*"session"[^"]*"\([^"]*\)".*/\1/p' "$LOCK")" "B"
 
+# An unreadable lock age must not be read as "old enough to steal". Shadow
+# `stat` with a stub that fails the way an unrecognized dialect would, leaving
+# the rest of the toolchain on PATH.
+SHADOW=$(mktemp -d)
+printf '#!/bin/sh\nexit 1\n' > "$SHADOW/stat"
+chmod +x "$SHADOW/stat"
+rm -f "$LOCK"
+env CLAUDE_CODE_SESSION_ID=A bash "$SCRIPT" acquire >/dev/null 2>&1
+run 3 "unreadable lock age is not stolen (no usable stat)" \
+  env PATH="$SHADOW:$PATH" CLAUDE_CODE_SESSION_ID=C bash "$SCRIPT" acquire
+check "lock still owned by A" "$(sed -n 's/.*"session"[^"]*"\([^"]*\)".*/\1/p' "$LOCK")" "A"
+ERR=$(env PATH="$SHADOW:$PATH" CLAUDE_CODE_SESSION_ID=C bash "$SCRIPT" acquire 2>&1 >/dev/null)
+case "$ERR" in
+  *"cannot read the age"*) echo "  ok: the refusal says why"; pass=$((pass + 1)) ;;
+  *) echo "  FAIL: the refusal says why (got '$ERR')"; fail=$((fail + 1)) ;;
+esac
+# The stale steal must still work when stat does read — an unreadable age is the
+# only thing this guard blocks.
+run 0 "a readable stale lock is still stolen" \
+  env CLAUDE_CODE_SESSION_ID=B PLUGIN_MAINT_STALE=0 bash "$SCRIPT" acquire
+rm -f "$SHADOW/stat"; rmdir "$SHADOW"
+
 run 2 "usage error on bad subcommand"             env CLAUDE_CODE_SESSION_ID=A bash "$SCRIPT" frobnicate
 
 rm -f "$LOCK"

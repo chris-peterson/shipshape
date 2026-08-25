@@ -79,6 +79,10 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   shipshape shall stop and report the holding session without reconciling.
 - [RECON-03] The maintenance lock shall be re-entrant within a session and shall
   be stolen once older than the stale threshold.
+- [RECON-15] If the maintenance lock's age cannot be read, then shipshape shall
+  treat the lock as held and refuse to acquire it, reporting why. Stealing is
+  reserved for a lock provably older than the threshold; an unreadable age
+  proves nothing.
 - [RECON-04] When a maintenance run exits by any path, shipshape shall release
   the maintenance lock before completing.
 - [RECON-05] shipshape shall build the installed set from `claude plugin list`
@@ -143,8 +147,9 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
 - [PRUNE-07] shipshape shall determine lease liveness via
   `plugin-cache-in-use.sh` (exit 0 = in use, exit 1 = delete-eligible) and act
   on that verdict without auditing it.
-- [PRUNE-08] shipshape shall treat a missing or unparseable lease `procStart` as
-  in use.
+- [PRUNE-08] shipshape shall treat a lease it cannot read as in use: one that
+  yields no `pid`, and one whose `procStart` is missing or unparseable. An
+  unreadable lease is not an absent lease.
 - [PRUNE-09] When a cache dir is empty, or an orphan/stale cache with no live
   lease, shipshape shall delete it without prompting.
 - [PRUNE-10] If a data dir to be removed is non-empty, then shipshape shall ask

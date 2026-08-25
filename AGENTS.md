@@ -22,9 +22,12 @@ rule here exists because the naive version of the check was wrong in a way that
 lost data:
 
 - **Never prune on doubt.** `plugin-cache-in-use.sh` answers *in use* whenever
-  liveness can't be disproven — an unparseable `procStart`, a `date` dialect it
-  can't read, `jq` missing entirely. The absent signal is surfaced on stderr, not
-  swallowed, and never read as "safe to delete".
+  liveness can't be disproven — a lease yielding no pid, an unparseable
+  `procStart`, a `date` dialect it can't read, `jq` missing entirely. The absent
+  signal is surfaced on stderr, not swallowed, and never read as "safe to
+  delete". **An unreadable input is not an absent one**, and the same holds for
+  the lock: an age no `stat` dialect can read leaves the holder in place rather
+  than counting as old enough to steal.
 - **A lease is a PID *and* a process start time.** The OS recycles PIDs, so
   `ps -p <pid>` succeeding proves nothing on its own; comparing start times is
   what rejects the reuse and lets genuinely stale caches be pruned at all.

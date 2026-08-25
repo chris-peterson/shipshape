@@ -22,7 +22,7 @@
 # Env:    PLUGIN_MAINT_LOCK   override the lockfile path (tests)
 #         PLUGIN_MAINT_STALE  override the stale threshold in seconds (default 1800)
 
-# covers: RECON-01, RECON-03
+# covers: RECON-01, RECON-03, RECON-15
 set -euo pipefail
 
 cmd="${1:-}"
@@ -40,8 +40,16 @@ field_of() {  # $1 = file, $2 = key
   fi
 }
 
-# mtime of a file in epoch seconds (GNU stat -c, then BSD stat -f).
-mtime_of() { stat -c %Y "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null || echo 0; }
+# mtime of a file in epoch seconds: GNU `stat -c`, then BSD `stat -f`. Prints
+# nothing and returns 1 when neither dialect reads it, which the acquire path
+# turns into a refusal. Answering 0 instead would date the lock to the epoch and
+# make every live lock look decades stale.
+mtime_of() {
+  local m
+  if m=$(stat -c %Y "$1" 2>/dev/null); then printf '%s\n' "$m"; return 0; fi
+  if m=$(stat -f %m "$1" 2>/dev/null); then printf '%s\n' "$m"; return 0; fi
+  return 1
+}
 
 case "$cmd" in
   acquire)
@@ -51,7 +59,15 @@ case "$cmd" in
       if [ "$owner" = "$me" ]; then
         touch "$lock"; exit 0            # re-entrant: the lock is already ours
       fi
-      age=$(( $(date +%s) - $(mtime_of "$lock") ))
+      # Stealing is for a lock provably older than the threshold. An age we
+      # cannot read proves nothing, so the holder keeps it — the same posture
+      # plugin-cache-in-use.sh takes toward a lease it cannot disprove.
+      mtime=$(mtime_of "$lock" || true)
+      if [ -z "$mtime" ]; then
+        echo "plugin-maintenance-lock: cannot read the age of '$lock' (no \`stat\` dialect on this system works); treating it as held by session ${owner:-unknown} — not acquiring" >&2
+        exit 3
+      fi
+      age=$(( $(date +%s) - mtime ))
       if [ "$age" -lt "$stale" ]; then
         started=$(field_of "$lock" started)
         echo "plugin-maintenance-lock: held by session ${owner:-unknown} since ${started:-?} (${age}s ago); another maintenance run is active — not acquiring" >&2
