@@ -104,6 +104,7 @@ means an edit can't leave the two disagreeing.
 | VERSION-23 | Covered | skills/claude-code-version/SKILL.md |
 | VERSION-24 | Covered | skills/claude-code-version/SKILL.md |
 | VERSION-25 | Covered | skills/claude-code-version/SKILL.md |
+| VERSION-26 | Covered | skills/claude-code-version/SKILL.md |
 
 ## REPORT — Reporting & output model
 

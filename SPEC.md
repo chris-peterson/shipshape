@@ -259,6 +259,10 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   the guide, or leave it pending — rather than a prose offer.
 - [VERSION-25] Where the guide is filled, the version skill shall precede that
   question with what acknowledging will run, in at most three lines.
+- [VERSION-26] While carrying out the guide, shipshape shall establish a step's
+  findings against the sources the step names before recording the version,
+  since recording is what ends the errand and a finding the user cannot act on
+  leaves nothing for the banner to bring them back to.
 
 ### REPORT — Reporting & output model
 

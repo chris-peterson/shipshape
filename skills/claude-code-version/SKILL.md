@@ -142,7 +142,7 @@ Walking is not acknowledging. While `pending` is true, close with the
 [question](#close-with-the-question).
 
 ## Acknowledge
-<!-- covers: VERSION-20, VERSION-21, VERSION-23 -->
+<!-- covers: VERSION-20, VERSION-21, VERSION-23, VERSION-26 -->
 
 Stop here when `pending` is false: there's no upgrade to handle, and the guide
 is an upgrade errand rather than something to run on request. Say what's
@@ -161,9 +161,15 @@ CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude
 ```
 
 **3. Carry it out**, in the order written, before recording anything. It's the
-user's own instruction to you. If a step fails or needs a decision, stop and
-ask — leaving the version unacknowledged means the banner brings them back to
-it, where recording first would bury a half-run upgrade.
+user's own instruction to you. Recording ends the errand, so every step has to
+land a result that stands without you: a step that produces findings is carried
+out by establishing them in the code it names, not by writing down what the
+changelog implies, and one that fans out over independent targets is worth
+parallel agents. What the user does with a finding afterward is theirs to
+decide; an unchecked one gives them nothing to decide on. If a step fails or
+needs a decision, stop and ask — leaving the version unacknowledged means the
+banner brings them back to it, where recording first would bury a half-run
+upgrade.
 
 **4. Record the version.** Use the version the user was *shown* — the one this
 session's banner and hook context name. Fall back to `current` from `--status`
