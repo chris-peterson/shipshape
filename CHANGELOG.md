@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.1
+
+### Changed
+
+- `/claude-code-version` answers a step of your version-change guide that asks for findings by checking the code the step names, rather than by writing down what the changelog implies, and fans out over independent targets in parallel. The version is recorded once every step has landed a result you can act on.
+
+### Other
+
+- The docs site favicon is a red ship's wheel with a green hub.
+
 ## 0.9.0
 
 ### Added
