@@ -1,5 +1,5 @@
 # Canonical descriptor for the shipshape plugin — edit here, never plugin.json.
-# Projects into .claude-plugin/plugin.json (via `scripts/shipyard gen-plugin-json`) and
+# Projects into .claude-plugin/plugin.json (via `shipyard gen-plugin-json`) and
 # the marketplace SPA (the suite: block).
 
 name: shipshape
@@ -9,6 +9,15 @@ author: chris-peterson
 repository: https://github.com/chris-peterson/shipshape
 keywords: [plugins, maintenance, auto-update, marketplace, claude-code, upgrades, harness]
 license: MIT
+
+validate:
+  accept:
+    - warning: root
+      path: CLAUDE.md
+      because: >-
+        CLAUDE.md at the root is this repo's own agent instructions, not context
+        the plugin ships. It points at AGENTS.md and carries the notes for
+        working on shipshape itself.
 
 # → marketplace.json entry
 marketplace:
@@ -38,10 +47,10 @@ suite:
       enforce-autoupdate: SessionStart — Enforce marketplace auto-update.
       hooks: 'Hook wiring: SessionStart→enforce-autoupdate (*), claude-code-version (*).'
   # <<< shipyard:describe <<<
-  # One session: each skill runs once. Acknowledging clears the banner, so the
-  # version errand is over for good — the three modes it can take are a table on
-  # the docs page, not repeated invocations here.
   session:
+    # One session: each skill runs once. Acknowledging clears the banner, so the
+    # version errand is over for good — the three modes it can take are a table
+    # on the docs page, not repeated invocations here.
     - { t: event, text: "session start: Claude Code 2.1.234 → 2.1.235 · repeats every session until you acknowledge it" }
     - { t: cmd, cmd: "/claude-code-version", out: "Walked that release's changelog entry: nothing in it touches a hook schema or settings key your own rules depend on. Ran the instructions in your guide, and acknowledged 2.1.235 — banner cleared." }
     - { t: cmd, cmd: "/plugin-maintenance", out: "19 enabled · 15 current, 4 refreshed · 🗑️ 9 undeclared uninstalled, data dirs kept for you to judge · 🧹 6 stale caches pruned (~4.1M), 1 pinned by a live session. Run /reload-plugins to apply it here." }

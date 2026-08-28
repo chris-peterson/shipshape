@@ -64,7 +64,6 @@ as an abandoned crashed run and stolen.
 
 ```bash
 just test        # every scripts/tests/*.test.sh
-just check       # validate source and preview the pending projection (no write)
 just generate    # regenerate plugin.json and docs/ from plugin.yml and the sources
 just docs        # serve the docsify site locally
 just plugin-json # regenerate .claude-plugin/plugin.json alone
@@ -92,7 +91,10 @@ docs/                               docsify site (_sidebar.md, README.md, favico
 
 `.claude-plugin/plugin.json`, `hooks/hooks.json`, `plugin.yml`'s `suite.describe`
 block, and most of `docs/` are **generated** by `shipyard` from the sources above.
-Never hand-edit a generated file; edit its source and run `just generate`.
+Never hand-edit a generated file; edit its source. The projection job
+(`.github/workflows/project.yml`) is the writer: it runs shipyard on every push
+and commits what it wrote back to the branch. `just generate` runs the same
+projection locally, so you can read the pending diff before you push.
 
 ## Conventions
 

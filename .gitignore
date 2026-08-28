@@ -1,4 +1,11 @@
+# docs/ is rendered by `just docs` / CI (shipyard build-docs); only the
+# hand-authored sources negated below are tracked. An enumerated list of
+# generated filenames drifts every time shipyard adds one, so this ignores the
+# directory and allowlists the exceptions instead.
 docs/*
+!docs/README.md
+!docs/_sidebar.md
+!docs/favicon.svg
 __pycache__
 .DS_Store
 .playwright-mcp/
