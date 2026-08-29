@@ -15,6 +15,11 @@ test:
 generate:
     {{shipyard}} generate
 
+# read what the projection job would commit, without keeping it; `git restore .` discards
+check:
+    {{shipyard}} generate
+    git --no-pager diff --stat
+
 # preview the docsify docs site locally
 docs:
     {{shipyard}} build-docs
