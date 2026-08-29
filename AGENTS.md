@@ -96,6 +96,12 @@ Never hand-edit a generated file; edit its source. The projection job
 and commits what it wrote back to the branch. `just generate` runs the same
 projection locally, so you can read the pending diff before you push.
 
+Releases are dispatched, not tagged by hand: run the **Release** workflow with a
+bump level, and shipyard derives the version from `plugin.yml`, retitles
+`CHANGELOG.md`'s `## Unreleased` section, commits, tags that commit, and
+publishes. Write the notes into `## Unreleased` first — reading what landed is
+what picks the level.
+
 ## Conventions
 
 - **Bash, `set -euo pipefail`, no third-party dependencies beyond `jq`** — and a
