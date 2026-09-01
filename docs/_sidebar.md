@@ -1,7 +1,7 @@
 - [Home](/)
 - Skills
-  - [Plugin maintenance](/skills/plugin-maintenance)
-  - [Claude Code version](/skills/claude-code-version)
+  - [`/plugin-maintenance`](/skills/plugin-maintenance)
+  - [`/claude-code-version`](/skills/claude-code-version)
 - [Hooks](/hooks)
 - [Specification](/spec)
 - [Coverage](/status)
