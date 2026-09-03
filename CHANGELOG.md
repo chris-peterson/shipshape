@@ -12,6 +12,11 @@
 - A guide step that fans out over several repos comes back with one verdict per candidate, anchored at the file and line that establishes or disproves it, and the report carries the count. Findings arrive together rather than one at a time, because the decision is which of them to act on.
 - The changelog walk reads the whole file, preferring a local checkout of `anthropics/claude-code` where you have one, rather than the single release the status URL anchors at.
 
+### Other
+
+- The docs site sidebar names each skill by what you type — `/plugin-maintenance` and `/claude-code-version`.
+- Local and CI builds run the same projection, so a preview renders the site that deploys.
+
 ## 0.9.1
 
 ### Changed
