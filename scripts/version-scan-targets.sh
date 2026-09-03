@@ -12,10 +12,11 @@
 # The declaration lives at $CLAUDE_PLUGIN_DATA/version-scan-targets.json:
 #
 #   { "version": 1,
+#     "claudeCode": { "mirror": "/…/claude-code" },
 #     "targets": {
-#       "anchor@getty-claude-marketplace": { "action": "scan", "src": "/…/anchor" },
+#       "anchor@your-custom-marketplace": { "action": "issue", "src": "/…/anchor" },
 #       "frontend-design@claude-plugins-official": { "action": "skip" },
-#       "shipyard": { "action": "scan", "src": "/…/shipyard" } } }
+#       "my-rules": { "action": "edit", "src": "/…/my-rules" } } }
 #
 # A key holding `@` is an installed plugin, matched against the install
 # manifest's own keys so drift is exact. A bare key is a repo the user added by
@@ -23,33 +24,50 @@
 # and the same schemas but ships as no plugin, so no manifest names it. Bare
 # keys are never reported as gone.
 #
+# `action` is what happens to a finding in that target, not merely whether to
+# look. A repo the user owns outright is fixed in place; one they file against
+# gets an issue; one they only want to hear about gets a line in the report.
+# That distinction has to live here rather than in the user's prose, because the
+# run has to know it per target:
+#
+#   skip       not examined; reported as a count
+#   summarize  examined; findings summarized in the report (the default)
+#   issue      examined; findings offered for filing
+#   edit       examined; fixes landed as direct edits for the user to review
+#
+# `claudeCode.mirror` names a local checkout of anthropics/claude-code, whose
+# CHANGELOG and first-party reference implementations a run reads. Absent, a run
+# reads them through `gh` instead.
+#
 # Usage:  version-scan-targets.sh --drift
-#         version-scan-targets.sh --set <key> scan <src>
-#         version-scan-targets.sh --set <key> skip
+#         version-scan-targets.sh --set <key> <action> [<src>]
 #         version-scan-targets.sh --forget <key>
+#         version-scan-targets.sh --set-mirror <path>
+#         version-scan-targets.sh --forget-mirror
 #
 # --drift prints the reconciliation as JSON and changes nothing:
 #
 #   { "new": [<key>…],                      installed, no decision recorded
 #     "gone": [<key>…],                     decided, no longer installed
-#     "unreadable": [{key,src}…],           decided `scan`, src is not a directory
-#     "scan": [{key,src}…],                 the deep-scan set, ready to use
+#     "unreadable": [{key,src}…],           examined, src is not a directory
+#     "targets": [{key,action,src}…],       the examined set, ready to use
 #     "skip": [<key>…],                     decided `skip`
+#     "mirror": "<path>",                   "" when none is recorded
 #     "settled": <true|false> }             nothing to ask about
 #
-# `unreadable` is its own bucket rather than folded into `scan` or dropped: a
-# recorded checkout that has moved is a question for the user, and scanning
-# nothing while reporting a scan is the one outcome that must not happen. It
+# `unreadable` is its own bucket rather than folded into `targets` or dropped: a
+# recorded checkout that has moved is a question for the user, and examining
+# nothing while reporting a pass is the one outcome that must not happen. It
 # keeps `settled` false until the user answers.
 #
 # Exit:   0 = answered
 #         1 = jq missing, no install manifest, or CLAUDE_PLUGIN_DATA unset
-#         2 = --set or --forget was called with arguments it cannot honor
+#         2 = a mode was called with arguments it cannot honor
 #
 # Env:    CLAUDE_PLUGIN_DATA  where the declaration is written (required)
 #         CLAUDE_PLUGINS_DIR  override ~/.claude/plugins (tests)
 
-# covers: VERSION-27, VERSION-28
+# covers: VERSION-27, VERSION-28, VERSION-34, VERSION-35
 set -euo pipefail
 
 plugins="${CLAUDE_PLUGINS_DIR:-$HOME/.claude/plugins}"
@@ -102,29 +120,36 @@ case "${1:---drift}" in
       | ($installed - ($t | keys)) as $new
       | [$t | to_entries[] | select(.key | contains("@")) | .key] as $plugin_keys
       | [$t | to_entries[]
-          | select(.value.action == "scan")
-          | {key: .key, src: (.value.src // "")}] as $scan_rows
+          | select(.value.action != "skip")
+          | {key: .key, action: .value.action, src: (.value.src // "")}] as $examined
       | [$t | to_entries[] | select(.value.action == "skip") | .key] as $skip
-      | {new: $new, gone: ($plugin_keys - $installed), scan: $scan_rows, skip: $skip}
+      | {new: $new, gone: ($plugin_keys - $installed), targets: $examined,
+         skip: $skip, mirror: (.claudeCode.mirror // "")}
     ')
 
-    # Whether a recorded src is still a directory is a filesystem fact jq cannot
-    # answer, so the split happens here and the two buckets are rebuilt from it.
-    good='[]'
-    unreadable='[]'
-    while IFS=$'\t' read -r key src; do
-      [ -n "$key" ] || continue
-      row=$(jq -n --arg k "$key" --arg s "$src" '{key:$k, src:$s}')
-      if [ -n "$src" ] && [ -d "$src" ]; then
-        good=$(jq -n --argjson a "$good" --argjson r "$row" '$a + [$r]')
-      else
-        unreadable=$(jq -n --argjson a "$unreadable" --argjson r "$row" '$a + [$r]')
-      fi
-    done < <(printf '%s' "$base" | jq -r '.scan[] | [.key, .src] | @tsv')
+    # Whether a recorded src is still a directory is the one fact jq cannot
+    # answer, so bash answers exactly that — the set of readable paths — and jq
+    # partitions the rows against it.
+    readable=$(printf '%s' "$base" \
+      | jq -r '.targets[].src | select(. != "")' \
+      | while IFS= read -r s; do [ -d "$s" ] && printf '%s\n' "$s"; done \
+      | jq -R . | jq -sc .)
 
-    printf '%s' "$base" | jq --argjson good "$good" --argjson unreadable "$unreadable" '
-      .scan = $good
-      | .unreadable = $unreadable
+    # A recorded mirror that has moved is reported as absent rather than handed
+    # on: a run reads the changelog through `gh` instead, which is the same path
+    # a user with no mirror takes.
+    mirror=$(printf '%s' "$base" | jq -r '.mirror')
+    if [ -n "$mirror" ] && [ ! -d "$mirror" ]; then
+      echo "version-scan-targets: recorded mirror $mirror is not a directory; reading through gh instead" >&2
+      mirror=""
+    fi
+
+    printf '%s' "$base" | jq --argjson readable "$readable" --arg mirror "$mirror" '
+      ($readable | map({(.): true}) | add // {}) as $ok
+      | .targets as $rows
+      | .targets = [$rows[] | select($ok[.src])]
+      | .unreadable = [$rows[] | select($ok[.src] | not) | {key, src}]
+      | .mirror = $mirror
       | .settled = ((.new | length) == 0 and (.gone | length) == 0
                     and (.unreadable | length) == 0)
     '
@@ -133,13 +158,13 @@ case "${1:---drift}" in
   --set)
     key="${2:-}"; action="${3:-}"; src="${4:-}"
     if [ -z "$key" ] || [ -z "$action" ]; then
-      echo "version-scan-targets: --set needs <key> and scan|skip" >&2
+      echo "version-scan-targets: --set needs <key> and skip|summarize|issue|edit" >&2
       exit 2
     fi
     case "$action" in
-      scan)
+      summarize|issue|edit)
         if [ -z "$src" ]; then
-          echo "version-scan-targets: --set $key scan needs a source path" >&2
+          echo "version-scan-targets: --set $key $action needs a source path" >&2
           exit 2
         fi
         if [ ! -d "$src" ]; then
@@ -147,13 +172,17 @@ case "${1:---drift}" in
           exit 2
         fi
         src=$(cd "$src" && pwd)
-        entry=$(jq -n --arg s "$src" '{action:"scan", src:$s}')
+        entry=$(jq -n --arg a "$action" --arg s "$src" '{action:$a, src:$s}')
         ;;
       skip)
+        if [ -n "$src" ]; then
+          echo "version-scan-targets: --set $key skip takes no source path; a target nobody examines has no use for one" >&2
+          exit 2
+        fi
         entry='{"action":"skip"}'
         ;;
       *)
-        echo "version-scan-targets: unknown action '$action'; use scan or skip" >&2
+        echo "version-scan-targets: unknown action '$action'; use skip, summarize, issue or edit" >&2
         exit 2
         ;;
     esac
@@ -169,6 +198,26 @@ case "${1:---drift}" in
     fi
     read_decl | jq --arg k "$key" 'del(.targets[$k])' | write_decl
     echo "version-scan-targets: forgot $key"
+    ;;
+
+  --set-mirror)
+    path="${2:-}"
+    if [ -z "$path" ]; then
+      echo "version-scan-targets: --set-mirror needs a path" >&2
+      exit 2
+    fi
+    if [ ! -d "$path" ]; then
+      echo "version-scan-targets: $path is not a directory; mirror not recorded" >&2
+      exit 2
+    fi
+    path=$(cd "$path" && pwd)
+    read_decl | jq --arg p "$path" '.claudeCode.mirror = $p' | write_decl
+    echo "version-scan-targets: mirror -> $path"
+    ;;
+
+  --forget-mirror)
+    read_decl | jq 'del(.claudeCode)' | write_decl
+    echo "version-scan-targets: forgot the mirror; reads go through gh"
     ;;
 
   *)

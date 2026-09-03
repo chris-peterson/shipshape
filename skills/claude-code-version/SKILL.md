@@ -120,7 +120,7 @@ CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude
 Setting the guide is not acknowledging. Leave a pending version pending.
 
 ## What changed
-<!-- covers: VERSION-19 -->
+<!-- covers: VERSION-19, VERSION-37 -->
 
 Walk the entries **after** `acknowledged` through `current` — every release they
 skipped, not just the one they landed on. When nothing is pending, walk the
@@ -128,11 +128,13 @@ entry for `current` instead and say that's where they already are.
 
 **Read the whole file, not the anchored entry.** `--status`'s `changelog` URL
 carries an anchor for `current` (`#21259`), which is the citation to hand the
-user; several skipped releases need every entry between two versions. Where the
-user has a local checkout of `anthropics/claude-code` — their guide may name one
-— `git -C <path> fetch -q` then `git -C <path> show origin/main:CHANGELOG.md`
-reads it whole, faster and cheaper than the rendered blob. Otherwise fetch
-`https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md`.
+user; several skipped releases need every entry between two versions. Where
+`--drift` reports a `mirror`, `git -C <mirror> fetch -q` then `git -C <mirror>
+show origin/main:CHANGELOG.md` reads it whole, faster and cheaper than the
+rendered blob. With no mirror recorded, read it through `gh`
+(`gh api repos/anthropics/claude-code/contents/CHANGELOG.md --jq '.content' |
+base64 -d`). Both, and the first-party examples worth reading alongside them,
+are in [references/default-guide.md](references/default-guide.md).
 
 **Report one screen.** The person reading has an upgrade to get through, not a
 changelog to study. Lead with the handful of items *this* user would act on: a
@@ -149,7 +151,7 @@ Walking is not acknowledging. While `pending` is true, close with the
 [question](#close-with-the-question).
 
 ## Acknowledge
-<!-- covers: VERSION-20, VERSION-21, VERSION-23, VERSION-26, VERSION-29, VERSION-30, VERSION-31, VERSION-32, VERSION-33 -->
+<!-- covers: VERSION-20, VERSION-21, VERSION-23, VERSION-26, VERSION-29, VERSION-30, VERSION-31, VERSION-32, VERSION-33, VERSION-34 -->
 
 Stop here when `pending` is false: there's no upgrade to handle, and the guide
 is an upgrade errand rather than something to run on request. Say what's
@@ -168,14 +170,29 @@ guide's steps run over. The closing report gives each entry one line and a
 disposition: acts on the user's artifacts, harness-internal, or not applicable.
 Passing over an entry is a disposition, not an omission.
 
-**2. Read the guide.** Comments are already stripped; empty output means an
-unfilled document and nothing to carry out.
+**2. Run the built-in guide.** An upgrade invalidates the user's artifacts whether
+or not they ever wrote a guide, so this runs every time: read what changed,
+check their own `~/.claude`, fan out over the targets they've declared, and act
+on each finding by that target's recorded disposition. The procedure is
+[references/default-guide.md](references/default-guide.md) — read it before
+starting, since the disposition decides whether a finding is summarized, drafted
+for filing, or fixed in place.
+
+**3. Read the user's own guide.** It *adds* to the built-in guide rather than
+replacing it. Comments are already stripped; empty output means they have
+written nothing extra, which is not the same as nothing to do — step 2 is the
+errand.
 
 ```bash
 CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude-code-version.sh --guide
 ```
 
-**3. Carry it out**, in the order written, before recording anything. It's the
+Where their guide restates something the built-in guide already covers, do it
+once. A guide written before the built-in one existed will name its own plugin
+list or its own changelog read; the declaration and step 2 are the current
+answer, and saying so once beats running the errand twice.
+
+**4. Carry the guide out**, in the order written, before recording anything. It's the
 user's own instruction to you. Recording ends the errand, so every step has to
 land a result that stands without you: a step that produces findings is carried
 out by establishing them in the code it names, not by writing down what the
@@ -216,22 +233,11 @@ which of them to act on — which needs all of them in view. Deliver them
 together, each in the contract's shape, and offer to file them; `/anchor:issue`
 writes the body when the user says which ones go.
 
-**Analyze the plugins the user maintains, not the ones they have installed.**
-Where a step asks for a pass over their plugins, a plugin they maintain is
-theirs to patch and one they merely use is its own maintainer's errand. The set
-is declared once and reconciled against the install manifest after that:
+**A step that names the user's plugins means the ones they maintain.** The
+built-in guide has already resolved that set and each target's disposition — reuse
+its answer rather than deriving a second one from the guide's wording.
 
-```bash
-CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash ${CLAUDE_PLUGIN_ROOT}/scripts/version-scan-targets.sh --drift
-```
-
-`settled: true` means every plugin already has a decision — hand `scan`'s rows
-to the fan-out, grouped by `src`, and say nothing about the reconciliation.
-Anything else is a question for the user: read
-[references/deep-scan-set.md](references/deep-scan-set.md) for what each bucket
-means, how to record an answer, and where a repo that ships as no plugin fits.
-
-**4. Record the version.** Use the version the user was *shown* — the one this
+**5. Record the version.** Use the version the user was *shown* — the one this
 session's banner and hook context name. Fall back to `current` from `--status`
 only when this session carries no banner, which is the case when they're acting
 on one they saw earlier. Claude Code can update its own binary mid-session, and
@@ -241,11 +247,13 @@ recording a version nobody was shown swallows that change.
 CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude-code-version.sh --ack <version>
 ```
 
-**5. Report** what ran and what was recorded. The script prints its own line;
+**6. Report** what ran and what was recorded. The script prints its own line;
 pass it through:
 
 ```text
-Ran your version-change guide: /my-retrain-command, /plugin-maintenance.
+Checked 37 entries: 3 touch your artifacts, 34 harness-internal.
+12 targets, 148 verdicts — 2 findings drafted for filing, 1 fixed in ai-sdlc.
+15 plugins left to their maintainers.
 shipshape: acknowledged Claude Code 2.1.235.
 ```
 

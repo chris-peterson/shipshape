@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Added
+
+- **shipshape now includes a default guide.** Acknowledging used to carry out your version-change document and nothing else, so with none written an upgrade only cleared a banner. The built-in guide runs every time: it reads every changelog entry, reads Anthropic's own first-party examples where they contradict what your artifacts describe, checks your `~/.claude` rules, skills, hooks and settings, and fans out over the repos you've declared. Your own guide adds to it instead of replacing it, so yours can shrink to the part only your machine knows.
+- Each declared target carries **what should happen to a finding in it**, recorded once: `summarize` puts it in the report, `issue` drafts it for filing, `edit` lands the fix in that repo for you to review, `skip` leaves the target alone. The default for a target you've just declared is `summarize`, which presumes nothing. Where a repo you declare `edit` deploys into `~/.claude`, the fix goes to the repo — a fix written into the deployed copy is discarded the next time your sync runs.
+- shipshape remembers a local checkout of `anthropics/claude-code` if you have one and reads the changelog and examples from it; with none recorded it reads them through `gh` instead. A recorded checkout that has moved falls back to `gh` and says so, rather than quietly reading nothing.
+
 ### Changed
 
 - A version-change guide run reports the outcome of each step rather than every command it took to get there. A multi-step guide used to arrive as thirty greps and directory listings surfaced one at a time, with the handful of results you could act on buried among them.

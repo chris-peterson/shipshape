@@ -298,6 +298,26 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   shared with the user's other sessions and an invented address lands the file
   untracked beside their work. Where the guide names a path, shipshape shall
   honor it.
+- [VERSION-34] When the user acknowledges an upgrade, shipshape shall carry out
+  its own built-in guide, and the user's guide shall add to that rather than
+  replace it. An upgrade invalidates the artifacts a user already has, so a
+  user who has written no guide of their own shall not receive an upgrade that
+  only clears a banner.
+- [VERSION-35] The built-in guide shall check the user's own `~/.claude`
+  artifacts, since those are present for every user whether or not they
+  maintain a plugin. Where a declared target's repo deploys into `~/.claude`,
+  shipshape shall detect staleness there and land the fix in that repo, because
+  a fix written into the deployed copy is discarded by the next sync.
+- [VERSION-36] Each declared target shall carry the user's recorded disposition
+  for a finding in it — summarized, drafted for filing, or fixed in place — and
+  shipshape shall act on that rather than deciding per run. `summarize` shall be
+  the disposition that presumes nothing and the one a target defaults to.
+- [VERSION-37] The built-in guide shall read the changelog and Anthropic's
+  first-party reference implementations from a local mirror the user has
+  recorded, and through `gh` where none is recorded, so a reference
+  implementation that contradicts the user's artifacts reaches them whether or
+  not they keep a checkout. A recorded mirror shipshape cannot read shall fall
+  back to `gh` with the reason surfaced, rather than silently reading nothing.
 
 ### REPORT — Reporting & output model
 
