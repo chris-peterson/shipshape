@@ -149,7 +149,7 @@ Walking is not acknowledging. While `pending` is true, close with the
 [question](#close-with-the-question).
 
 ## Acknowledge
-<!-- covers: VERSION-20, VERSION-21, VERSION-23, VERSION-26, VERSION-29, VERSION-30, VERSION-31 -->
+<!-- covers: VERSION-20, VERSION-21, VERSION-23, VERSION-26, VERSION-29, VERSION-30, VERSION-31, VERSION-32, VERSION-33 -->
 
 Stop here when `pending` is false: there's no upgrade to handle, and the guide
 is an upgrade errand rather than something to run on request. Say what's
@@ -185,6 +185,21 @@ decide; an unchecked one gives them nothing to decide on. If a step fails or
 needs a decision, stop and ask — leaving the version unacknowledged means the
 banner brings them back to it, where recording first would bury a half-run
 upgrade.
+
+**A multi-step guide gets structure, not narration.** Report the outcome per
+step, not per tool call. A run that surfaces thirty greps, `sed` probes, and
+directory listings one at a time has buried the handful of results the user can
+act on. Track the steps as tasks, or hand a mechanical pass to a script, and let
+each step's result be what they read.
+
+**A file the run creates goes to a scratch path.** Reading and editing what the
+guide points at is the errand; a plan, notes, or a findings ledger is the run's
+own scaffolding, and a repo the guide names is checked out, shared with the
+user's other sessions, and about to carry it untracked next to real work. Where
+the guide asks for a document and names no path, that is an instruction with a
+hole in it rather than a licence to pick the nearest repo root: write it under
+the session scratch directory and report that path. A path the guide *does* name
+is the user's own instruction — honor it.
 
 **A fan-out's targets answer in one shape.** A step that spreads over
 independent targets returns one verdict per candidate per target, and every

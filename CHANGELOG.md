@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- A version-change guide run reports the outcome of each step rather than every command it took to get there. A multi-step guide used to arrive as thirty greps and directory listings surfaced one at a time, with the handful of results you could act on buried among them.
+- A file the run writes for its own bookkeeping goes to a scratch path, never into a repo your guide names. Where your guide asks for a document and doesn't say where, it lands in scratch with its path reported, rather than untracked at the root of a repo you share with your other sessions. A path your guide does name is still honored.
+
 ## 0.10.0
 
 ### Added

@@ -289,6 +289,15 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
 - [VERSION-31] shipshape shall deliver a run's findings in one pass rather than
   one at a time, since the decision the user makes is which of them to act on
   and that needs all of them in view.
+- [VERSION-32] While carrying out a multi-step guide, shipshape shall report the
+  outcome of each step rather than each tool call it took, so the results the
+  user can act on are not buried in the mechanics of reaching them.
+- [VERSION-33] shipshape shall write a file it creates for its own bookkeeping
+  to a scratch path outside any repo the guide names — including where the guide
+  asks for a document without naming a path, since a repo the guide names is
+  shared with the user's other sessions and an invented address lands the file
+  untracked beside their work. Where the guide names a path, shipshape shall
+  honor it.
 
 ### REPORT — Reporting & output model
 
