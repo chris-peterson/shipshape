@@ -122,10 +122,17 @@ Setting the guide is not acknowledging. Leave a pending version pending.
 ## What changed
 <!-- covers: VERSION-19 -->
 
-Fetch the `changelog` URL from `--status` and walk the entries **after**
-`acknowledged` through `current` — every release they skipped, not just the one
-they landed on. When nothing is pending, walk the entry for `current` instead
-and say that's where they already are.
+Walk the entries **after** `acknowledged` through `current` — every release they
+skipped, not just the one they landed on. When nothing is pending, walk the
+entry for `current` instead and say that's where they already are.
+
+**Read the whole file, not the anchored entry.** `--status`'s `changelog` URL
+carries an anchor for `current` (`#21259`), which is the citation to hand the
+user; several skipped releases need every entry between two versions. Where the
+user has a local checkout of `anthropics/claude-code` — their guide may name one
+— `git -C <path> fetch -q` then `git -C <path> show origin/main:CHANGELOG.md`
+reads it whole, faster and cheaper than the rendered blob. Otherwise fetch
+`https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md`.
 
 **Report one screen.** The person reading has an upgrade to get through, not a
 changelog to study. Lead with the handful of items *this* user would act on: a
@@ -142,16 +149,24 @@ Walking is not acknowledging. While `pending` is true, close with the
 [question](#close-with-the-question).
 
 ## Acknowledge
-<!-- covers: VERSION-20, VERSION-21, VERSION-23, VERSION-26 -->
+<!-- covers: VERSION-20, VERSION-21, VERSION-23, VERSION-26, VERSION-29, VERSION-30, VERSION-31 -->
 
 Stop here when `pending` is false: there's no upgrade to handle, and the guide
 is an upgrade errand rather than something to run on request. Say what's
 acknowledged and offer to walk what changed.
 
-**1. Lead with what changed.** Give the one-screen summary before anything
-else. Acknowledging is what clears the banner, so this is the last point at
-which the user sees what they're clearing. Skip it only when they've already
-had the summary this session.
+**1. Lead with what changed, then account for every entry.** Give the
+one-screen summary before anything else. Acknowledging is what clears the
+banner, so this is the last point at which the user sees what they're clearing,
+and a decision surface has to stay short. Skip it only when they've already had
+the summary this session.
+
+The summary is not the coverage. The guide runs against what changed, and an
+entry nobody read cannot be checked against anything, so the complete set —
+every release after `acknowledged` through `current` — is the candidate list the
+guide's steps run over. The closing report gives each entry one line and a
+disposition: acts on the user's artifacts, harness-internal, or not applicable.
+Passing over an entry is a disposition, not an omission.
 
 **2. Read the guide.** Comments are already stripped; empty output means an
 unfilled document and nothing to carry out.
@@ -170,6 +185,36 @@ decide; an unchecked one gives them nothing to decide on. If a step fails or
 needs a decision, stop and ask — leaving the version unacknowledged means the
 banner brings them back to it, where recording first would bury a half-run
 upgrade.
+
+**A fan-out's targets answer in one shape.** A step that spreads over
+independent targets returns one verdict per candidate per target, and every
+verdict is anchored: a negative names the file and line that disproves it, or
+says there was no match in the repo; a positive names the file and line that
+carries the defect, and what a fix would cost. "Might be worth looking at" is
+not a verdict — it hands back the hedge the step existed to remove. Count them
+in the report, so the coverage is legible: a step over 7 targets and 12
+candidates accounts for 84 verdicts, or says which it could not reach.
+
+**Report findings in one pass, not one at a time.** A release that touches the
+harness surfaces work in several repos at once, and the shape of the decision is
+which of them to act on — which needs all of them in view. Deliver them
+together, each in the contract's shape, and offer to file them; `/anchor:issue`
+writes the body when the user says which ones go.
+
+**Analyze the plugins the user maintains, not the ones they have installed.**
+Where a step asks for a pass over their plugins, a plugin they maintain is
+theirs to patch and one they merely use is its own maintainer's errand. The set
+is declared once and reconciled against the install manifest after that:
+
+```bash
+CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash ${CLAUDE_PLUGIN_ROOT}/scripts/version-scan-targets.sh --drift
+```
+
+`settled: true` means every plugin already has a decision — hand `scan`'s rows
+to the fan-out, grouped by `src`, and say nothing about the reconciliation.
+Anything else is a question for the user: read
+[references/deep-scan-set.md](references/deep-scan-set.md) for what each bucket
+means, how to record an answer, and where a repo that ships as no plugin fits.
 
 **4. Record the version.** Use the version the user was *shown* — the one this
 session's banner and hook context name. Fall back to `current` from `--status`

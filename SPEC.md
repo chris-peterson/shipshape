@@ -263,6 +263,32 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   findings against the sources the step names before recording the version,
   since recording is what ends the errand and a finding the user cannot act on
   leaves nothing for the banner to bring them back to.
+- [VERSION-27] Where a guide step asks for a pass over the user's plugins,
+  shipshape shall analyze the ones the user maintains and shall leave the ones
+  they only use to their own maintainers, reporting those as a count. Which is
+  which is not derivable from the install — both are installed and both have a
+  source repo — so shipshape shall keep the user's declaration in the plugin
+  data dir, keyed by install-manifest key, and shall accept a bare key for a
+  repo that ships as no plugin, since the manifest names what the user
+  installed and not the tooling that builds it.
+- [VERSION-28] shipshape shall reconcile that declaration against the install
+  manifest and shall ask only about the difference: a plugin installed with no
+  decision on record, a decision whose plugin is gone, or a recorded source path
+  that is no longer a directory. A recorded path it cannot read shall be
+  reported as a question rather than scanned or dropped, so a pass is never
+  reported over a repo that was not read.
+- [VERSION-29] When the user acknowledges an upgrade, shipshape shall dispose of
+  every changelog entry between the acknowledged and running versions, giving
+  each a line and a disposition, rather than only those the one-screen summary
+  led with. The guide runs against what changed, so an entry nobody read is an
+  artifact nobody checked.
+- [VERSION-30] Where a guide step fans out over independent targets, shipshape
+  shall return one verdict per candidate per target, each anchored at the file
+  and line that establishes or disproves it, and shall report the verdict count
+  so the coverage is legible.
+- [VERSION-31] shipshape shall deliver a run's findings in one pass rather than
+  one at a time, since the decision the user makes is which of them to act on
+  and that needs all of them in view.
 
 ### REPORT — Reporting & output model
 

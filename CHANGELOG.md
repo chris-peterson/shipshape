@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- `/claude-code-version` asks once which of your plugins you **maintain**, and analyzes only those when your version-change guide calls for a pass over them. A plugin you only use is its own maintainer's errand, reported as a count rather than examined. Your answers are recorded, so later upgrades ask only about a plugin you've since installed or removed, or a source checkout that has moved. A repo that ships as no plugin — the tool that builds them, your rules repo — goes in under a name you pick, since no install manifest will ever name it.
+
+### Changed
+
+- Acknowledging an upgrade accounts for every changelog entry between the version you acknowledged and the one you're running, each with a line saying whether it touches your artifacts. The one-screen summary still leads, so the decision in front of you stays short; behind it, nothing goes unread — your guide runs against what changed, and an entry nobody read is an artifact nobody checked.
+- A guide step that fans out over several repos comes back with one verdict per candidate, anchored at the file and line that establishes or disproves it, and the report carries the count. Findings arrive together rather than one at a time, because the decision is which of them to act on.
+- The changelog walk reads the whole file, preferring a local checkout of `anthropics/claude-code` where you have one, rather than the single release the status URL anchors at.
+
 ## 0.9.1
 
 ### Changed
