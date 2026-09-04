@@ -4,8 +4,8 @@
 
 ### Fixed
 
-- **The docs say what runs on an upgrade.** The site described the errand as your version-change document alone, so an empty document read as an unfinished setup. It now covers the built-in check that runs either way, what shipshape asks on a first run and what each answer does with a finding, and that an empty document is a finished state.
-- A version-change run no longer has to guess which script reports the declared targets. The built-in guide's fan-out step carries the invocation, where it previously named the flag and left the command in a reference only an unsettled run was sent to read.
+- **The docs say what happens when you acknowledge an upgrade.** shipshape's own check runs whether or not you have written a version-change document, so an empty document is a finished configuration rather than an unfinished one. The site now names that check, what it asks on a first run, and what each answer does with a finding.
+- A version-change run no longer stalls looking for the script that lists the repos you have declared. The commands that read those repos, and the one that drops a decision you no longer want, sit where the run needs them.
 
 ## 0.11.1
 
