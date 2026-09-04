@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **The docs say what runs on an upgrade.** The site described the errand as your version-change document alone, so an empty document read as an unfinished setup. It now covers the built-in check that runs either way, what shipshape asks on a first run and what each answer does with a finding, and that an empty document is a finished state.
+- A version-change run no longer has to guess which script reports the declared targets. The built-in guide's fan-out step carries the invocation, where it previously named the flag and left the command in a reference only an unsettled run was sent to read.
+
 ## 0.11.1
 
 ### Fixed

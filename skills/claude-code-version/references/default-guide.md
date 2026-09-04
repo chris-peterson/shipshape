@@ -64,9 +64,13 @@ declared `edit` and the user's own guide or its README says it deploys into
 
 ## 3. Fan out over the declared targets
 
-`targets` from `--drift` is the set, each row carrying its own `action`. Group
-the rows by `src` first — one repo can back several plugins, and analyzing it
-twice splits its verdicts across two reports.
+```bash
+CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash ${CLAUDE_PLUGIN_ROOT}/scripts/version-scan-targets.sh --drift
+```
+
+`targets` is the set, each row carrying its own `action`. Group the rows by
+`src` first — one repo can back several plugins, and analyzing it twice splits
+its verdicts across two reports.
 
 Where `settled` is false, resolve the question first: read
 [deep-scan-set.md](deep-scan-set.md) for what each bucket means. A run does not

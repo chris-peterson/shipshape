@@ -152,28 +152,52 @@ One skill, and it picks what to do from what you asked for:
 |---|---|
 | your guide | Shows the instructions that run on a version change, and writes new ones once you've approved the text |
 | what's new | A one-screen summary of what landed between the version you acknowledged and the one you're running, with the per-release walk on request |
-| acknowledge, dismiss, "handled" | Summarizes what changed, runs your guide, records the version, and the banner is gone |
+| acknowledge, dismiss, "handled" | Summarizes what changed, runs the built-in check and your own guide, records the version, and the banner is gone |
 
 Everything but the guide opens with that summary, so you see what a version
-holds before you clear it. Acknowledging is the only thing that runs your guide,
-and the only thing that clears the banner — asking what's new leaves it up. It's
-a skill rather than a shell line you could copy from here on purpose: shipshape's own version is in
-the path to the hook it calls, so anything literal would stop resolving at the
-next update.
+holds before you clear it. Acknowledging is the only thing that runs the upgrade
+errand, and the only thing that clears the banner — asking what's new leaves it
+up. It's a skill rather than a shell line you could copy from here on purpose:
+shipshape's own version is in the path to the hook it calls, so anything literal
+would stop resolving at the next update.
+
+### The built-in check
+
+Acknowledging an upgrade runs a check shipshape ships with, whether or not you
+ever write instructions of your own. It reads every changelog entry between the
+version you acknowledged and the one you're running, finds what that
+invalidates in your own `~/.claude`, and then looks for the same staleness in
+the repos you've said are yours to patch.
+
+Which repos those are is the one thing shipshape can't work out from disk: a
+plugin you maintain and a plugin you merely use look identical there. So the
+first `/claude-code-version` asks, one plugin author at a time, and records your
+answer:
+
+| Your answer | What a finding in that repo becomes |
+|---|---|
+| just tell me | a line in the report, and nothing is written |
+| file it | a drafted issue, offered to `/anchor:issue` with the rest |
+| fix it in place | an edit in that repo's working tree, for you to review |
+| not mine | nothing — it's left to its own maintainer, and counted |
+
+Later runs reconcile that against what you have installed and ask only about
+the difference, so a plugin you've already answered for never comes up again.
 
 ### Your version-change guide
 
-What Claude should do about an upgrade is a document you write. It's created for
-you, so you never have to guess its name — look in your shipshape data dir after
-the first session:
+Anything you want done *on top of* the built-in check is a document you write.
+It's created for you, so you never have to guess its name — look in your
+shipshape data dir after the first session:
 
 ```text
 ~/.claude/plugins/data/shipshape-<marketplace>/on-claude-code-version-change.md
 ```
 
-It arrives holding only comments explaining what to write, and **a document with nothing
-but comments runs nothing**. Write plain instructions into it, naming the
-commands you want run:
+It arrives holding only comments explaining what to write. An empty document is
+a finished state rather than an unfinished one — the built-in check still runs;
+there's just nothing extra to add to it. Write plain instructions into it,
+naming the commands you want run:
 
 ```markdown
 Re-train my AI artifacts against this Claude Code version:
@@ -205,8 +229,8 @@ you and write what you dictate.
 | First session after installing | The version is recorded, the document is created. Nothing else. |
 | Version unchanged | Silent. |
 | Version changed | The banner, repeating every session until acknowledged. |
-| You acknowledge, document written | What changed, your instructions carried out, then the banner clears. |
-| You acknowledge, document still all comments | What changed; nothing to run, and the banner clears. |
+| You acknowledge, document written | What changed, the built-in check, your instructions carried out, then the banner clears. |
+| You acknowledge, document still all comments | What changed, the built-in check, then the banner clears. |
 | After it's acknowledged | Silent, until the next version change. |
 
 Any difference in the version string counts, patch bumps included, so `2.1.220 →
