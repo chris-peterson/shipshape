@@ -4,9 +4,9 @@
 
 ### Added
 
-- **shipshape now includes a default guide.** Acknowledging used to carry out your version-change document and nothing else, so with none written an upgrade only cleared a banner. The built-in guide runs every time: it reads every changelog entry, reads Anthropic's own first-party examples where they contradict what your artifacts describe, checks your `~/.claude` rules, skills, hooks and settings, and fans out over the repos you've declared. Your own guide adds to it instead of replacing it, so yours can shrink to the part only your machine knows.
-- Each declared target carries **what should happen to a finding in it**, recorded once: `summarize` puts it in the report, `issue` drafts it for filing, `edit` lands the fix in that repo for you to review, `skip` leaves the target alone. The default for a target you've just declared is `summarize`, which presumes nothing. Where a repo you declare `edit` deploys into `~/.claude`, the fix goes to the repo — a fix written into the deployed copy is discarded the next time your sync runs.
-- shipshape remembers a local checkout of `anthropics/claude-code` if you have one and reads the changelog and examples from it; with none recorded it reads them through `gh` instead. A recorded checkout that has moved falls back to `gh` and says so, rather than quietly reading nothing.
+- **shipshape now includes a default guide.** Acknowledging used to carry out your version-change document and nothing else, so with none written an upgrade only cleared a banner. The built-in guide runs every time: it reads every changelog entry and the first-party examples they implicate, checks your `~/.claude` rules, skills, hooks and settings, and works through the repos you've declared. Your own guide adds to it instead of replacing it, so yours can shrink to the part only your machine knows.
+- **The first run asks what it needs, then shows you what it will do.** `/claude-code-version` on an unconfigured machine walks your installed plugins a repo owner at a time — one question each, not one per plugin — finds each checkout itself and asks you to confirm it rather than asking for a path, then previews the run your answers produce before asking whether anything is missing.
+- Each declared target carries **what should happen to a finding in it**: fix it in place, write it up so you can file it, or just report it. Where a repo you have set to fix-in-place deploys into `~/.claude`, the fix goes to the repo — one written into the deployed copy is discarded the next time your sync runs.
 
 ### Changed
 
