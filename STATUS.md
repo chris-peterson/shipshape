@@ -4,7 +4,7 @@ Tracks coverage of the requirements in [SPEC.md](./SPEC.md) against the single
 in-repo implementation. Status vocabulary: **Covered** · **Partial** ·
 **Missing** · **Contradicts**.
 
-**Coverage: 84/84 requirements Covered (100%)**
+**Coverage: 88/88 requirements Covered (100%)**
 **Evidence pointers:** file
 
 Location holds the file. To find the spot inside it, grep for the requirement
@@ -112,10 +112,13 @@ means an edit can't leave the two disagreeing.
 | VERSION-31 | Covered | skills/claude-code-version/SKILL.md |
 | VERSION-32 | Covered | skills/claude-code-version/SKILL.md |
 | VERSION-33 | Covered | skills/claude-code-version/SKILL.md |
-| VERSION-34 | Covered | skills/claude-code-version/SKILL.md; skills/claude-code-version/references/default-pass.md |
-| VERSION-35 | Covered | skills/claude-code-version/references/default-pass.md |
+| VERSION-34 | Covered | skills/claude-code-version/SKILL.md; skills/claude-code-version/references/default-guide.md |
+| VERSION-35 | Covered | skills/claude-code-version/references/default-guide.md |
 | VERSION-36 | Covered | scripts/version-scan-targets.sh; skills/claude-code-version/references/deep-scan-set.md |
-| VERSION-37 | Covered | scripts/version-scan-targets.sh; skills/claude-code-version/references/default-pass.md |
+| VERSION-37 | Covered | scripts/version-scan-targets.sh; skills/claude-code-version/references/default-guide.md |
+| VERSION-38 | Covered | skills/claude-code-version/SKILL.md; skills/claude-code-version/references/first-run.md |
+| VERSION-39 | Covered | skills/claude-code-version/references/first-run.md |
+| VERSION-40 | Covered | skills/claude-code-version/references/first-run.md |
 
 ## REPORT — Reporting & output model
 

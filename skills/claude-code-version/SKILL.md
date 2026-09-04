@@ -44,19 +44,28 @@ commands below.
 document holds nothing but comments, which is what it ships as.
 
 ## Pick the mode
-<!-- covers: VERSION-17, VERSION-23 -->
+<!-- covers: VERSION-17, VERSION-23, VERSION-38 -->
+
+**Nothing configured yet outranks every mode below.** Where no declaration has
+been recorded, this is the user's first run, and the changelog summary is the
+wrong thing to open with: shipshape does not yet know which repos are theirs to
+patch or what they want done about a finding, so a screen of release notes has
+nothing to be relevant *to*. Say it's the first run, take the input the guide
+needs, and only then turn to what changed. The procedure is
+[references/first-run.md](references/first-run.md).
 
 | What was asked | Mode |
 |---|---|
+| *(nothing configured yet)* | [First run](references/first-run.md) |
 | "what runs when the version changes", "set my upgrade instructions", "show the guide" | [The guide](#the-guide) |
 | "what's new", "what changed", "walk me through it" | [What changed](#what-changed) |
 | "handled", "acknowledge", "dismiss", "clear the banner", or the user has taken the update in | [Acknowledge](#acknowledge) |
 
-**Every path but the guide opens with what changed.** Acknowledging and the
-no-argument path both lead with the what-changed summary, so a version is
-never cleared, or offered up for clearing, without the user seeing what's in
-it. The guide path is the exception: writing instructions for a future upgrade
-is not handling this one.
+**Once configured, every path but the guide opens with what changed.**
+Acknowledging and the no-argument path both lead with the what-changed summary,
+so a version is never cleared, or offered up for clearing, without the user
+seeing what's in it. The guide path is the exception: writing instructions for a
+future upgrade is not handling this one.
 
 With no argument, report the status line, summarize what changed, then close
 with the question. When a banner is up, lead with the two versions:
@@ -73,18 +82,20 @@ While `pending` is true, every path but the guide ends in one
 offering to acknowledge at the bottom of that reads as the end of the report
 rather than a decision waiting on the user.
 
-**Where `guide.filled` is true, say what acknowledging will run.** Read the
-guide with `--guide` and put **at most three lines** above the question, one per
-thing it does, in the guide's own terms. This is a reminder, not the document:
-fold related steps together, and drop the rationale the guide carries for you.
-Where it holds more than three things to do, name the three that change files or
-run commands, and say how many are left.
+**Say what acknowledging will run, always.** Acknowledging is never the
+recording alone — the built-in guide runs whether or not the user wrote one, so
+a description promising only that a banner stops understates a fan-out over
+every repo they declared. Put **at most three lines** above the question:
+the built-in guide's scope in the user's own terms (how many repos it checks,
+how many plugins it leaves alone), and where `guide.filled` is true, what their
+own steps add, read from `--guide`. This is a reminder, not the document: fold
+related steps together, and drop the rationale the guide carries for you.
 
 | Field | Value |
 |---|---|
 | `header` | `Version` |
 | `question` | `Acknowledge Claude Code <current>?` |
-| First option | **Acknowledge + run guide** — "Carries out your version-change guide, then records `<current>`. The banner stops." Where `guide.filled` is false, the label is **Acknowledge** and the description is the recording alone. |
+| First option | **Acknowledge + run guide** — names what the run covers, then "records `<current>`. The banner stops." Where `guide.filled` is false the label is **Acknowledge + run the built-in guide**, and the description is the built-in guide's scope rather than the recording. |
 | Second option | **Ask me again later** — "Leaves it pending. The banner is back next session." |
 
 **Acknowledge** is the go-ahead: the summary is already given, so pick up
@@ -128,13 +139,15 @@ entry for `current` instead and say that's where they already are.
 
 **Read the whole file, not the anchored entry.** `--status`'s `changelog` URL
 carries an anchor for `current` (`#21259`), which is the citation to hand the
-user; several skipped releases need every entry between two versions. Where
-`--drift` reports a `mirror`, `git -C <mirror> fetch -q` then `git -C <mirror>
-show origin/main:CHANGELOG.md` reads it whole, faster and cheaper than the
-rendered blob. With no mirror recorded, read it through `gh`
-(`gh api repos/anthropics/claude-code/contents/CHANGELOG.md --jq '.content' |
-base64 -d`). Both, and the first-party examples worth reading alongside them,
-are in [references/default-guide.md](references/default-guide.md).
+user; several skipped releases need every entry between two versions. Read it
+through `gh`:
+
+```bash
+gh api repos/anthropics/claude-code/contents/CHANGELOG.md --jq '.content' | base64 -d
+```
+
+The first-party examples worth reading alongside it are in
+[references/default-guide.md](references/default-guide.md).
 
 **Report one screen.** The person reading has an upgrade to get through, not a
 changelog to study. Lead with the handful of items *this* user would act on: a

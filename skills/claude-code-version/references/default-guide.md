@@ -15,32 +15,23 @@ is always present is the user's own `~/.claude`.
 ## 1. Read what changed
 
 Walk every changelog entry between `acknowledged` and `current`, per the
-[What changed](../SKILL.md#what-changed) section. Two sources, in order:
-
-```bash
-CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash ${CLAUDE_PLUGIN_ROOT}/scripts/version-scan-targets.sh --drift
-```
-
-`mirror` names a local checkout of `anthropics/claude-code` when the user has
-recorded one — `git -C <mirror> fetch -q` then `git -C <mirror> show
-origin/main:CHANGELOG.md` reads the whole file. An empty `mirror` means read it
-through `gh` instead:
+[What changed](../SKILL.md#what-changed) section. Read it through `gh`:
 
 ```bash
 gh api repos/anthropics/claude-code/contents/CHANGELOG.md --jq '.content' | base64 -d
 ```
 
-Offer `--set-mirror <path>` when a user turns out to have a checkout the
-declaration doesn't know about; it makes every later upgrade cheaper. Never
-assume a path — an unrecorded mirror is a question, not a guess.
+`gh` needs no configuration and works on any machine. A user who keeps a local
+checkout can put the pull in their own guide, where a machine-specific path
+belongs; the skill does not hold one.
 
-**Read the first-party reference implementations too, where they are
-reachable.** Anthropic ships its own worked examples, and one that now does
-something the user's artifacts describe differently is the same staleness signal
-as a changelog entry — often a stronger one, since a changelog line can omit a
-shape change the example shows plainly. From a mirror they are directories;
-through `gh` they are one API call each, so read the ones the changelog entries
-actually implicate rather than all of them.
+**Read the first-party reference implementations the entries implicate.**
+Anthropic ships its own worked examples, and one that now does something the
+user's artifacts describe differently is the same staleness signal as a
+changelog entry — often a stronger one, since a changelog line can omit a shape
+change the example shows plainly. The repo carries docs and examples rather than
+source, so most releases implicate nothing here; read only the paths an entry
+actually points at, one `gh api` call each.
 
 | Path | What a change there implicates |
 |---|---|

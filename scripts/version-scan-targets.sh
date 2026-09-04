@@ -12,7 +12,6 @@
 # The declaration lives at $CLAUDE_PLUGIN_DATA/version-scan-targets.json:
 #
 #   { "version": 1,
-#     "claudeCode": { "mirror": "/…/claude-code" },
 #     "targets": {
 #       "anchor@your-custom-marketplace": { "action": "issue", "src": "/…/anchor" },
 #       "frontend-design@claude-plugins-official": { "action": "skip" },
@@ -35,24 +34,20 @@
 #   issue      examined; findings offered for filing
 #   edit       examined; fixes landed as direct edits for the user to review
 #
-# `claudeCode.mirror` names a local checkout of anthropics/claude-code, whose
-# CHANGELOG and first-party reference implementations a run reads. Absent, a run
-# reads them through `gh` instead.
-#
 # Usage:  version-scan-targets.sh --drift
 #         version-scan-targets.sh --set <key> <action> [<src>]
 #         version-scan-targets.sh --forget <key>
-#         version-scan-targets.sh --set-mirror <path>
-#         version-scan-targets.sh --forget-mirror
 #
 # --drift prints the reconciliation as JSON and changes nothing:
 #
-#   { "new": [<key>…],                      installed, no decision recorded
+#   { "new": [{key,source}…],              installed, no decision recorded;
+#                                          `source` is the repo the plugin ships
+#                                          from, which is what the question is
+#                                          grouped by
 #     "gone": [<key>…],                     decided, no longer installed
 #     "unreadable": [{key,src}…],           examined, src is not a directory
 #     "targets": [{key,action,src}…],       the examined set, ready to use
 #     "skip": [<key>…],                     decided `skip`
-#     "mirror": "<path>",                   "" when none is recorded
 #     "settled": <true|false> }             nothing to ask about
 #
 # `unreadable` is its own bucket rather than folded into `targets` or dropped: a
@@ -110,21 +105,97 @@ write_decl() {
   mv "$tmp" "$decl"
 }
 
+# Each outstanding plugin's source repo, as `<key>\t<url>`.
+#
+# The source is what predicts the user's answer, and the marketplace is not: a
+# shared marketplace carries plugins from many owners, and one owner's plugins
+# are spread across several marketplaces. So the question is grouped by source,
+# which means resolving it here rather than leaving the skill to re-derive it.
+#
+# A marketplace's installLocation is a directory when its source is a git repo
+# and a file when it is a plain marketplace.json URL; both have to be read.
+plugin_sources() {
+  registry="$plugins/known_marketplaces.json"
+  [ -f "$registry" ] || return 0
+  jq -r 'to_entries[] | [.key, (.value.installLocation // "")] | @tsv' "$registry" \
+  | while IFS=$'\t' read -r name loc; do
+      [ -n "$loc" ] || continue
+      mf="$loc"
+      [ -d "$loc" ] && mf="$loc/.claude-plugin/marketplace.json"
+      [ -f "$mf" ] || continue
+      jq -r --arg m "$name" '
+        (.plugins // [])[]
+        | [(.name + "@" + $m),
+           (.source | if type == "string" then . else (.url // .repo // "") end)]
+        | @tsv' "$mf" 2>/dev/null
+    done
+}
+
+# Where an outstanding plugin's source repo is checked out, as
+# `<key>\t<path>` — one line per candidate, none when nothing matches.
+#
+# Claude Code records every directory a session has run in under `.projects` in
+# ~/.claude.json, which is an index of the user's checkouts for the price of one
+# file read. Candidates come from there by repo basename, then each one's
+# `origin` decides it: a basename can collide across owners (three different
+# `ai-tools` repos on one machine), and the remote is what tells them apart.
+#
+# Asking the user for a source root is the fallback, not the first move — they
+# should be confirming a resolved list, not typing a path shipshape could have
+# found. A repo they have never opened a session in is simply absent, which is
+# what makes the fallback necessary rather than optional.
+resolve_sources() {
+  index="$HOME/.claude.json"
+  [ -f "$index" ] || return 0
+  projects=$(jq -r '(.projects // {}) | keys[]' "$index" 2>/dev/null) || return 0
+
+  norm() {
+    printf '%s' "$1" \
+      | sed -e 's#^git@#https://#' -e 's#^\(https://[^/:]*\):#\1/#' \
+            -e 's#\.git$##' -e 's#/$##'
+  }
+
+  while IFS=$'\t' read -r key source; do
+    [ -n "$source" ] || continue
+    case "$source" in ./*|'') continue ;; esac
+    base=${source##*/}; base=${base%.git}
+    want=$(norm "$source")
+    printf '%s\n' "$projects" | while IFS= read -r dir; do
+      [ "${dir##*/}" = "$base" ] || continue
+      url=$(git -C "$dir" remote get-url origin 2>/dev/null) || continue
+      [ "$(norm "$url")" = "$want" ] || continue
+      printf '%s\t%s\n' "$key" "$dir"
+    done
+  done
+}
+
 case "${1:---drift}" in
+  --resolve)
+    installed=$(jq -c '(.plugins // {}) | keys' "$manifest")
+    decl_json=$(read_decl) || exit 1
+    sources=$(plugin_sources | jq -R 'split("\t") | {key: .[0], source: (.[1] // "")}' | jq -sc 'INDEX(.key) | map_values(.source)')
+    outstanding=$(printf '%s' "$decl_json" | jq -r --argjson installed "$installed" --argjson sources "$sources" '
+      (($installed - (.targets | keys))[]) as $k | [$k, ($sources[$k] // "")] | @tsv')
+    printf '%s' "$outstanding" | resolve_sources \
+      | jq -R 'split("\t") | {key: .[0], path: .[1]}' \
+      | jq -sc 'group_by(.key) | map({key: .[0].key, paths: [.[].path] | unique})'
+    ;;
+
   --drift)
     installed=$(jq -c '(.plugins // {}) | keys' "$manifest")
     decl_json=$(read_decl) || exit 1
+    sources=$(plugin_sources | jq -R 'split("\t") | {key: .[0], source: (.[1] // "")}' | jq -sc 'INDEX(.key) | map_values(.source)')
 
-    base=$(printf '%s' "$decl_json" | jq --argjson installed "$installed" '
+    base=$(printf '%s' "$decl_json" | jq --argjson installed "$installed" --argjson sources "$sources" '
       .targets as $t
-      | ($installed - ($t | keys)) as $new
+      | [($installed - ($t | keys))[] | {key: ., source: ($sources[.] // "")}] as $new
       | [$t | to_entries[] | select(.key | contains("@")) | .key] as $plugin_keys
       | [$t | to_entries[]
           | select(.value.action != "skip")
           | {key: .key, action: .value.action, src: (.value.src // "")}] as $examined
       | [$t | to_entries[] | select(.value.action == "skip") | .key] as $skip
       | {new: $new, gone: ($plugin_keys - $installed), targets: $examined,
-         skip: $skip, mirror: (.claudeCode.mirror // "")}
+         skip: $skip}
     ')
 
     # Whether a recorded src is still a directory is the one fact jq cannot
@@ -135,21 +206,11 @@ case "${1:---drift}" in
       | while IFS= read -r s; do [ -d "$s" ] && printf '%s\n' "$s"; done \
       | jq -R . | jq -sc .)
 
-    # A recorded mirror that has moved is reported as absent rather than handed
-    # on: a run reads the changelog through `gh` instead, which is the same path
-    # a user with no mirror takes.
-    mirror=$(printf '%s' "$base" | jq -r '.mirror')
-    if [ -n "$mirror" ] && [ ! -d "$mirror" ]; then
-      echo "version-scan-targets: recorded mirror $mirror is not a directory; reading through gh instead" >&2
-      mirror=""
-    fi
-
-    printf '%s' "$base" | jq --argjson readable "$readable" --arg mirror "$mirror" '
+    printf '%s' "$base" | jq --argjson readable "$readable" '
       ($readable | map({(.): true}) | add // {}) as $ok
       | .targets as $rows
       | .targets = [$rows[] | select($ok[.src])]
       | .unreadable = [$rows[] | select($ok[.src] | not) | {key, src}]
-      | .mirror = $mirror
       | .settled = ((.new | length) == 0 and (.gone | length) == 0
                     and (.unreadable | length) == 0)
     '
@@ -198,26 +259,6 @@ case "${1:---drift}" in
     fi
     read_decl | jq --arg k "$key" 'del(.targets[$k])' | write_decl
     echo "version-scan-targets: forgot $key"
-    ;;
-
-  --set-mirror)
-    path="${2:-}"
-    if [ -z "$path" ]; then
-      echo "version-scan-targets: --set-mirror needs a path" >&2
-      exit 2
-    fi
-    if [ ! -d "$path" ]; then
-      echo "version-scan-targets: $path is not a directory; mirror not recorded" >&2
-      exit 2
-    fi
-    path=$(cd "$path" && pwd)
-    read_decl | jq --arg p "$path" '.claudeCode.mirror = $p' | write_decl
-    echo "version-scan-targets: mirror -> $path"
-    ;;
-
-  --forget-mirror)
-    read_decl | jq 'del(.claudeCode)' | write_decl
-    echo "version-scan-targets: forgot the mirror; reads go through gh"
     ;;
 
   *)

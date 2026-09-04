@@ -257,8 +257,11 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
 - [VERSION-24] Where a version is pending, the version skill shall close every
   path but the guide with a two-option question — acknowledge now, carrying out
   the guide, or leave it pending — rather than a prose offer.
-- [VERSION-25] Where the guide is filled, the version skill shall precede that
-  question with what acknowledging will run, in at most three lines.
+- [VERSION-25] The version skill shall precede that question with what
+  acknowledging will run, in at most three lines — the built-in guide's scope
+  always, and the user's own steps where their guide is filled. Acknowledging is
+  never the recording alone, so a description offering only that the banner
+  stops understates a fan-out over every repo the user declared.
 - [VERSION-26] While carrying out the guide, shipshape shall establish a step's
   findings against the sources the step names before recording the version,
   since recording is what ends the errand and a finding the user cannot act on
@@ -312,12 +315,28 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   for a finding in it — summarized, drafted for filing, or fixed in place — and
   shipshape shall act on that rather than deciding per run. `summarize` shall be
   the disposition that presumes nothing and the one a target defaults to.
-- [VERSION-37] The built-in guide shall read the changelog and Anthropic's
-  first-party reference implementations from a local mirror the user has
-  recorded, and through `gh` where none is recorded, so a reference
-  implementation that contradicts the user's artifacts reaches them whether or
-  not they keep a checkout. A recorded mirror shipshape cannot read shall fall
-  back to `gh` with the reason surfaced, rather than silently reading nothing.
+- [VERSION-37] The built-in guide shall read the changelog and the first-party
+  reference implementations an entry implicates through `gh`, which needs no
+  configuration and reaches any machine. A user who keeps a local checkout may
+  put the pull in their own guide, where a machine-specific path belongs.
+- [VERSION-38] Where no declaration has ever been recorded, the version skill
+  shall take the user's configuration before reporting what changed, rather
+  than opening with the changelog summary every configured path opens with. The
+  summary describes a release against the artifacts a user maintains, and on a
+  first run shipshape does not yet know what those are, so the report has
+  nothing to be relevant to.
+- [VERSION-39] While taking that configuration, shipshape shall ask about
+  installed plugins in groups rather than one at a time, and shall record each
+  answer as it arrives. A machine carries tens of plugins whose answer is
+  uniform within a marketplace, and a run that resolves the whole set without
+  writing it asks again at the next upgrade.
+- [VERSION-40] Once that configuration is recorded, shipshape shall preview the
+  run it produces — what an upgrade will read, and what it will do with a
+  finding in each target — derived from the declaration rather than described
+  in general terms, and shall then ask only whether the user wants to add
+  anything. Where they do, shipshape shall write their input into the guide as
+  imperative prose and show them the file path and the rewritten form before
+  writing it.
 
 ### REPORT — Reporting & output model
 
