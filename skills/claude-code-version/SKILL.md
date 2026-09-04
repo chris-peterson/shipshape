@@ -164,8 +164,11 @@ changelog to study. Lead with the handful of items *this* user would act on: a
 new skill, command, or tool; a changed default; and anything touching the
 artifacts they write — hook events and schemas, settings keys, skill and plugin
 frontmatter, permission syntax — since that staleness is what the guide exists
-to repair. One line each, naming the version it landed in. Then say how many
-entries you passed over, and offer the per-release walk rather than printing it.
+to repair. One line each, naming the version it landed in. Then account for the
+entries the summary left out — how many, and the offer of a per-release walk
+rather than printing it. Report that count only where there is one to report: a
+summary that surfaced every entry is already the whole account, and a stated
+zero reads as bookkeeping the user has to parse.
 
 Nothing worth acting on is its own answer: say the releases were internal fixes
 and stop there.

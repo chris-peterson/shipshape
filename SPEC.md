@@ -244,7 +244,8 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   changelog entries after the acknowledged version through the running version
   in one screen, leading with what the user would act on and offering the
   per-release walk rather than printing it, without acknowledging as a side
-  effect.
+  effect. It shall report the number of entries the summary omits only where it
+  omits some.
 - [VERSION-20] When the user acknowledges an upgrade, shipshape shall carry out the
   guide's content before recording the version, and shall leave the version
   unacknowledged if a step fails.

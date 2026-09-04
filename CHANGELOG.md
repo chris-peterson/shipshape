@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **A what-changed summary no longer tells you it left nothing out.** Where every changelog entry made the one-screen summary, the summary is the whole account, so the run states how many entries it omitted only when it omitted some.
+
 ## 0.11.2
 
 ### Fixed
