@@ -35,7 +35,9 @@ commands below.
   "current": "2.1.235",
   "pending": true,
   "changelog": "https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md#21235",
-  "guide": { "path": "…/on-claude-code-version-change.md", "filled": true }
+  "guide": { "path": "…/on-claude-code-version-change.md", "filled": true },
+  "declaration": { "path": "…/version-scan-targets.json", "configured": true,
+                   "examined": 12, "skipped": 15 }
 }
 ```
 
@@ -43,20 +45,28 @@ commands below.
 `pending` is the banner: true means one is up. `guide.filled` is false while the
 document holds nothing but comments, which is what it ships as.
 
-## Pick the mode
-<!-- covers: VERSION-17, VERSION-23, VERSION-38 -->
+`declaration.configured` is what picks the first run, and it is the only field
+that does: an empty guide is the ordinary end state of a *finished*
+configuration, so `guide.filled` says nothing about whether one has happened.
+`examined` and `skipped` are the target counts, which is what the acknowledge
+question quotes the run's scope from. A null `configured` means the declaration
+is on disk but unreadable — never a first run; surface the stderr line and stop,
+since reconfiguring would ask again for every decision already recorded.
 
-**Nothing configured yet outranks every mode below.** Where no declaration has
-been recorded, this is the user's first run, and the changelog summary is the
-wrong thing to open with: shipshape does not yet know which repos are theirs to
-patch or what they want done about a finding, so a screen of release notes has
-nothing to be relevant *to*. Say it's the first run, take the input the guide
+## Pick the mode
+<!-- covers: VERSION-17, VERSION-23, VERSION-38, VERSION-41 -->
+
+**Nothing configured yet outranks every mode below.** Where `--status` reports
+`declaration.configured` false, this is the user's first run, and the changelog
+summary is the wrong thing to open with: shipshape does not yet know which repos
+are theirs to patch or what they want done about a finding, so a screen of
+release notes has nothing to be relevant *to*. Say it's the first run, take the input the guide
 needs, and only then turn to what changed. The procedure is
 [references/first-run.md](references/first-run.md).
 
 | What was asked | Mode |
 |---|---|
-| *(nothing configured yet)* | [First run](references/first-run.md) |
+| *(`declaration.configured` is false)* | [First run](references/first-run.md) |
 | "what runs when the version changes", "set my upgrade instructions", "show the guide" | [The guide](#the-guide) |
 | "what's new", "what changed", "walk me through it" | [What changed](#what-changed) |
 | "handled", "acknowledge", "dismiss", "clear the banner", or the user has taken the update in | [Acknowledge](#acknowledge) |

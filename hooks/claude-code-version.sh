@@ -4,7 +4,7 @@
 #
 #   claude-code-version.sh              the hook — announce while a version is unacknowledged
 #   claude-code-version.sh --ack [ver]  acknowledge: record `ver` (default: the running version)
-#   claude-code-version.sh --status     report both versions and the guide, as JSON
+#   claude-code-version.sh --status     report both versions, the guide and the declaration, as JSON
 #   claude-code-version.sh --guide      print the guide's content (nothing when unfilled)
 #
 # Claude Code updates itself in the background, and the new version takes effect
@@ -217,13 +217,39 @@ if [ "$mode" = status ]; then
   # asking what's pending can't be what dismisses it.
   filled=false
   if [ -n "$(content)" ]; then filled=true; fi
+
+  # Whether the deep-scan set has ever been declared is what separates a first
+  # run from a configured one, and `--status` is the one command the skill runs
+  # on every path. Reported anywhere else, the mode is picked from `filled` —
+  # which is false on a finished configuration too, since an empty guide is the
+  # ordinary outcome of one.
+  #
+  # An unreadable declaration is not an absent one: reported as unconfigured, it
+  # sends the skill into a first run that asks for every decision the user has
+  # already made. It answers null, and says why on stderr.
+  # covers: VERSION-41
+  decl_path="$CLAUDE_PLUGIN_DATA/version-scan-targets.json"
+  declaration='{"configured": null, "examined": null, "skipped": null}'
+  if [ ! -f "$decl_path" ]; then
+    declaration='{"configured": false, "examined": 0, "skipped": 0}'
+  elif jq -e 'type == "object" and (.targets | type == "object")' "$decl_path" >/dev/null 2>&1; then
+    declaration="$(jq -c '(.targets | to_entries) as $t
+      | {configured: ($t | length > 0),
+         examined: ([$t[] | select(.value.action != "skip")] | length),
+         skipped:  ([$t[] | select(.value.action == "skip")] | length)}' "$decl_path")"
+  else
+    printf 'shipshape: %s is not readable as a declaration; reporting its state as unknown.\n' "$decl_path" >&2
+  fi
+
   jq -n --arg ack "$acknowledged" --arg cur "$current" --arg entry "$entry" \
         --arg guide "$CALLBACKS" --argjson filled "$filled" \
+        --arg decl "$decl_path" --argjson declaration "$declaration" \
     '{acknowledged: (if $ack == "" then null else $ack end),
       current: $cur,
       pending: ($ack != "" and $ack != $cur),
       changelog: $entry,
-      guide: {path: $guide, filled: $filled}}'
+      guide: {path: $guide, filled: $filled},
+      declaration: ({path: $decl} + $declaration)}'
   exit 0
 fi
 

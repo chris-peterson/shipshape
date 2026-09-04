@@ -71,6 +71,7 @@ marker() { [ -f "$MARKER" ] && cat "$MARKER" || echo absent; }
 field() { printf '%s' "$OUT" | jq -r "$1" 2>/dev/null; }
 ctx() { field '.hookSpecificOutput.additionalContext'; }
 fill() { printf 'Re-train the artifacts: /my-retrain-command\n' > "$CALLBACKS"; }
+declare_targets() { printf '%s\n' "$1" > "$DATA/version-scan-targets.json"; }
 
 # --- First run: installing acknowledges the version you're already on. ---
 setup 2.1.0
@@ -222,6 +223,33 @@ check "--status leaves the marker alone"     "$(marker)"                "2.1.0"
 fill
 status
 check "a written guide reads as filled"      "$(field '.guide.filled')" "true"
+
+# --- The declaration: what the skill picks a first run from. A filled guide is
+# --- not the signal — a finished configuration usually leaves it empty.
+check "no declaration reads as unconfigured" "$(field '.declaration.configured')" "false"
+check "an unconfigured run examines nothing" "$(field '.declaration.examined')"   "0"
+check "an unconfigured run skips nothing"    "$(field '.declaration.skipped')"    "0"
+check "--status reports the declaration path" "$(field '.declaration.path')" "$DATA/version-scan-targets.json"
+
+declare_targets '{"version":1,"targets":{}}'
+status
+check "an empty declaration is a first run"  "$(field '.declaration.configured')" "false"
+
+declare_targets '{"version":1,"targets":{"a@m":{"action":"issue","src":"/tmp"},"b@m":{"action":"edit","src":"/tmp"},"c@m":{"action":"skip"}}}'
+status
+check "recorded targets read as configured"  "$(field '.declaration.configured')" "true"
+check "the examined count omits skips"       "$(field '.declaration.examined')"   "2"
+check "the skipped count is its own"         "$(field '.declaration.skipped')"    "1"
+
+# An unreadable declaration is not an absent one: reported as unconfigured it
+# would start a first run that asks again for every recorded decision.
+declare_targets 'not a declaration'
+status
+check "an unreadable declaration exits 0"    "$RC"                                "0"
+check "an unreadable declaration is unknown" "$(field '.declaration.configured')" "null"
+check "unknown counts are null too"          "$(field '.declaration.examined')"   "null"
+contains "an unreadable declaration says so" "$ERR" "is not readable as a declaration"
+check "the rest of --status still answers"   "$(field '.current')"                "2.1.1"
 
 # --- Nothing acknowledged yet: reported as null, not as a pending upgrade. ---
 setup 2.1.0

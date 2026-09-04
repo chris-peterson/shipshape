@@ -119,6 +119,7 @@ means an edit can't leave the two disagreeing.
 | VERSION-38 | Covered | skills/claude-code-version/SKILL.md; skills/claude-code-version/references/first-run.md |
 | VERSION-39 | Covered | skills/claude-code-version/references/first-run.md |
 | VERSION-40 | Covered | skills/claude-code-version/references/first-run.md |
+| VERSION-41 | Covered | hooks/claude-code-version.sh; skills/claude-code-version/SKILL.md; skills/claude-code-version/references/first-run.md |
 
 ## REPORT — Reporting & output model
 

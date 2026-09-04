@@ -219,8 +219,9 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   that version in the marker and report what it recorded.
 - [VERSION-10] When invoked with `--status`, the version hook shall report the
   acknowledged and running versions, whether one is pending, the changelog entry
-  for the running version, and the guide's path and filled state, without
-  writing the marker.
+  for the running version, the guide's path and filled state, and the
+  declaration's path, whether it has been configured, and its examined and
+  skipped counts, without writing the marker.
 - [VERSION-11] Where no version has been acknowledged yet, or the marker is not a
   version, the version hook shall write the marker without showing a banner.
 - [VERSION-12] Where `SHIPSHAPE_VERSION_NOTICE` is `off`, the version hook shall
@@ -337,6 +338,13 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   anything. Where they do, shipshape shall write their input into the guide as
   imperative prose and show them the file path and the rewritten form before
   writing it.
+- [VERSION-41] The version skill shall select the first run from the
+  declaration's configured state as `--status` reports it, and where the
+  declaration is present but unreadable the version hook shall report that state
+  as unknown rather than as unconfigured. Every mode runs `--status` and no mode
+  runs anything else first, so a signal absent from it is a signal the skill
+  cannot act on; and an unreadable declaration read as an absent one starts a
+  first run that asks again for every decision already recorded.
 
 ### REPORT — Reporting & output model
 

@@ -6,10 +6,12 @@ The built-in guide runs against the repos the user maintains and the
 dispositions they chose. On a first run neither exists, so a changelog summary
 has nothing to be about. Configure first, report second.
 
-Detect it from the declaration: `--drift` reporting an empty `targets` and an
-empty `skip` means nothing has ever been recorded. A settled declaration with
-one `new` plugin is not a first run — that is the ordinary drift question,
-answered in place.
+Detect it from `--status`, which every mode already runs:
+`declaration.configured` is false when nothing has ever been recorded. A
+settled declaration with one `new` plugin is not a first run — that is the
+ordinary drift question, answered in place. Neither is a null `configured`,
+which means the declaration is there but unreadable: say so and stop, rather
+than asking again for decisions already on disk.
 
 ## Open with two lines
 

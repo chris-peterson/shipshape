@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **`/claude-code-version` can tell a first run from a configured machine.** The status it reads at the top of every mode now reports whether you have a declaration, and how many repos it examines and skips. The closest signal before it was whether your version-change guide was written — which is empty on a finished setup too, since the built-in guide is usually the whole errand — so a configured machine could be walked back through the setup questions. A declaration that is on disk but unreadable reports as unknown rather than missing, so a corrupt file can't restart them either.
+
 ## 0.11.0
 
 ### Added
