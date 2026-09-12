@@ -15,15 +15,9 @@ is always present is the user's own `~/.claude`.
 ## 1. Read what changed
 
 Walk every changelog entry between `acknowledged` and `current`, per the
-[What changed](../SKILL.md#what-changed) section. Read it through `gh`:
-
-```bash
-gh api repos/anthropics/claude-code/contents/CHANGELOG.md --jq '.content' | base64 -d
-```
-
-`gh` needs no configuration and works on any machine. A user who keeps a local
-checkout can put the pull in their own guide, where a machine-specific path
-belongs; the skill does not hold one.
+[What changed](../SKILL.md#what-changed) section, which carries the read. A user
+who keeps a local checkout can put the pull in their own guide, where a
+machine-specific path belongs; the skill does not hold one.
 
 **Read the first-party reference implementations the entries implicate.**
 Anthropic ships its own worked examples, and one that now does something the
@@ -31,7 +25,8 @@ user's artifacts describe differently is the same staleness signal as a
 changelog entry — often a stronger one, since a changelog line can omit a shape
 change the example shows plainly. The repo carries docs and examples rather than
 source, so most releases implicate nothing here; read only the paths an entry
-actually points at, one `gh api` call each.
+actually points at, one `gh api` call each — `gh` reads arbitrary repo paths
+without a URL per file, and needs no configuration to do it.
 
 | Path | What a change there implicates |
 |---|---|

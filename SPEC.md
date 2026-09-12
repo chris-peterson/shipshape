@@ -317,10 +317,12 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   for a finding in it — summarized, drafted for filing, or fixed in place — and
   shipshape shall act on that rather than deciding per run. `summarize` shall be
   the disposition that presumes nothing and the one a target defaults to.
-- [VERSION-37] The built-in guide shall read the changelog and the first-party
-  reference implementations an entry implicates through `gh`, which needs no
-  configuration and reaches any machine. A user who keeps a local checkout may
-  put the pull in their own guide, where a machine-specific path belongs.
+- [VERSION-37] The built-in guide shall read the changelog from its raw URL,
+  which needs no CLI and no credential. It shall read the first-party reference
+  implementations an entry implicates through `gh`, which reaches arbitrary repo
+  paths without a URL per file. Both need no configuration and reach any
+  machine. A user who keeps a local checkout may put the pull in their own
+  guide, where a machine-specific path belongs.
 - [VERSION-38] Where no declaration has ever been recorded, the version skill
   shall take the user's configuration before reporting what changed, rather
   than opening with the changelog summary every configured path opens with. The

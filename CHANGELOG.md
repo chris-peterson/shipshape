@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- **Reading what changed works without the GitHub CLI.** The changelog walk pulls the file from its raw URL, so `/claude-code-version` reports what an upgrade contains on a machine with no `gh` installed and without an expired token stopping the run. Reading the first-party examples an entry implicates still uses `gh`.
 - **A what-changed summary no longer tells you it left nothing out.** Where every changelog entry made the one-screen summary, the summary is the whole account, so the run states how many entries it omitted only when it omitted some.
 
 ## 0.11.2

@@ -150,10 +150,10 @@ entry for `current` instead and say that's where they already are.
 **Read the whole file, not the anchored entry.** `--status`'s `changelog` URL
 carries an anchor for `current` (`#21259`), which is the citation to hand the
 user; several skipped releases need every entry between two versions. Read it
-through `gh`:
+straight from the raw file:
 
 ```bash
-gh api repos/anthropics/claude-code/contents/CHANGELOG.md --jq '.content' | base64 -d
+curl -fsSL https://raw.githubusercontent.com/anthropics/claude-code/refs/heads/main/CHANGELOG.md
 ```
 
 The first-party examples worth reading alongside it are in
