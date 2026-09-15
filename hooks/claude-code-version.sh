@@ -270,10 +270,14 @@ fi
 # short enough to sit on the line, it carries no path to go stale when shipshape
 # updates, and it's the path that runs the user's guide.
 # covers: VERSION-02, VERSION-03, VERSION-08
-banner="Claude Code $acknowledged → $current · $entry · /claude-code-version to review and clear"
+# `<source>: <resolution>  # <reasoning>`. Session banners stack, one line per
+# plugin with something to say, so the command to type sits where the eye lands
+# and the rest goes after the marker. The changelog entry moves to the context:
+# the skill named here is what walks the reader through it anyway.
+banner="Claude Code: /claude-code-version  # $acknowledged → $current"
 
 # covers: VERSION-04, VERSION-05
-context="Claude Code moved from $acknowledged to $current. The banner announcing it repeats every session until the version is acknowledged.
+context="Claude Code moved from $acknowledged to $current — $entry. The banner announcing it repeats every session until the version is acknowledged.
 
 shipshape's \`claude-code-version\` skill handles it: it walks what changed,
 carries out the version-change instructions the user wrote, and records the

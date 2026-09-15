@@ -95,8 +95,11 @@ hook
 check "changed version exits 0"              "$RC"       "0"
 check "banner is valid JSON"                 "$(field 'has("systemMessage")')" "true"
 contains "banner names both versions"        "$(field '.systemMessage')" "2.1.0 → 2.1.1"
-contains "banner links the new entry"        "$(field '.systemMessage')" "CHANGELOG.md#211"
 contains "banner names the command to run"   "$(field '.systemMessage')" "/claude-code-version"
+# <source>: <resolution>  # <reasoning> — banners stack one per plugin, so the
+# command sits where the eye lands and detail moves to the context.
+check "banner takes the standard shape"      "$(field '.systemMessage')" "Claude Code: /claude-code-version  # 2.1.0 → 2.1.1"
+contains "context links the new entry"       "$(ctx)" "CHANGELOG.md#211"
 check "unacknowledged version stays pending" "$(marker)" "2.1.0"
 check "context is tagged SessionStart"       "$(field '.hookSpecificOutput.hookEventName')" "SessionStart"
 contains "context names both versions"       "$(ctx)" "moved from 2.1.0 to 2.1.1"
