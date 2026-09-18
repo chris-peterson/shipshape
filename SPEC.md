@@ -270,7 +270,10 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   leaves nothing for the banner to bring them back to.
 - [VERSION-27] Where a guide step asks for a pass over the user's plugins,
   shipshape shall analyze the ones the user maintains and shall leave the ones
-  they only use to their own maintainers, reporting those as a count. Which is
+  they only use to their own maintainers, reporting nothing about them — not a
+  list, not a count, and not a closing tally. The declaration has already
+  settled that they are not the run's business, and a number about software the
+  user does not maintain gives them nothing to act on. Which is
   which is not derivable from the install — both are installed and both have a
   source repo — so shipshape shall keep the user's declaration in the plugin
   data dir, keyed by install-manifest key, and shall accept a bare key for a
@@ -293,7 +296,11 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   so the coverage is legible.
 - [VERSION-31] shipshape shall deliver a run's findings in one pass rather than
   one at a time, since the decision the user makes is which of them to act on
-  and that needs all of them in view.
+  and that needs all of them in view. It shall then walk the findings one at a
+  time, asking per finding whether to file it or fix it now and carrying the
+  file, the line and the size of the fix into the question. Delivering the set
+  is what makes the findings comparable; a single closing offer over the set
+  asks for one answer across findings whose answers differ.
 - [VERSION-32] While carrying out a multi-step guide, shipshape shall report the
   outcome of each step rather than each tool call it took, so the results the
   user can act on are not buried in the mechanics of reaching them.
@@ -312,7 +319,10 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   artifacts, since those are present for every user whether or not they
   maintain a plugin. Where a declared target's repo deploys into `~/.claude`,
   shipshape shall detect staleness there and land the fix in that repo, because
-  a fix written into the deployed copy is discarded by the next sync.
+  a fix written into the deployed copy is discarded by the next sync. It shall
+  read `~/.claude/skills/synced/` and shall never write to it: that folder is a
+  cache of the user's claude.ai account, so a fix landed there reaches neither
+  the account nor a source tree and is reported as a fix that held.
 - [VERSION-36] Each declared target shall carry the user's recorded disposition
   for a finding in it — summarized, drafted for filing, or fixed in place — and
   shipshape shall act on that rather than deciding per run. `summarize` shall be
@@ -348,6 +358,22 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   runs anything else first, so a signal absent from it is a signal the skill
   cannot act on; and an unreadable declaration read as an absent one starts a
   first run that asks again for every decision already recorded.
+- [VERSION-42] shipshape shall reconcile the account-sync lane alongside the
+  install manifest, reporting the synced skills it can name and the synced
+  plugin rows it can count, and shall report a bucket file that does not parse
+  as unreadable rather than as empty. Skills and plugins enabled on the user's
+  claude.ai account carry no install-manifest row, so a pass over the manifest
+  alone reads them as absent rather than as unexamined and reports full coverage
+  having never seen them. A synced entry the user maintains shall be declarable
+  under a bare key, since no manifest key can address it.
+- [VERSION-43] Where the session's working directory is shipshape's own
+  checkout, the built-in guide shall repair shipshape against what changed
+  before it examines any other target, and where the repair is material it shall
+  ask the user to restart with `--plugin-dir` before the rest of the pass runs.
+  shipshape reads the changelog, the install manifest, the plugin cache and
+  `~/.claude`, so a release that moves any of those leaves every later verdict
+  reached with a stale map; and a plugin is loaded at session start, so the
+  repair does not reach the running install on its own.
 
 ### REPORT — Reporting & output model
 

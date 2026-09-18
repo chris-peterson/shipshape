@@ -29,7 +29,7 @@
 # That distinction has to live here rather than in the user's prose, because the
 # run has to know it per target:
 #
-#   skip       not examined; reported as a count
+#   skip       not examined, and not reported
 #   summarize  examined; findings summarized in the report (the default)
 #   issue      examined; findings offered for filing
 #   edit       examined; fixes landed as direct edits for the user to review
@@ -48,6 +48,7 @@
 #     "unreadable": [{key,src}…],           examined, src is not a directory
 #     "targets": [{key,action,src}…],       the examined set, ready to use
 #     "skip": [<key>…],                     decided `skip`
+#     "synced": {skills,plugins,unreadable}, the account-sync lane (see below)
 #     "settled": <true|false> }             nothing to ask about
 #
 # `unreadable` is its own bucket rather than folded into `targets` or dropped: a
@@ -55,17 +56,30 @@
 # nothing while reporting a pass is the one outcome that must not happen. It
 # keeps `settled` false until the user answers.
 #
+# `synced` is the same principle one lane over. Skills and plugins enabled on
+# the user's claude.ai account are written by Claude Code into
+# ~/.claude/skills/synced/<bucket>/ and ~/.claude/plugins/synced/<bucket>/, and
+# they carry no install-manifest row — so the manifest alone reads them as
+# absent rather than as unexamined, and a pass over the manifest reports full
+# coverage while never having seen them. Only what is observable goes in the
+# bucket: a synced skills manifest names its skills, so those are named, while a
+# synced plugin bucket's rows carry fields this script does not read, so those
+# are counted. A bucket file that exists but does not parse is listed in
+# `synced.unreadable`, never counted as empty.
+#
 # Exit:   0 = answered
 #         1 = jq missing, no install manifest, or CLAUDE_PLUGIN_DATA unset
 #         2 = a mode was called with arguments it cannot honor
 #
 # Env:    CLAUDE_PLUGIN_DATA  where the declaration is written (required)
 #         CLAUDE_PLUGINS_DIR  override ~/.claude/plugins (tests)
+#         CLAUDE_SKILLS_DIR   override ~/.claude/skills (tests)
 
-# covers: VERSION-27, VERSION-28, VERSION-34, VERSION-35
+# covers: VERSION-27, VERSION-28, VERSION-34, VERSION-35, VERSION-42
 set -euo pipefail
 
 plugins="${CLAUDE_PLUGINS_DIR:-$HOME/.claude/plugins}"
+skills="${CLAUDE_SKILLS_DIR:-$HOME/.claude/skills}"
 manifest="$plugins/installed_plugins.json"
 data="${CLAUDE_PLUGIN_DATA:-}"
 
@@ -169,6 +183,42 @@ resolve_sources() {
   done
 }
 
+# What the account-sync lane holds, one observation per line: `skill\t<name>`,
+# `rows\t<count>`, or `bad\t<path>`.
+#
+# A synced skills manifest names its skills, so they are named. A synced plugin
+# bucket's rows carry fields this script has never read, so they are counted and
+# not named — counting needs only `rows`, which is on the file itself. A bucket
+# that exists and does not parse is `bad`, because reading it as empty is how a
+# lane nobody examined comes to look like a lane with nothing in it.
+synced_rows() {
+  for m in "$skills"/synced/*/manifest.json; do
+    [ -f "$m" ] || continue
+    if jq -e '(.skills // []) | type == "array"' "$m" >/dev/null 2>&1; then
+      jq -r '(.skills // [])[] | "skill\t" + (.name // .skillId // empty)' "$m"
+    else
+      printf 'bad\t%s\n' "$m"
+    fi
+  done
+  for b in "$plugins"/synced/*/.marketplaces.json; do
+    [ -f "$b" ] || continue
+    if n=$(jq '(.rows // []) | length' "$b" 2>/dev/null); then
+      printf 'rows\t%s\n' "$n"
+    else
+      printf 'bad\t%s\n' "$b"
+    fi
+  done
+}
+
+synced_lane() {
+  synced_rows \
+    | jq -R 'split("\t") | {kind: .[0], value: (.[1] // "")}' \
+    | jq -sc '
+        {skills: [.[] | select(.kind == "skill") | .value | select(. != "")],
+         plugins: ([.[] | select(.kind == "rows") | (.value | tonumber)] | add // 0),
+         unreadable: [.[] | select(.kind == "bad") | .value]}'
+}
+
 case "${1:---drift}" in
   --resolve)
     installed=$(jq -c '(.plugins // {}) | keys' "$manifest")
@@ -206,11 +256,12 @@ case "${1:---drift}" in
       | while IFS= read -r s; do [ -d "$s" ] && printf '%s\n' "$s"; done \
       | jq -R . | jq -sc .)
 
-    printf '%s' "$base" | jq --argjson readable "$readable" '
+    printf '%s' "$base" | jq --argjson readable "$readable" --argjson synced "$(synced_lane)" '
       ($readable | map({(.): true}) | add // {}) as $ok
       | .targets as $rows
       | .targets = [$rows[] | select($ok[.src])]
       | .unreadable = [$rows[] | select($ok[.src] | not) | {key, src}]
+      | .synced = $synced
       | .settled = ((.new | length) == 0 and (.gone | length) == 0
                     and (.unreadable | length) == 0)
     '

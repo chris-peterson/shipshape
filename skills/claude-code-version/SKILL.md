@@ -48,8 +48,10 @@ document holds nothing but comments, which is what it ships as.
 `declaration.configured` is what picks the first run, and it is the only field
 that does: an empty guide is the ordinary end state of a *finished*
 configuration, so `guide.filled` says nothing about whether one has happened.
-`examined` and `skipped` are the target counts, which is what the acknowledge
-question quotes the run's scope from. A null `configured` means the declaration
+`examined` is the count the acknowledge question quotes the run's scope from.
+`skipped` is there to tell a finished configuration from an empty one, not to be
+passed on to the user — what shipshape leaves to other maintainers is not part
+of the scope it is asking about. A null `configured` means the declaration
 is on disk but unreadable — never a first run; surface the stderr line and stop,
 since reconfiguring would ask again for every decision already recorded.
 
@@ -96,10 +98,11 @@ rather than a decision waiting on the user.
 recording alone — the built-in guide runs whether or not the user wrote one, so
 a description promising only that a banner stops understates a fan-out over
 every repo they declared. Put **at most three lines** above the question:
-the built-in guide's scope in the user's own terms (how many repos it checks,
-how many plugins it leaves alone), and where `guide.filled` is true, what their
-own steps add, read from `--guide`. This is a reminder, not the document: fold
-related steps together, and drop the rationale the guide carries for you.
+the built-in guide's scope in the user's own terms — how many repos it checks,
+named as the set it will act on rather than netted against the ones it won't —
+and where `guide.filled` is true, what their own steps add, read from `--guide`.
+This is a reminder, not the document: fold related steps together, and drop the
+rationale the guide carries for you.
 
 | Field | Value |
 |---|---|
@@ -198,8 +201,9 @@ Passing over an entry is a disposition, not an omission.
 
 **2. Run the built-in guide.** An upgrade invalidates the user's artifacts whether
 or not they ever wrote a guide, so this runs every time: read what changed,
-check their own `~/.claude`, fan out over the targets they've declared, and act
-on each finding by that target's recorded disposition. The procedure is
+repair shipshape itself where the session is in its checkout, check their own
+`~/.claude`, fan out over the targets they've declared, and act on each finding
+by that target's recorded disposition. The procedure is
 [references/default-guide.md](references/default-guide.md) — read it before
 starting, since the disposition decides whether a finding is summarized, drafted
 for filing, or fixed in place.
@@ -253,11 +257,14 @@ not a verdict — it hands back the hedge the step existed to remove. Count them
 in the report, so the coverage is legible: a step over 7 targets and 12
 candidates accounts for 84 verdicts, or says which it could not reach.
 
-**Report findings in one pass, not one at a time.** A release that touches the
-harness surfaces work in several repos at once, and the shape of the decision is
-which of them to act on — which needs all of them in view. Deliver them
-together, each in the contract's shape, and offer to file them; `/anchor:issue`
-writes the body when the user says which ones go.
+**Report findings in one pass, then walk them one at a time.** A release that
+touches the harness surfaces work in several repos at once, so deliver them
+together, each in the contract's shape — that is what puts the set in view.
+Then take them one by one and ask **file it or fix it now**, one
+**AskUserQuestion** per finding, carrying the file, the line and the size of the
+fix into the question. `/anchor:issue` writes the body for the ones they file.
+One closing offer to file the set asks for a single answer across findings whose
+answers differ.
 
 **A step that names the user's plugins means the ones they maintain.** The
 built-in guide has already resolved that set and each target's disposition — reuse
@@ -279,9 +286,13 @@ pass it through:
 ```text
 Checked 37 entries: 3 touch your artifacts, 34 harness-internal.
 12 targets, 148 verdicts — 2 findings drafted for filing, 1 fixed in ai-sdlc.
-15 plugins left to their maintainers.
 shipshape: acknowledged Claude Code 2.1.235.
 ```
+
+Report the set the run was configured to act on, and nothing about the rest.
+A tally of the plugins left to their own maintainers is a number about somebody
+else's software, and the declaration already settled that they are not this
+run's business.
 
 A non-zero exit means nothing was recorded and the banner will be back next
 session — surface the script's stderr rather than reporting a dismissal that

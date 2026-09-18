@@ -4,7 +4,7 @@ Tracks coverage of the requirements in [SPEC.md](./SPEC.md) against the single
 in-repo implementation. Status vocabulary: **Covered** · **Partial** ·
 **Missing** · **Contradicts**.
 
-**Coverage: 88/88 requirements Covered (100%)**
+**Coverage: 91/91 requirements Covered (100%)**
 **Evidence pointers:** file
 
 Location holds the file. To find the spot inside it, grep for the requirement
@@ -120,6 +120,8 @@ means an edit can't leave the two disagreeing.
 | VERSION-39 | Covered | skills/claude-code-version/references/first-run.md |
 | VERSION-40 | Covered | skills/claude-code-version/references/first-run.md |
 | VERSION-41 | Covered | hooks/claude-code-version.sh; skills/claude-code-version/SKILL.md; skills/claude-code-version/references/first-run.md |
+| VERSION-42 | Covered | scripts/version-scan-targets.sh; skills/claude-code-version/references/deep-scan-set.md |
+| VERSION-43 | Covered | skills/claude-code-version/references/default-guide.md; skills/claude-code-version/SKILL.md |
 
 ## REPORT — Reporting & output model
 

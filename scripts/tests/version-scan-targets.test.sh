@@ -176,6 +176,34 @@ bash "$SCRIPT" --set alpha@mp1 issue "$SRC_A" >/dev/null 2>&1
 eq "$(jq -r '.targets["delta@mp3"].action' "$DECL")" 'skip' "a write carries the other rows over"
 eq "$(jq -r '.version' "$DECL")" '1' "and leaves the schema version alone"
 
+echo "== the account-sync lane"
+export CLAUDE_SKILLS_DIR="$ROOT/skills"
+eq "$(bash "$SCRIPT" --drift | jq -c '.synced')" \
+   '{"skills":[],"plugins":0,"unreadable":[]}' "an absent lane reports empty"
+
+mkdir -p "$CLAUDE_SKILLS_DIR/synced/bucket1" "$CLAUDE_PLUGINS_DIR/synced/bucket1"
+cat > "$CLAUDE_SKILLS_DIR/synced/bucket1/manifest.json" <<'JSON'
+{ "lastUpdated": 1, "skills": [ { "skillId": "pdf", "name": "pdf" },
+                                { "skillId": "xlsx", "name": "xlsx" } ] }
+JSON
+cat > "$CLAUDE_PLUGINS_DIR/synced/bucket1/.marketplaces.json" <<'JSON'
+{ "etag": "W/\"x\"", "rows": [ { "anything": 1 }, { "anything": 2 } ] }
+JSON
+eq "$(bash "$SCRIPT" --drift | jq -c '.synced.skills')" '["pdf","xlsx"]' \
+   "synced skills are named from their manifest"
+eq "$(bash "$SCRIPT" --drift | jq '.synced.plugins')" '2' \
+   "synced plugin rows are counted without reading their fields"
+eq "$(bash "$SCRIPT" --drift | jq '.settled')" 'true' \
+   "and the lane does not make the reconciliation unsettled"
+
+echo 'not json' > "$CLAUDE_SKILLS_DIR/synced/bucket1/manifest.json"
+eq "$(bash "$SCRIPT" --drift | jq -c '.synced.skills')" '[]' \
+   "an unparseable manifest contributes no skills"
+eq "$(bash "$SCRIPT" --drift | jq -r '.synced.unreadable | length')" '1' \
+   "and is reported as unreadable rather than as empty"
+rm -r "$CLAUDE_SKILLS_DIR/synced" "$CLAUDE_PLUGINS_DIR/synced"
+unset CLAUDE_SKILLS_DIR
+
 echo "== missing inputs"
 OUT=$(CLAUDE_PLUGIN_DATA= bash "$SCRIPT" --drift 2>&1); rc=$?
 eq "$rc" '1' "no CLAUDE_PLUGIN_DATA exits non-zero"
