@@ -48,6 +48,7 @@ set -euo pipefail
 
 CHANGELOG="https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md"
 SELF="${BASH_SOURCE[0]}"
+BASH="${BASH:-bash}"
 VERSION_RE='^[0-9][0-9A-Za-z.+-]*$'
 
 mode=hook
@@ -84,6 +85,15 @@ fi
 # built by jq rather than printf — there is no escaping to get right by hand.
 if ! command -v jq >/dev/null 2>&1; then
   printf 'shipshape: jq is not on PATH; version notice skipped.\n' >&2
+  bail
+fi
+
+# covers: VERSION-44
+# A --plugin-dir session is handed its own `<plugin>-inline` data dir, which
+# would read as a machine that has never run shipshape. plugin-data-dir.sh
+# resolves it back to the installed plugin's lane; it needs the jq checked for
+# above, so it runs here rather than at the top.
+if ! CLAUDE_PLUGIN_DATA="$("$BASH" "${SELF%/*}/../scripts/plugin-data-dir.sh" "$CLAUDE_PLUGIN_DATA")"; then
   bail
 fi
 

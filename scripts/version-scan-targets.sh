@@ -75,7 +75,8 @@
 #         CLAUDE_PLUGINS_DIR  override ~/.claude/plugins (tests)
 #         CLAUDE_SKILLS_DIR   override ~/.claude/skills (tests)
 
-# covers: VERSION-27, VERSION-28, VERSION-34, VERSION-35, VERSION-42
+# covers: VERSION-27, VERSION-28, VERSION-34, VERSION-35, VERSION-42, VERSION-44,
+#         VERSION-45
 set -euo pipefail
 
 plugins="${CLAUDE_PLUGINS_DIR:-$HOME/.claude/plugins}"
@@ -93,6 +94,12 @@ if [ -z "$data" ]; then
 fi
 if [ ! -f "$manifest" ]; then
   echo "version-scan-targets: no install manifest at $manifest" >&2
+  exit 1
+fi
+
+# Resolve a --plugin-dir session's `<plugin>-inline` lane back to the installed
+# plugin's, so the declaration a prior run recorded is the one reconciled here.
+if ! data="$("${BASH:-bash}" "$(dirname "${BASH_SOURCE[0]}")/plugin-data-dir.sh" "$data")"; then
   exit 1
 fi
 
@@ -137,11 +144,19 @@ plugin_sources() {
       mf="$loc"
       [ -d "$loc" ] && mf="$loc/.claude-plugin/marketplace.json"
       [ -f "$mf" ] || continue
-      jq -r --arg m "$name" '
+      # One marketplace that does not parse costs its plugins their source, not
+      # the whole reconciliation: they still reach `new` from the install
+      # manifest, ungrouped, and the gap is named rather than dropped with the
+      # stderr. The `if` also keeps the loop's exit status off the last jq,
+      # which pipefail would otherwise carry into the caller's assignment.
+      if ! jq -r --arg m "$name" '
         (.plugins // [])[]
         | [(.name + "@" + $m),
            (.source | if type == "string" then . else (.url // .repo // "") end)]
         | @tsv' "$mf" 2>/dev/null
+      then
+        echo "version-scan-targets: $mf is not readable; $name's plugins are offered without a source" >&2
+      fi
     done
 }
 
@@ -226,7 +241,7 @@ case "${1:---drift}" in
     sources=$(plugin_sources | jq -R 'split("\t") | {key: .[0], source: (.[1] // "")}' | jq -sc 'INDEX(.key) | map_values(.source)')
     outstanding=$(printf '%s' "$decl_json" | jq -r --argjson installed "$installed" --argjson sources "$sources" '
       (($installed - (.targets | keys))[]) as $k | [$k, ($sources[$k] // "")] | @tsv')
-    printf '%s' "$outstanding" | resolve_sources \
+    printf '%s\n' "$outstanding" | resolve_sources \
       | jq -R 'split("\t") | {key: .[0], path: .[1]}' \
       | jq -sc 'group_by(.key) | map({key: .[0].key, paths: [.[].path] | unique})'
     ;;
@@ -250,10 +265,14 @@ case "${1:---drift}" in
 
     # Whether a recorded src is still a directory is the one fact jq cannot
     # answer, so bash answers exactly that — the set of readable paths — and jq
-    # partitions the rows against it.
+    # partitions the rows against it. The filter is an `if` rather than a `&&`
+    # because a loop body ending in a test leaves that test as the loop's exit
+    # status, which pipefail then carries into this assignment: a declaration
+    # whose last row has a moved checkout would take the reconciliation down
+    # in silence, which is what the unreadable bucket exists to prevent.
     readable=$(printf '%s' "$base" \
       | jq -r '.targets[].src | select(. != "")' \
-      | while IFS= read -r s; do [ -d "$s" ] && printf '%s\n' "$s"; done \
+      | while IFS= read -r s; do if [ -d "$s" ]; then printf '%s\n' "$s"; fi; done \
       | jq -R . | jq -sc .)
 
     printf '%s' "$base" | jq --argjson readable "$readable" --argjson synced "$(synced_lane)" '

@@ -375,6 +375,26 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   reached with a stale map; and a plugin is loaded at session start, so the
   repair does not reach the running install on its own.
 
+- [VERSION-44] Where the plugin data dir Claude Code hands the session is a
+  `-inline` lane and the install manifest names exactly one marketplace the same
+  plugin is installed from, shipshape shall read and write the version marker,
+  the version-change guide and the declaration in that installed plugin's lane
+  instead. A plugin mounted with `--plugin-dir` gets a lane of its own, so the
+  same machine at the same Claude Code version otherwise reads as one that has
+  never run shipshape: the marker resets, the guide is absent, and an empty
+  declaration selects the first run for decisions already on disk. Where the
+  manifest names no marketplace, names more than one, or cannot be read,
+  shipshape shall leave the session in its own lane and say why, since
+  re-answering a question costs less than writing into a lane resolved from a
+  guess.
+- [VERSION-45] shipshape shall answer a reconciliation whatever order its inputs
+  arrive in: a recorded checkout that has moved, or a marketplace manifest that
+  does not parse, shall reach the report as the question it is even when it is
+  the last row read. Both are read in loops whose exit status is the last thing
+  they test, so the ordering decides between a reported question and a command
+  that exits without output — and the silent exit is indistinguishable from a
+  clean pass.
+
 ### REPORT — Reporting & output model
 
 - [REPORT-01] shipshape shall present a run using three surfaces: an inventory

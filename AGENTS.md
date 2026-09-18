@@ -84,6 +84,7 @@ scripts/plugin-cache-in-use.sh      lease liveness — exit 0 in use, exit 1 del
 scripts/plugin-cache-scan.sh        classifies cache and data entries against the install manifest
 scripts/plugin-cache-prune.sh       deletes the paths it is handed, and refuses everything else
 scripts/plugin-maintenance-lock.sh  the cooperative reconcile lock
+scripts/plugin-data-dir.sh          resolves a --plugin-dir session back to the installed plugin's data dir
 scripts/tests/                      bash suites, one per script
 SPEC.md / STATUS.md                 requirements and their coverage
 docs/                               docsify site (_sidebar.md, README.md, favicon are source)

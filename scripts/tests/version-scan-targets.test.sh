@@ -91,6 +91,24 @@ RES=$(bash "$SCRIPT" --resolve 2>/dev/null)
 eq "$(printf '%s' "$RES" | jq -r '.[] | select(.key=="alpha@mp1") | .paths | join(",")')" "$ROOT/checkouts/you/alpha" "the checkout whose origin matches the source is found"
 eq "$(printf '%s' "$RES" | jq -r '[.[] | select(.key=="alpha@mp1") | .paths[]] | length')" '1' "and the same-named repo under another owner is not offered"
 eq "$(printf '%s' "$RES" | jq -r '[.[] | select(.key=="gamma@mp2")] | length')" '0' "a plugin bundled in its marketplace resolves to nothing"
+
+# The outstanding plugins are fed to a `while read` loop, so the one sorting
+# last needs a newline behind it or it is never looked up — and a plugin resolve
+# skips is one the user is asked to type a path for. gamma sorts last here and
+# its relative source is skipped regardless, so beta has to take that place for
+# the coverage to mean anything.
+mkalpha "$ROOT/checkouts/you/beta" 'git@github.com:you/beta.git'
+cat > "$HOME/.claude.json" <<JSON
+{ "projects": {
+    "$ROOT/checkouts/you/alpha":   {},
+    "$ROOT/checkouts/other/alpha": {},
+    "$ROOT/checkouts/you/beta":    {},
+    "$ROOT/checkouts/unrelated":   {} } }
+JSON
+bash "$SCRIPT" --set gamma@mp2 skip >/dev/null 2>&1
+eq "$(bash "$SCRIPT" --resolve 2>/dev/null | jq -r '[.[].key] | sort | join(",")')" 'alpha@mp1,beta@mp1' \
+   "the outstanding plugin sorting last is resolved too"
+bash "$SCRIPT" --forget gamma@mp2 >/dev/null 2>&1
 export HOME="$HOME_ORIG"
 
 echo "== recording decisions"
@@ -203,6 +221,79 @@ eq "$(bash "$SCRIPT" --drift | jq -r '.synced.unreadable | length')" '1' \
    "and is reported as unreadable rather than as empty"
 rm -r "$CLAUDE_SKILLS_DIR/synced" "$CLAUDE_PLUGINS_DIR/synced"
 unset CLAUDE_SKILLS_DIR
+
+echo "== the last target's checkout is missing"
+# The readable-src filter is a `while` loop whose body ends in a test, so its
+# own exit status is the last `[ -d ]`. Under pipefail that status reaches the
+# assignment, and a declaration whose last row has a moved checkout would take
+# the whole reconciliation down with it — silently, which is the one outcome
+# the unreadable bucket exists to prevent.
+LAST="$ROOT/lastsrc"
+mkdir -p "$LAST"
+cat > "$LAST/version-scan-targets.json" <<'JSON'
+{ "version": 1, "targets": { "alpha@mp1": { "action": "issue", "src": "/x/gone" } } }
+JSON
+OUT=$(CLAUDE_PLUGIN_DATA="$LAST" bash "$SCRIPT" --drift 2>/dev/null); rc=$?
+eq "$rc" '0' "a missing checkout on the last row still answers"
+eq "$(printf '%s' "$OUT" | jq -r '.unreadable[0].key')" 'alpha@mp1' \
+   "and reports it as unreadable"
+
+echo "== a --plugin-dir mount reconciles the installed lane's declaration"
+# The data dir Claude Code hands a --plugin-dir session is `<plugin>-inline`,
+# where an empty declaration reads as a first run. The decisions a prior run
+# recorded live in the installed plugin's lane, so that is the one to reconcile.
+LANES="$ROOT/lanes"
+mkdir -p "$LANES/alpha-mp1" "$LANES/alpha-inline"
+cat > "$LANES/alpha-mp1/version-scan-targets.json" <<JSON
+{ "version": 1, "targets": { "alpha@mp1": { "action": "issue", "src": "$SRC_A" } } }
+JSON
+OUT=$(CLAUDE_PLUGIN_DATA="$LANES/alpha-inline" bash "$SCRIPT" --drift 2>/dev/null)
+eq "$(printf '%s' "$OUT" | jq -r '.targets[0].key')" 'alpha@mp1' \
+   "an inline mount reads the installed lane's declaration"
+eq "$(printf '%s' "$OUT" | jq -r '.targets[0].action')" 'issue' \
+   "carrying the disposition that lane recorded"
+eq "$(printf '%s' "$OUT" | jq -r '[.new[].key] | join(",")')" 'delta@mp3' \
+   "and asks only about what that declaration leaves out"
+CLAUDE_PLUGIN_DATA="$LANES/alpha-inline" bash "$SCRIPT" --set delta@mp3 skip >/dev/null 2>&1
+eq "$(jq -r '.targets["delta@mp3"].action' "$LANES/alpha-mp1/version-scan-targets.json")" 'skip' \
+   "and records new decisions into it"
+eq "$([ -f "$LANES/alpha-inline/version-scan-targets.json" ] && echo wrote || echo clean)" 'clean' \
+   "leaving the inline lane empty"
+
+echo "== a marketplace manifest that does not parse"
+# Sources are read one marketplace at a time, so the loop's exit status is the
+# last jq. Under pipefail one unparseable marketplace.json would take the whole
+# reconciliation down — and silently, since its stderr is dropped. Its plugins
+# still have to be offered, without the source that groups them, and the gap has
+# to be said out loud. This case carries its own fixture: it is about a registry
+# the rest of the suite does not have.
+BAD="$ROOT/badmp"
+mkdir -p "$BAD/plugins/mpA/.claude-plugin" "$BAD/plugins/mpZ/.claude-plugin" "$BAD/data" "$BAD/skills"
+cat > "$BAD/plugins/installed_plugins.json" <<'JSON'
+{ "version": 2, "plugins": { "one@mpA": [{ "scope": "user" }], "two@mpZ": [{ "scope": "user" }] } }
+JSON
+cat > "$BAD/plugins/mpA/.claude-plugin/marketplace.json" <<'JSON'
+{ "plugins": [ { "name": "one", "source": "https://github.com/you/one.git" } ] }
+JSON
+echo 'not json at all' > "$BAD/plugins/mpZ/.claude-plugin/marketplace.json"
+cat > "$BAD/plugins/known_marketplaces.json" <<JSON
+{ "mpA": { "installLocation": "$BAD/plugins/mpA" },
+  "mpZ": { "installLocation": "$BAD/plugins/mpZ" } }
+JSON
+badmp() {
+  CLAUDE_PLUGINS_DIR="$BAD/plugins" CLAUDE_SKILLS_DIR="$BAD/skills" \
+    CLAUDE_PLUGIN_DATA="$BAD/data" bash "$SCRIPT" --drift
+}
+OUT=$(badmp 2>/dev/null); rc=$?
+eq "$rc" '0' "the last marketplace failing to parse still answers"
+eq "$(printf '%s' "$OUT" | jq -r '[.new[].key] | sort | join(",")')" 'one@mpA,two@mpZ' \
+   "and its plugins are still offered"
+eq "$(printf '%s' "$OUT" | jq -r '.new[] | select(.key=="one@mpA") | .source')" \
+   'https://github.com/you/one.git' "while the readable marketplace keeps its sources"
+case "$(badmp 2>&1 >/dev/null)" in
+  *"mpZ"*) ok "and the unreadable marketplace is named" ;;
+  *) bad "and the unreadable marketplace is named" ;;
+esac
 
 echo "== missing inputs"
 OUT=$(CLAUDE_PLUGIN_DATA= bash "$SCRIPT" --drift 2>&1); rc=$?

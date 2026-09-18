@@ -329,6 +329,45 @@ check "unknown argument exits 2"             "$RC"       "2"
 ack "not-a-version"
 check "ack with a bad version fails loudly"  "$RC"       "1"
 
+# --- A --plugin-dir mount reads the installed plugin's lane, not its own. ---
+# Claude Code names the data dir `<plugin>-inline` when the plugin is mounted
+# with --plugin-dir, and VERSION-43 sends the user into exactly such a session,
+# so the pin, the guide and the declaration have to follow them into it.
+setup 2.1.0
+PLUGINS=$(mktemp -d "$FIXTURES/plugins.XXXXXX")
+cat > "$PLUGINS/installed_plugins.json" <<'JSON'
+{ "version": 2, "plugins": { "shipshape@mp": [{ "scope": "user", "installPath": "/x/shipshape" }] } }
+JSON
+LANES=$(mktemp -d "$FIXTURES/lanes.XXXXXX")
+INSTALLED="$LANES/shipshape-mp"; mkdir -p "$INSTALLED"
+printf '2.1.4\n' > "$INSTALLED/acknowledged-version"
+printf 'Pull the mirror first.\n' > "$INSTALLED/on-claude-code-version-change.md"
+DATA="$LANES/shipshape-inline"; mkdir -p "$DATA"
+printf '2.1.0\n' > "$DATA/acknowledged-version"
+stub 2.1.4
+export CLAUDE_PLUGINS_DIR="$PLUGINS"
+run --status
+check "inline mount reports the installed pin"       "$(field '.acknowledged')" "2.1.4"
+check "inline mount is not pending"                  "$(field '.pending')"      "false"
+run --guide
+check "inline mount reads the installed guide"       "$OUT"                     "Pull the mirror first."
+ack 2.1.5
+check "inline mount records into the installed lane" "$(cat "$INSTALLED/acknowledged-version")" "2.1.5"
+check "inline mount leaves its own pin alone"        "$(cat "$DATA/acknowledged-version")"      "2.1.0"
+
+# --- With no installed row, the inline lane is the lane. ---
+setup 2.1.0
+PLUGINS=$(mktemp -d "$FIXTURES/plugins.XXXXXX")
+printf '{ "version": 2, "plugins": {} }\n' > "$PLUGINS/installed_plugins.json"
+LANES=$(mktemp -d "$FIXTURES/lanes.XXXXXX")
+DATA="$LANES/shipshape-inline"; mkdir -p "$DATA"
+printf '2.1.0\n' > "$DATA/acknowledged-version"
+stub 2.1.4
+export CLAUDE_PLUGINS_DIR="$PLUGINS"
+run --status
+check "uninstalled inline mount keeps its own pin"   "$(field '.acknowledged')" "2.1.0"
+unset CLAUDE_PLUGINS_DIR
+
 echo
 echo "claude-code-version: pass=$pass fail=$fail"
 [ "$fail" = 0 ]
