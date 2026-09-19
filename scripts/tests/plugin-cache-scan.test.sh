@@ -17,7 +17,7 @@ has()  { case "$OUT" in *"$1"*) ok "$2" ;; *) bad "$2 (missing '$1')" ;; esac; }
 hasnt(){ case "$OUT" in *"$1"*) bad "$2 (found '$1')" ;; *) ok "$2" ;; esac; }
 
 ROOT=$(mktemp -d)
-trap 'rm -rf "$ROOT"' EXIT
+trap 'rm -rf "$ROOT" "$ROOT-staging"' EXIT
 
 mkcache() { mkdir -p "$ROOT/cache/$1"; echo x > "$ROOT/cache/$1/file"; }
 mkdata()  { mkdir -p "$ROOT/data/$1"; }
@@ -30,6 +30,18 @@ mkcache mp1/robot-sheriff/2.0.0    # current, and a hyphenated plugin name
 mkcache mp2/shared/1.0.0           # current via another marketplace's row
 
 mkcache synced/helper/2.0.0        # origin is not a marketplace at all
+
+# Claude Code's own scratch clones, which carry a .git and no plugin/version
+# shape. Their internals sit at the version-dir depth, so the walk would report
+# each one separately without the scratch-clone lane.
+mkdir -p "$ROOT/cache/temp_git_123_abc/.git/hooks"
+mkdir -p "$ROOT/cache/temp_git_123_abc/skills/some-skill"
+mkdir -p "$ROOT/cache/temp_subdir_123_xyz.clone/.git/objects"
+
+# A download a failed auto-update left behind, in its own tree.
+STAGING="$ROOT-staging"
+mkdir -p "$STAGING/claude-9.9.9-deadbeef"
+echo payload > "$STAGING/claude-9.9.9-deadbeef/blob"
 
 mkdir -p "$ROOT/cache/mp2/leftover"          # plugin dir, every version gone
 mkdir -p "$ROOT/cache/mp2/strays"            # same, but holding a stray file
@@ -61,7 +73,7 @@ cat > "$ROOT/installed_plugins.json" <<JSON
 }}
 JSON
 
-OUT=$(CLAUDE_PLUGINS_DIR="$ROOT" bash "$SCRIPT" 2>&1)
+OUT=$(CLAUDE_PLUGINS_DIR="$ROOT" CLAUDE_STAGING_DIR="$STAGING" bash "$SCRIPT" 2>&1)
 
 has   "cache/mp1/alpha/0.9.0|stale|prunable"  "stale version with no lease is prunable"
 has   "cache/mp1/alpha/0.8.0|stale|in-use"    "stale version with a live lease is in use"
@@ -83,7 +95,19 @@ hasnt "cache/mp2/strays"                      "a plugin dir holding a stray file
 # but never call it prunable.
 has   "cache/synced/helper/2.0.0|unknown-origin|skipped" "a cache under an unknown origin is skipped"
 has   "data/helper-synced|unknown-origin|skipped"        "a data dir of an unknown origin is skipped"
-has   "#totals stale=1 stale_in_use=1 orphan=1 orphan_in_use=0 empty_plugin=1 orphan_data=2 unknown_origin=2 reclaimable=" "totals line counts each class"
+# A scratch clone is reported once, by the directory Claude Code created, rather
+# than once per directory inside it.
+has   "cache/temp_git_123_abc|scratch-clone|skipped"          "a scratch clone is reported whole"
+has   "cache/temp_subdir_123_xyz.clone|scratch-clone|skipped" "so is a .clone scratch dir"
+hasnt "cache/temp_git_123_abc/.git"                           "a scratch clone's .git is not a finding of its own"
+hasnt "cache/temp_git_123_abc/skills"                         "nor is anything else inside it"
+
+# A staged download lives outside ~/.claude/plugins, so it is reported for the
+# user to clear rather than handed to the pruner.
+has   "staging/claude-9.9.9-deadbeef|staged-download|skipped" "a leftover staged download is reported"
+
+has   "#totals stale=1 stale_in_use=1 orphan=1 orphan_in_use=0 empty_plugin=1 orphan_data=2 unknown_origin=4 reclaimable=" "totals line counts each class"
+has   "staged=1"                              "and counts staged downloads"
 
 # No registry to read: every origin is unrecognized, so nothing is prunable.
 mv "$ROOT/known_marketplaces.json" "$ROOT/known_marketplaces.off"

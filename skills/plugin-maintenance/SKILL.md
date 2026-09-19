@@ -177,8 +177,10 @@ cache/chris-peterson/beacon/2.4.0|stale|in-use|3.2M
 cache/mp/gone-plugin/1.0.0|orphan|prunable|2.1M
 cache/mp/gone-plugin|empty-plugin|prunable|0K
 cache/synced/helper/2.0.0|unknown-origin|skipped|1.4M
+cache/temp_git_1789618947828_sf5wyr|scratch-clone|skipped|592K
 data/old-plugin-old-mp|orphan-data|nonempty|412K
-#totals stale=1 stale_in_use=1 orphan=1 orphan_in_use=0 empty_plugin=1 orphan_data=1 unknown_origin=1 reclaimable=5.2M
+staging/claude-2.1.277-abc123|staged-download|skipped|84M
+#totals stale=1 stale_in_use=1 orphan=1 orphan_in_use=0 empty_plugin=1 orphan_data=1 unknown_origin=2 reclaimable=5.2M staged=1
 ```
 
 The fields are `path|class|verdict|size`, and the path is the form Step 5 hands back.
@@ -190,8 +192,14 @@ The fields are `path|class|verdict|size`, and the path is the form Step 5 hands 
 | `empty-plugin` | a `cache/<mp>/<plugin>/` dir whose versions are all gone |
 | `orphan-data` | a data dir matching no installed plugin |
 | `unknown-origin` | its origin is not a marketplace in `known_marketplaces.json` |
+| `scratch-clone` | a `cache/temp_git_*` or `cache/temp_subdir_*.clone` Claude Code left behind |
+| `staged-download` | an entry in `~/.cache/claude/staging` from a failed auto-update |
 
 `verdict` is `prunable`, `in-use`, or `skipped` for a cache dir, and `empty` or `nonempty` for a data dir. **`prunable` is Step 5's input; nothing else is.**
+
+**A `scratch-clone` is one row for one leftover.** Claude Code clones into `cache/temp_git_*` and `cache/temp_subdir_*.clone` while it resolves a marketplace, and a failed run leaves the clone. The scan reports the directory Claude Code created, not the directories inside it, so a leftover clone reads as one finding with its real size. Like `unknown-origin`, it is never pruned; report the count and size with the stale-cache line.
+
+**A `staged-download` is outside `~/.claude/plugins`, so shipshape only names it.** A failed auto-update leaves its download in `~/.cache/claude/staging`. `plugin-cache-prune.sh` accepts cache and data paths only, and that guard is worth more than the space, so report the path and size and let the user clear it. Say the size when there is one; a `staged=0` line is bookkeeping.
 
 **An `unknown-origin` entry is never pruned.** The top level of `cache/` is a marketplace name everywhere except where Claude Code puts something else there: `synced` holds plugins the user turned on in claude.ai, which nothing local installed and nothing local can reinstall. Those carry no manifest row, so the manifest alone would read them as orphans. They are reported rather than hidden because the same class covers what a marketplace the user removed left behind, and that is worth seeing. Fold the count into the stale-cache line; a row of its own is warranted only where the user asked about one.
 

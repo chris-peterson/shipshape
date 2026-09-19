@@ -176,6 +176,21 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   an orphan. Reporting rather than ignoring keeps the leftovers of a removed
   marketplace visible. If the registry cannot be read, then no origin is
   recognized and nothing is prunable.
+- [PRUNE-17] If a top-level `cache/` entry holds a `.git` directory, then
+  shipshape shall classify it as a scratch clone, report it as one entry, and
+  never descend into it. Claude Code clones into `cache/temp_git_*` and
+  `cache/temp_subdir_*.clone` while resolving a marketplace; a marketplace origin
+  holds plugin dirs and keeps its own clone under `marketplaces/`, so the `.git`
+  is what tells the two apart. Reported whole, a leftover clone is one line
+  naming what Claude Code created; walked at the version-dir depth it becomes one
+  line per directory inside it.
+- [PRUNE-18] shipshape shall report each entry in the update staging directory
+  (`~/.cache/claude/staging`, overridable with `CLAUDE_STAGING_DIR`) as a staged
+  download, with its size, and shall not prune it. A failed auto-update leaves
+  its download there. The directory is outside `~/.claude/plugins`, and
+  `plugin-cache-prune.sh` accepts cache and data paths only (PRUNE-14), so the
+  entry is surfaced for the user to clear rather than reached by widening that
+  guard.
 
 ### AUTO — Auto-update enforcement
 

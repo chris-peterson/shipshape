@@ -11,6 +11,7 @@
 #   path     relative to ~/.claude/plugins — `cache/<mp>/<plugin>/<version>`
 #            or `data/<slug>`; the form plugin-cache-prune.sh accepts
 #   class    stale | orphan | empty-plugin | orphan-data | unknown-origin
+#            | scratch-clone | staged-download
 #   verdict  prunable | in-use | skipped   (cache)    empty | nonempty  (data)
 #   size     human-readable, e.g. 3.1M
 #
@@ -35,13 +36,16 @@
 #         1 = jq missing, or no install manifest — nothing classified
 #
 # Env:    CLAUDE_PLUGINS_DIR  override ~/.claude/plugins (tests)
+#         CLAUDE_STAGING_DIR  override ~/.cache/claude/staging (tests)
 
-# covers: PRUNE-01, PRUNE-02, PRUNE-03, PRUNE-04, PRUNE-05, PRUNE-12, PRUNE-16
+# covers: PRUNE-01, PRUNE-02, PRUNE-03, PRUNE-04, PRUNE-05, PRUNE-12, PRUNE-16,
+#         PRUNE-17, PRUNE-18
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 plugins="${CLAUDE_PLUGINS_DIR:-$HOME/.claude/plugins}"
 manifest="$plugins/installed_plugins.json"
+staging="${CLAUDE_STAGING_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/claude/staging}"
 
 if ! command -v jq >/dev/null 2>&1; then
   echo "plugin-cache-scan: jq not on PATH; cannot read the install manifest" >&2
@@ -91,7 +95,7 @@ human() {  # $1 = KB
 }
 
 stale=0; stale_in_use=0; orphan=0; orphan_in_use=0; empty_plugin=0; orphan_data=0
-unknown=0; prunable_kb=0
+unknown=0; prunable_kb=0; staged=0
 
 # Does a data slug end in `-<one of our marketplaces>`? The slug is hyphen-joined
 # and plugin names carry hyphens, so the origin is tested as a suffix rather than
@@ -105,9 +109,34 @@ from_known_marketplace() {  # $1 = slug
   return 1
 }
 
+# --- cache: scratch clones Claude Code leaves at the top of cache/ ------------
+# A marketplace origin holds plugin dirs, and the marketplace's own clone lives
+# under marketplaces/, so a `.git` directly inside a top-level cache entry marks
+# it as Claude Code's own scratch (`temp_git_*`, `temp_subdir_*.clone`) instead.
+# Walking one at the version-dir depth reports each internal directory as its own
+# finding, so the entry is reported whole and its subtree is left alone.
+scratch_clones=""
+while IFS= read -r dir; do
+  [ -n "$dir" ] || continue
+  [ -d "$dir/.git" ] || continue
+  scratch_clones="${scratch_clones}${dir}"$'\n'
+  unknown=$((unknown + 1))
+  printf 'cache/%s|scratch-clone|skipped|%s\n' "$(basename "$dir")" "$(human "$(size_kb "$dir")")"
+done < <(find "$plugins/cache" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
+
+under_scratch_clone() {  # $1 = dir
+  local c
+  while IFS= read -r c; do
+    [ -n "$c" ] || continue
+    case "$1" in "$c"/*) return 0 ;; esac
+  done <<< "$scratch_clones"
+  return 1
+}
+
 # --- cache: ~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/ ---------
 while IFS= read -r dir; do
   [ -n "$dir" ] || continue
+  if under_scratch_clone "$dir"; then continue; fi
   rel="cache/${dir#"$plugins/cache/"}"
 
   if has_line "$dir" "$current_paths"; then continue; fi   # backs a current install
@@ -177,5 +206,17 @@ while IFS= read -r dir; do
   printf 'data/%s|orphan-data|%s|%s\n' "$slug" "$verdict" "$(human "$kb")"
 done < <(find "$plugins/data" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
 
-printf '#totals stale=%d stale_in_use=%d orphan=%d orphan_in_use=%d empty_plugin=%d orphan_data=%d unknown_origin=%d reclaimable=%s\n' \
-  "$stale" "$stale_in_use" "$orphan" "$orphan_in_use" "$empty_plugin" "$orphan_data" "$unknown" "$(human "$prunable_kb")"
+# --- staging: downloads a failed auto-update left behind ----------------------
+# Claude Code stages an update here before swapping it in; an update that fails
+# partway leaves the download. It sits outside ~/.claude/plugins, so it is
+# reported with its size for the user to clear by hand: plugin-cache-prune.sh
+# accepts cache and data paths only, and widening that guard to reach another
+# tree would cost more than this reclaims.
+while IFS= read -r dir; do
+  [ -n "$dir" ] || continue
+  staged=$((staged + 1))
+  printf 'staging/%s|staged-download|skipped|%s\n' "$(basename "$dir")" "$(human "$(size_kb "$dir")")"
+done < <(find "$staging" -mindepth 1 -maxdepth 1 2>/dev/null | sort)
+
+printf '#totals stale=%d stale_in_use=%d orphan=%d orphan_in_use=%d empty_plugin=%d orphan_data=%d unknown_origin=%d reclaimable=%s staged=%d\n' \
+  "$stale" "$stale_in_use" "$orphan" "$orphan_in_use" "$empty_plugin" "$orphan_data" "$unknown" "$(human "$prunable_kb")" "$staged"
