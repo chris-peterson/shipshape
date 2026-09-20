@@ -2,8 +2,21 @@
 
 ## Unreleased
 
+### Added
+
+- **A maintenance run now examines the skills and plugins your claude.ai account syncs in.** They carry no install-manifest row, so a run used to report full coverage over a lane it had never opened. `--drift` names what it can name and counts what it cannot, and a bucket file that does not parse is reported unreadable rather than empty.
+- **Leftovers Claude Code strands are reported with their size.** A scratch clone at the top of the plugin cache arrives as one line naming the directory Claude Code created, rather than one line per directory inside it, and a download left behind by a failed auto-update is named for you to clear.
+
+### Changed
+
+- **The version banner takes the shape the other plugins' banners use** — `<source>: <resolution>  # <reasoning>` — so the command to type sits where your eye lands across every line a session opens with.
+- **A version-change run no longer tallies the plugins you leave to their own maintainers**, and it delivers its findings as a set you walk one at a time instead of one offer to file everything.
+- **A pass that starts inside shipshape's own checkout repairs shipshape first.** Every later verdict is reached against the changelog, the install manifest and the plugin cache, so a release that moves one of those would leave the rest of the run reading a stale map.
+
 ### Fixed
 
+- **A `--plugin-dir` session reads the state an installed session wrote.** Your acknowledged version, your version-change guide and your deep-scan declaration live in a data directory whose name changes when the plugin is mounted from a checkout, so the built-in guide's own advice to restart that way used to land you on what looked like a machine shipshape had never run on. Where the install manifest can't settle which lane to read, the session stays in its own and says why.
+- **A reconcile whose inputs arrive in an awkward order no longer exits without a word.** A recorded checkout that has moved, a marketplace manifest that does not parse, and the last plugin in the outstanding list each used to drop out silently; each now reaches the report.
 - **Reading what changed works without the GitHub CLI.** The changelog walk pulls the file from its raw URL, so `/claude-code-version` reports what an upgrade contains on a machine with no `gh` installed and without an expired token stopping the run. Reading the first-party examples an entry implicates still uses `gh`.
 - **A what-changed summary no longer tells you it left nothing out.** Where every changelog entry made the one-screen summary, the summary is the whole account, so the run states how many entries it omitted only when it omitted some.
 
