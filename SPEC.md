@@ -7,7 +7,7 @@ when you acknowledge the upgrade, running the re-training instructions you wrote
 for one. Your *other* plugins: reconciling installed plugins against your
 declared desired set, updating what stays, pruning the stale version caches an
 update leaves behind and the data dirs an uninstall would have deleted
-unasked, and arming marketplace auto-update so plugins keep themselves
+unasked, and enabling marketplace auto-update so plugins keep themselves
 current.
 
 Requirements use [EARS syntax](https://alistairmavin.com/ears) — each is one of:

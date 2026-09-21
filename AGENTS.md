@@ -6,7 +6,7 @@ what's changing in it, and that it stays current. It covers Claude Code itself
 instructions they wrote for an upgrade) and their *other* plugins (reconciling
 what's installed against what they declared, updating it, pruning the stale
 version caches an update leaves behind and the data dirs an uninstall would
-have deleted unasked, arming marketplace auto-update). What the skills do for a
+have deleted unasked, enabling marketplace auto-update). What the skills do for a
 *user* lives on the docs site (https://chris-peterson.github.io/shipshape);
 this file is for working on the plugin itself.
 
@@ -78,7 +78,7 @@ bash scripts/tests/<name>.test.sh    # one suite
 plugin.yml                          canonical descriptor — manifest, marketplace entry, docs copy
 skills/plugin-maintenance/SKILL.md  the maintenance skill — the prompt is the implementation
 skills/claude-code-version/         everything a user does about a version change: the guide, what's new, acknowledge
-hooks/enforce-autoupdate.sh         SessionStart hook that arms marketplace auto-update
+hooks/enforce-autoupdate.sh         SessionStart hook that enables marketplace auto-update
 hooks/claude-code-version.sh        SessionStart hook that announces a Claude Code version change; also the skill's --status, --guide, and --ack
 scripts/plugin-cache-in-use.sh      lease liveness — exit 0 in use, exit 1 delete-eligible
 scripts/plugin-cache-scan.sh        classifies cache and data entries against the install manifest

@@ -113,9 +113,9 @@ jq -rn --slurpfile k ~/.claude/plugins/known_marketplaces.json --slurpfile s ~/.
    | $k[0] | keys[] | "\(.): \(($ex[.].autoUpdate // false))")'
 ```
 
-Enumerating `extraKnownMarketplaces` alone would report the wrong set and fail on the state that matters most: a marketplace missing from it is the one the hook is about to arm, and it shows up as no row rather than `false`, while a settings file with no such key at all makes the whole expression error.
+Enumerating `extraKnownMarketplaces` alone would report the wrong set and fail on the state that matters most: a marketplace missing from it is the one the hook is about to enable, and it shows up as no row rather than `false`, while a settings file with no such key at all makes the whole expression error.
 
-shipshape's `SessionStart` hook enforces this — it arms any marketplace missing the flag, effective next launch — so the skill only **reports** status here; it doesn't write. Surface any marketplace still showing `false` so the user knows the hook will pick it up.
+shipshape's `SessionStart` hook enforces this — it enables any marketplace missing the flag, effective next launch — so the skill only **reports** status here; it doesn't write. Surface any marketplace still showing `false` so the user knows the hook will pick it up.
 
 ## Step 2: Update plugins
 <!-- covers: RECON-07, RECON-08, RECON-09, RECON-14 -->
@@ -287,7 +287,7 @@ Name the `--force` rerun in the ask, not after the user reports the warning. A r
 Two notes worth stating in the report:
 
 - **Other running sessions still need their own reload.** This reconcile only landed in the session that ran it; every other live session keeps the plugin set it loaded at startup until it reloads or restarts. (Their *loaded* version dirs were protected from pruning by the `.in_use` check in Step 5 — they're stale, not broken.)
-- **Auto-update makes reloads routine, not rare.** Claude Code checks for marketplace and plugin updates *after* a session starts, with a random delay of up to ten minutes, so a session launches on whatever was on disk and picks the new versions up either through a reload it prompts for or at the next launch. With shipshape's `SessionStart` hook arming auto-update, expect that prompt in ordinary sessions — this step isn't only for the session that ran a manual reconcile.
+- **Auto-update makes reloads routine, not rare.** Claude Code checks for marketplace and plugin updates *after* a session starts, with a random delay of up to ten minutes, so a session launches on whatever was on disk and picks the new versions up either through a reload it prompts for or at the next launch. With shipshape's `SessionStart` hook enabling auto-update, expect that prompt in ordinary sessions — this step isn't only for the session that ran a manual reconcile.
 
 Skip this entirely if Step 3 made no changes and Step 5 pruned nothing — there's nothing to reload.
 

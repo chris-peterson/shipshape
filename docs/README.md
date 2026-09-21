@@ -13,7 +13,7 @@ has two jobs about that: tell you what changed, and keep what it can current.
 |---|---|
 | Claude Code itself | the `claude-code-version` hook posts a banner when the version moves, and `/claude-code-version` walks what's new, runs the instructions you wrote for an upgrade, and clears the banner |
 | Your installed plugins | `/plugin-maintenance` reconciles them against your `enabledPlugins`, updates what stays, and prunes the caches and data dirs an uninstall leaves for later |
-| Your marketplaces | the `enforce-autoupdate` hook arms `autoUpdate`, so plugins keep themselves current without you asking |
+| Your marketplaces | the `enforce-autoupdate` hook enables `autoUpdate`, so plugins keep themselves current without you asking |
 
 > [!TIP]
 > [Thoughtworks' Technology Radar](https://www.thoughtworks.com/radar) (Vol. 34,
@@ -85,14 +85,14 @@ never prunes a version another running session is still loaded from.
 
 ## Auto-update
 
-The `enforce-autoupdate` hook arms **marketplace auto-update** at session start,
+The `enforce-autoupdate` hook enables **marketplace auto-update** at session start,
 so you stop updating plugins by hand. It reads your registered marketplaces from
 `~/.claude/plugins/known_marketplaces.json` and, for each one, sets
 `autoUpdate: true` on its
 [`extraKnownMarketplaces`](https://code.claude.com/docs/en/discover-plugins#configure-auto-updates)
 entry in `~/.claude/settings.json`, creating the entry when there isn't one.
 
-That flag is worth arming because the default is off for everything you didn't
+That flag is worth enabling because the default is off for everything you didn't
 get from Anthropic: official marketplaces auto-update out of the box, third-party
 and local ones don't, and the only other way to turn it on is one marketplace at
 a time through the `/plugin` interface.
