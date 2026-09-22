@@ -1,6 +1,14 @@
-# <img src="favicon.svg" alt="shipshape" width="64" height="64" style="vertical-align: middle"> shipshape
+<div class="ph-hero" style="--accent: color-mix(in srgb, var(--color-red) 54%, light-dark(black, white))">
 
-[_home.md](_home.md ":include")
+<h1 class="ph-lede"><span class="ph-name">shipshape:</span> your harness, current and tidy.</h1>
+
+<div class="ph-badge"><img class="ph-mark" src="favicon.svg" alt="shipshape" width="26" height="26">
+
+[](_tags.md ':include')
+
+</div>
+
+</div>
 
 Your **harness** is everything wrapped around the model that decides how well it
 works for you: Claude Code itself, the plugins you've installed, and the rules,
@@ -23,6 +31,23 @@ has two jobs about that: tell you what changed, and keep what it can current.
 > Agent Skills and the plugin marketplaces that distribute them. Those controls
 > are only as good as their current version, which is the part shipshape keeps
 > in order.
+
+## Install
+
+```bash
+claude plugin marketplace add chris-peterson/claude-marketplace
+claude plugin install shipshape@chris-peterson
+```
+
+## Skills
+
+| Skill | What it does |
+|---|---|
+| [`/shipshape:claude-code-version`](/skills/claude-code-version) | Handle a Claude Code upgrade: what's new, your instructions, acknowledge |
+| [`/shipshape:plugin-maintenance`](/skills/plugin-maintenance) | Reconcile, update, and prune your installed plugins |
+
+Both hooks run at session start and need nothing from you: the wiring is on the
+[hooks](/hooks) page.
 
 ## In action
 

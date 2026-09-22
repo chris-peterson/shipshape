@@ -4,7 +4,7 @@
 
 name: shipshape
 version: 0.12.0
-description: Know what's changing in your Claude Code harness and keep it current — every Claude Code upgrade handled, every plugin reconciled, updated, and pruned.
+description: "Know what's changing in your Claude Code harness and keep it current: every Claude Code upgrade handled, every plugin reconciled, updated, and pruned."
 author: chris-peterson
 repository: https://github.com/chris-peterson/shipshape
 keywords: [plugins, maintenance, auto-update, marketplace, claude-code, upgrades, harness]
@@ -31,9 +31,9 @@ suite:
   # SessionStart hooks that enable marketplace auto-update and announce a Claude
   # Code version change.
   activations: [user, session]
-  gloss: Everything stowed, secured, and ready for sea.
-  pitch: "Tells you what changed in your coding harness and keeps it current: Claude Code itself, and the plugins you've installed. Out-of-date tooling is its own kind of risk."
-  what: "Two jobs for the harness you work inside: telling you what changed, and keeping current what it can. Claude Code itself updates in the background and the new version takes effect at your next launch, so that session opens with a banner naming both versions and linking that release's changelog, and /claude-code-version walks you through what changed, runs the re-training instructions you wrote for an upgrade, and clears the banner. Your plugins it maintains directly: reconciling what's installed against the set you've declared, updating them, and pruning the stale version caches an update leaves behind and the data dirs an uninstall would have deleted unasked, without touching a version a live session still holds — plus a load-time hook that enables marketplace auto-update so they keep themselves current."
+  gloss: "shipshape: your harness, current and tidy."
+  pitch: "Feeling overwhelmed by the rate of change? It tells you what moved, and keeps your plugins current."
+  what: "Two jobs for your Claude Code harness: telling you what changed, and keeping current what it can. Claude Code itself updates in the background and the new version takes effect at your next launch, so that session opens with a banner naming both versions and linking that release's changelog, and /claude-code-version walks you through what changed, runs the re-training instructions you wrote for an upgrade, and clears the banner. Your plugins it maintains directly: reconciling what's installed against the set you've declared, updating them, and pruning the stale version caches an update leaves behind and the data dirs an uninstall would have deleted unasked, without touching a version a live session still holds, plus a load-time hook that enables marketplace auto-update so they keep themselves current."
   cmds:
     - ["/claude-code-version", "Handle a Claude Code upgrade: what's new, your instructions, acknowledge"]
     - ["/plugin-maintenance", "Reconcile, update, and prune your installed plugins"]

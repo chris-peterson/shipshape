@@ -1,7 +1,7 @@
 {
   "name": "shipshape",
   "version": "0.12.0",
-  "description": "Know what's changing in your Claude Code harness and keep it current \u2014 every Claude Code upgrade handled, every plugin reconciled, updated, and pruned.",
+  "description": "Know what's changing in your Claude Code harness and keep it current: every Claude Code upgrade handled, every plugin reconciled, updated, and pruned.",
   "author": {
     "name": "chris-peterson"
   },
