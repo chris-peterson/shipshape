@@ -15,7 +15,7 @@ works for you: Claude Code itself, the plugins you've installed, and the rules,
 skills, and hooks you wrote. It moves without asking. Claude Code updates itself
 in the background, plugins fall behind the set you declared, and your own
 artifacts were written against whatever version was current that week. shipshape
-has two jobs about that: tell you what changed, and keep what it can current.
+tells you what changed, and keeps what it can current.
 
 | What moves | What shipshape does about it |
 |---|---|
@@ -27,7 +27,7 @@ has two jobs about that: tell you what changed, and keep what it can current.
 > [Thoughtworks' Technology Radar](https://www.thoughtworks.com/radar) (Vol. 34,
 > theme *Putting coding agents on a leash*) defines a **coding agent harness** as
 > "controls that guide agents' behavior before code is generated and provide
-> feedback afterwards to enable self-correction" — the feedforward half being
+> feedback afterwards to enable self-correction". The feedforward half is
 > Agent Skills and the plugin marketplaces that distribute them. Those controls
 > are only as good as their current version, which is the part shipshape keeps
 > in order.
@@ -67,25 +67,25 @@ Run it from inside Claude Code whenever you want to tidy up:
 It reconciles **installed** plugins against the **desired** set you've declared
 in `~/.claude/settings.json` (`enabledPlugins`), then:
 
-1. **Lock** — take a cooperative maintenance lock, since `claude plugin` has no
+1. **Lock**: take a cooperative maintenance lock, since `claude plugin` has no
    concurrency control of its own. If another session is already reconciling,
    the run stops and names it rather than interleaving.
-2. **Inventory** — list what's installed (`claude plugin list`) and read your
+2. **Inventory**: list what's installed (`claude plugin list`) and read your
    desired set.
-3. **Update** — `claude plugin update` every plugin in both sets, one at a
+3. **Update**: `claude plugin update` every plugin in both sets, one at a
    time. Updating in parallel makes plugins from the same marketplace collide
    over its clone, and the failures hide in the output.
-4. **Reconcile** — uninstall user-scope extras, offer to install what's
+4. **Reconcile**: uninstall user-scope extras, offer to install what's
    missing, and skip plugins it shouldn't remove (team-shared project-scope
    ones, and a plugin whose two marketplace rows share one on-disk install).
-5. **Scan & prune** — find orphan and stale-version caches and orphan data
+5. **Scan & prune**: find orphan and stale-version caches and orphan data
    dirs, auto-delete the safe ones, and ask before removing anything that may
    hold user state.
-6. **Reload** — plugins on disk aren't the plugins your session is running, so
+6. **Reload**: plugins on disk aren't the plugins your session is running, so
    it hands you `/reload-plugins` to apply them. Only you can type it, and it
    reaches only the session you type it in.
 
-It lists **every enabled plugin** — each gets a row with its version and result,
+It lists **every enabled plugin**, and each gets a row with its version and result,
 so you can confirm each plugin's disposition at a glance rather than re-running
 `claude plugin list`. Only caches are reported by exception (stale-version dirs
 are routine noise).
@@ -124,7 +124,7 @@ a time through the `/plugin` interface.
 
 Settings are read before hooks run, so the change takes effect on the **next**
 launch; from then on each marketplace keeps itself current. The write is
-idempotent — it happens only when a marketplace is missing the flag, so a
+idempotent: it happens only when a marketplace is missing the flag, so a
 settled setup is a silent no-op.
 
 Auto-update runs *after* a session starts, with a random delay of up to ten
@@ -143,7 +143,7 @@ Claude Code updates itself in the background, and the new version takes effect
 at your next launch. Its own notice tells you an update installed, not what's in
 it, so two things go unnoticed. The change itself, which turns a new behavior
 into a mystery until you think to check `claude --version` against the
-changelog. And the staleness it leaves in your own AI artifacts — the rules,
+changelog. And the staleness it leaves in your own AI artifacts: the rules,
 skills, hooks, and plugin manifests you wrote against the version before it, whose
 hook schemas, settings keys, and frontmatter fields may not mean what they did.
 
@@ -181,7 +181,7 @@ One skill, and it picks what to do from what you asked for:
 
 Everything but the guide opens with that summary, so you see what a version
 holds before you clear it. Acknowledging is the only thing that runs the upgrade
-errand, and the only thing that clears the banner — asking what's new leaves it
+errand, and the only thing that clears the banner. Asking what's new leaves it
 up. It's a skill rather than a shell line you could copy from here on purpose:
 shipshape's own version is in the path to the hook it calls, so anything literal
 would stop resolving at the next update.
@@ -204,7 +204,7 @@ answer:
 | just tell me | a line in the report, and nothing is written |
 | file it | a drafted issue, offered to `/anchor:issue` with the rest |
 | fix it in place | an edit in that repo's working tree, for you to review |
-| not mine | nothing — it's left to its own maintainer, and counted |
+| not mine | nothing: it's left to its own maintainer, and counted |
 
 Later runs reconcile that against what you have installed and ask only about
 the difference, so a plugin you've already answered for never comes up again.
@@ -212,7 +212,7 @@ the difference, so a plugin you've already answered for never comes up again.
 ### Your version-change guide
 
 Anything you want done *on top of* the built-in check is a document you write.
-It's created for you, so you never have to guess its name — look in your
+It's created for you, so you never have to guess its name. Look in your
 shipshape data dir after the first session:
 
 ```text
@@ -220,7 +220,7 @@ shipshape data dir after the first session:
 ```
 
 It arrives holding only comments explaining what to write. An empty document is
-a finished state rather than an unfinished one — the built-in check still runs;
+a finished state rather than an unfinished one: the built-in check still runs;
 there's just nothing extra to add to it. Write plain instructions into it,
 naming the commands you want run:
 
@@ -231,7 +231,7 @@ Re-train my AI artifacts against this Claude Code version:
 ```
 
 Everything you write reaches Claude unaltered apart from HTML comments, which
-are dropped — that's what keeps the template's own explanation from arriving as
+are dropped: that's what keeps the template's own explanation from arriving as
 an instruction, and it leaves you a place for notes to yourself. Handing Claude
 the text *is* the mechanism: nothing here can invoke a slash command on your
 behalf, but text Claude reads is text Claude acts on, so the commands your
@@ -241,7 +241,7 @@ point of doing the work.
 
 It runs when you acknowledge the upgrade, once. The hook that spots the version
 change fires at every session start until you do, which is right for a banner
-and wrong for an errand — so the announcement and the errand are separated, and
+and wrong for an errand, so the announcement and the errand are separated, and
 acknowledging is what joins them.
 
 You don't have to open the file yourself: `/claude-code-version` will show it to
