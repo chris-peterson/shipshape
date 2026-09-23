@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **A version-change guide can run `/plugin-maintenance`.** Acknowledging carries out each step of your guide, and the step shipshape's own example suggests was one Claude could not invoke, so the run stopped there and left the upgrade pending. Claude can now call the skill, which puts its description back in every session's skill listing; it still confirms before it deletes anything.
+
 ## 0.12.0
 
 ### Added

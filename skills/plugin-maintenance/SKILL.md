@@ -1,7 +1,6 @@
 ---
 name: plugin-maintenance
-description: Reconcile installed Claude Code plugins against your desired set (enabledPlugins in settings.json) — update what stays, install/uninstall to match, and prune stale caches and orphan data dirs. User-invoked via /plugin-maintenance.
-disable-model-invocation: true
+description: Reconcile installed Claude Code plugins against your desired set (enabledPlugins in settings.json) — update what stays, install/uninstall to match, and prune stale caches and orphan data dirs. Use when updating, reconciling, or cleaning up installed plugins, or when a version-change guide names /plugin-maintenance.
 ---
 
 # Plugin Maintenance
