@@ -4,7 +4,7 @@ Tracks coverage of the requirements in [SPEC.md](./SPEC.md) against the single
 in-repo implementation. Status vocabulary: **Covered** · **Partial** ·
 **Missing** · **Contradicts**.
 
-**Coverage: 95/95 requirements Covered (100%)**
+**Coverage: 97/97 requirements Covered (100%)**
 **Evidence pointers:** file
 
 Location holds the file. To find the spot inside it, grep for the requirement
@@ -138,3 +138,5 @@ means an edit can't leave the two disagreeing.
 | REPORT-05  | Covered | skills/plugin-maintenance/SKILL.md |
 | REPORT-06  | Covered | skills/plugin-maintenance/SKILL.md |
 | REPORT-07  | Covered | skills/plugin-maintenance/SKILL.md |
+| REPORT-08  | Covered | scripts/offer-guard.sh; skills/claude-code-version/SKILL.md; skills/plugin-maintenance/SKILL.md |
+| REPORT-09  | Covered | scripts/offer-guard.sh |

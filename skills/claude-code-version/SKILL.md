@@ -1,6 +1,11 @@
 ---
 name: claude-code-version
 description: Handle a Claude Code version change — what's new, the instructions to run on an upgrade, and acknowledging it, which clears shipshape's banner.
+hooks:
+  Stop:
+    - hooks:
+        - type: command
+          command: 'bash "${CLAUDE_PLUGIN_ROOT}/scripts/offer-guard.sh"'
 ---
 
 # Claude Code version
@@ -162,19 +167,19 @@ curl -fsSL https://raw.githubusercontent.com/anthropics/claude-code/refs/heads/m
 The first-party examples worth reading alongside it are in
 [references/default-guide.md](references/default-guide.md).
 
-**Report one screen.** The person reading has an upgrade to get through, not a
-changelog to study. Lead with the handful of items *this* user would act on: a
-new skill, command, or tool; a changed default; and anything touching the
-artifacts they write — hook events and schemas, settings keys, skill and plugin
-frontmatter, permission syntax — since that staleness is what the guide exists
-to repair. One line each, naming the version it landed in. Then account for the
-entries the summary left out — how many, and the offer of a per-release walk
-rather than printing it. Report that count only where there is one to report: a
-summary that surfaced every entry is already the whole account, and a stated
-zero reads as bookkeeping the user has to parse.
+**Lead with what's noteworthy, then walk everything.** First the items *this*
+user would act on: a new skill, command, or tool; a changed default; and
+anything touching the artifacts they write — hook events and schemas, settings
+keys, skill and plugin frontmatter, permission syntax — since that staleness is
+what the guide exists to repair. One line each, naming the version it landed in.
 
-Nothing worth acting on is its own answer: say the releases were internal fixes
-and stop there.
+Then walk every remaining entry, grouped by area (fixes, UI, IDE, cloud, and so
+on), one short line each in your own words. Every entry appears. The report
+never offers a walk, never counts what it didn't show, and never describes
+entries as passed over: wording like that tells the user something was skipped,
+and the walk is how they see nothing was.
+
+When nothing touches their artifacts, say so first, then walk the entries.
 
 Walking is not acknowledging. While `pending` is true, close with the
 [question](#close-with-the-question).
@@ -184,20 +189,18 @@ Walking is not acknowledging. While `pending` is true, close with the
 
 Stop here when `pending` is false: there's no upgrade to handle, and the guide
 is an upgrade errand rather than something to run on request. Say what's
-acknowledged and offer to walk what changed.
+acknowledged and walk what changed.
 
 **1. Lead with what changed, then account for every entry.** Give the
-one-screen summary before anything else. Acknowledging is what clears the
-banner, so this is the last point at which the user sees what they're clearing,
-and a decision surface has to stay short. Skip it only when they've already had
-the summary this session.
+[what changed](#what-changed) walk before anything else. Acknowledging is what
+clears the banner, so this is the last point at which the user sees what they're
+clearing. Skip it only when they've already had the walk this session.
 
-The summary is not the coverage. The guide runs against what changed, and an
-entry nobody read cannot be checked against anything, so the complete set —
-every release after `acknowledged` through `current` — is the candidate list the
-guide's steps run over. The closing report gives each entry one line and a
-disposition: acts on the user's artifacts, harness-internal, or not applicable.
-Passing over an entry is a disposition, not an omission.
+The guide runs against what changed, and an entry nobody read cannot be checked
+against anything, so the complete set — every release after `acknowledged`
+through `current` — is the candidate list the guide's steps run over. The
+closing report gives each entry one line and a disposition: acts on the user's
+artifacts, harness-internal, or not applicable.
 
 **2. Run the built-in guide.** An upgrade invalidates the user's artifacts whether
 or not they ever wrote a guide, so this runs every time: read what changed,

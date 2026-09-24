@@ -80,6 +80,8 @@ skills/plugin-maintenance/SKILL.md  the maintenance skill — the prompt is the 
 skills/claude-code-version/         everything a user does about a version change: the guide, what's new, acknowledge
 hooks/enforce-autoupdate.sh         SessionStart hook that enables marketplace auto-update
 hooks/claude-code-version.sh        SessionStart hook that announces a Claude Code version change; also the skill's --status, --guide, and --ack
+scripts/offer-guard.sh              Stop hook both skills declare in frontmatter: blocks a reply that offers more instead of doing it
+scripts/offer-phrases.txt           the phrases offer-guard.sh blocks, one extended regex per line
 scripts/plugin-cache-in-use.sh      lease liveness — exit 0 in use, exit 1 delete-eligible
 scripts/plugin-cache-scan.sh        classifies cache and data entries against the install manifest
 scripts/plugin-cache-prune.sh       deletes the paths it is handed, and refuses everything else

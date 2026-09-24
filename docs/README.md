@@ -176,7 +176,7 @@ One skill, and it picks what to do from what you asked for:
 | Ask for | What happens |
 |---|---|
 | your guide | Shows the instructions that run on a version change, and writes new ones once you've approved the text |
-| what's new | A one-screen summary of what landed between the version you acknowledged and the one you're running, with the per-release walk on request |
+| what's new | What landed between the version you acknowledged and the one you're running: what you'd act on first, then every other entry |
 | acknowledge, dismiss, "handled" | Summarizes what changed, runs the built-in check and your own guide, records the version, and the banner is gone |
 
 Everything but the guide opens with that summary, so you see what a version

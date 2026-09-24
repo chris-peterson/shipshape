@@ -1,6 +1,11 @@
 ---
 name: plugin-maintenance
 description: Reconcile installed Claude Code plugins against your desired set (enabledPlugins in settings.json) — update what stays, install/uninstall to match, and prune stale caches and orphan data dirs. Use when updating, reconciling, or cleaning up installed plugins, or when a version-change guide names /plugin-maintenance.
+hooks:
+  Stop:
+    - hooks:
+        - type: command
+          command: 'bash "${CLAUDE_PLUGIN_ROOT}/scripts/offer-guard.sh"'
 ---
 
 # Plugin Maintenance
@@ -148,7 +153,7 @@ Track the pass on the **native task list** (surface 2 in references/output-forma
 
 - **Extras** (installed, not desired):
   - **Shared on-disk install** (see the guardrail above — the extra's key is absent from `installed_plugins.json` while another row for the same plugin name is present) → **do not uninstall.** Removing this marketplace key deletes the plugin's only install record, taking the enabled copy with it. Surface it as a warning with the manifest-vs-list evidence and let the user resolve it deliberately (re-point `enabledPlugins`, or uninstall and reinstall from the desired marketplace). Report as "skipped (shared install)".
-  - **User-scope** → `claude plugin uninstall <plugin>@<marketplace> -y --keep-data`, then confirm against the manifest: re-read `installed_plugins.json` and check the key is gone. The uninstall reports success regardless, so verify the effect rather than trusting the message.
+  - **User-scope** → `claude plugin uninstall <plugin>@<marketplace> -y --keep-data`, then confirm against the manifest: re-read `installed_plugins.json` and check the key is gone. Verify the effect rather than trusting the message. Where the uninstall stops and names a settings file that still enables the plugin, or one it couldn't read, report the extra as skipped with that file: it's enabled somewhere outside the desired set, and that file is the user's to change.
 
     `--keep-data` is not optional. Uninstalling from a plugin's last remaining scope deletes its `${CLAUDE_PLUGIN_DATA}` directory, so without the flag Step 3 destroys accumulated user state before Step 5 gets to ask about it. Keeping the dir hands it to Step 4, which classifies it as an orphan, and to Step 5, which asks before removing anything non-empty. A data dir the user agrees to lose is one they were shown first.
   - **Project-scope** → **do not uninstall.** These are checked into a repo's `.claude/settings.json` and shared with the team, so they aren't yours to remove. Skip with a warning ("team-shared via repo settings; remove from the repo's `.claude/settings.json` instead") and report as "skipped (team-shared)". User-scope plugins are the personal ones, safe to reconcile.

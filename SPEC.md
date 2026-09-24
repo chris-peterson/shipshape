@@ -256,11 +256,11 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
 - [VERSION-18] When the user asks to see or change the guide, shipshape shall show
   it and shall write their instructions into it only once they approve the text.
 - [VERSION-19] When the user asks what changed, shipshape shall summarize the
-  changelog entries after the acknowledged version through the running version
-  in one screen, leading with what the user would act on and offering the
-  per-release walk rather than printing it, without acknowledging as a side
-  effect. It shall report the number of entries the summary omits only where it
-  omits some.
+  changelog entries after the acknowledged version through the running version,
+  leading with what the user would act on and then walking every remaining
+  entry, without acknowledging as a side effect. It shall never offer a walk in
+  place of giving one, count entries it didn't show, or describe entries as
+  passed over.
 - [VERSION-20] When the user acknowledges an upgrade, shipshape shall carry out the
   guide's content before recording the version, and shall leave the version
   unacknowledged if a step fails.
@@ -425,6 +425,12 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   no narrated investigation.
 - [REPORT-07] shipshape shall report only the current run's plugin maintenance
   and no unrelated work.
+- [REPORT-08] Once a shipshape skill has been invoked in a session, shipshape
+  shall block every reply in that session that offers more work instead of doing
+  it, and name the phrase it matched, so Claude rewrites the reply.
+- [REPORT-09] Where a rewrite still matches, shipshape shall let the reply
+  through and name the phrase to the user rather than block again, and a phrase
+  quoted inside a code span or fence shall not count as an offer.
 
 ## Future Requirements
 

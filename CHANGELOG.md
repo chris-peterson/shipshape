@@ -2,9 +2,15 @@
 
 ## Unreleased
 
+### Added
+
+- **A shipshape reply can't end by offering more instead of doing it.** Once `/claude-code-version` or `/plugin-maintenance` runs, a `Stop` hook checks every reply for the rest of the session. It blocks phrases like "let me know if", "I can walk those", or "the other 79 are…", and Claude rewrites the reply. A phrase quoted in code doesn't count, and a rewrite that still matches goes through with the phrase named to you instead of looping.
+
 ### Fixed
 
 - **A version-change guide can run `/plugin-maintenance`.** Acknowledging carries out each step of your guide, and the step shipshape's own example suggests was one Claude could not invoke, so the run stopped there and left the upgrade pending. Claude can now call the skill, which puts its description back in every session's skill listing; it still confirms before it deletes anything.
+- **What changed walks every entry.** The report leads with what you'd act on, then gives every other entry one line grouped by area, where it used to offer to walk the rest.
+- **An uninstall that Claude Code refuses is reported with its reason.** Since Claude Code 2.1.282, an uninstall stops when a settings file still enables the plugin or can't be read, and names that file. A reconcile now reports the extra as skipped with that file.
 
 ## 0.12.0
 

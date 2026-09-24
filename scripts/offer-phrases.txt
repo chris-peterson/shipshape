@@ -1,0 +1,12 @@
+let me know if
+if you('d| would)? (like|want|prefer)
+(do you )?want me to
+would you like
+happy to
+say the word
+on request
+should i (also )?(walk|go|list|show|print|expand|file|draft|run|do)
+i can (also )?(walk|go through|expand|dig|show|list|print|file|draft|run|do)
+[0-9]+ (more|other|remaining) (entries|items|changes|releases)
+(the )?(other|remaining) [0-9]+ (entries|items|changes|releases|are)
+(left out|omitted|not shown|skipped) (for brevity|here|above|below)
