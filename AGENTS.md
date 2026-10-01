@@ -54,8 +54,9 @@ lost data:
 - **A non-empty data dir asks first**, quoting its size and a sample of names,
   because that's where accumulated user state lives.
 
-`claude plugin` has no concurrency control of its own, which is why a reconcile
-takes the cooperative maintenance lock first. The lock is keyed by session id, so
+`claude plugin` has no concurrency control of its own, which is why a
+`/maintain-harness` run takes the cooperative maintenance lock before either
+half. The lock is keyed by session id, so
 it's re-entrant within a session (each skill step runs in a fresh shell) and
 mutually exclusive across them; a lock older than the stale threshold is treated
 as an abandoned crashed run and stolen.
@@ -76,17 +77,19 @@ bash scripts/tests/<name>.test.sh    # one suite
 
 ```text
 plugin.yml                          canonical descriptor — manifest, marketplace entry, docs copy
-skills/plugin-maintenance/SKILL.md  the maintenance skill — the prompt is the implementation
-skills/claude-code-version/         everything a user does about a version change: the guide, what's new, acknowledge
+skills/maintain-harness/SKILL.md      the one entry point: routes its argument to a half, and states the resolved plugin paths
+skills/maintain-harness/references/   claude-code.md (what's new, acknowledge), plugins.md (the reconcile), guide.md (the user's guide); the prompt is the implementation
 hooks/enforce-autoupdate.sh         SessionStart hook that enables marketplace auto-update
-hooks/claude-code-version.sh        SessionStart hook that announces a Claude Code version change; also the skill's --status, --guide, and --ack
-scripts/offer-guard.sh              Stop hook both skills declare in frontmatter: blocks a reply that offers more instead of doing it
+hooks/check-claude-code-version.sh        SessionStart hook that announces a Claude Code version change; also the claude-code half's --status and --ack
+scripts/offer-guard.sh              Stop hook maintain-harness declares in frontmatter: blocks a reply that offers more instead of doing it
 scripts/offer-phrases.txt           the phrases offer-guard.sh blocks, one extended regex per line
 scripts/plugin-cache-in-use.sh      lease liveness — exit 0 in use, exit 1 delete-eligible
 scripts/plugin-cache-scan.sh        classifies cache and data entries against the install manifest
 scripts/plugin-cache-prune.sh       deletes the paths it is handed, and refuses everything else
-scripts/plugin-maintenance-lock.sh  the cooperative reconcile lock
+scripts/maintenance-lock.sh         the cooperative lock one /maintain-harness run holds across both halves
 scripts/plugin-data-dir.sh          resolves a --plugin-dir session back to the installed plugin's data dir
+scripts/guide-content.sh            a guide's content: comments and leading blanks stripped, read by harness-guide.sh
+scripts/harness-guide.sh            the user's guide: its state, one section's content, the seed, and the one-time migration
 scripts/tests/                      bash suites, one per script
 SPEC.md / STATUS.md                 requirements and their coverage
 docs/                               docsify site (_sidebar.md, README.md, favicon are source)
@@ -111,7 +114,7 @@ what picks the level.
   missing `jq` is reported and exits without changes rather than degrading.
 - **The script decides facts; the skill decides judgment.** Lease liveness and
   lock ownership are deterministic and belong in `scripts/`; what to do about a
-  non-empty data dir is a question for the user and belongs in the `SKILL.md`.
+  non-empty data dir is a question for the user and belongs in the skill.
   The skill acts on a script's verdict without re-auditing it.
 - **A hook writes only when something is missing.** The auto-update hook is
   idempotent: at steady state it changes nothing and prints nothing, so a session
@@ -126,6 +129,6 @@ what picks the level.
 
 The terms this codebase runs on are defined in [SPEC.md](./SPEC.md#concepts):
 harness, desired set, installed set, install manifest, scope, version cache,
-data dir, `.in_use` lease, maintenance lock, version marker, version-change
-guide, version skill. The requirements are written against those definitions, so
+data dir, `.in_use` lease, maintenance lock, version marker, harness
+maintenance guide, section, harness skill, version skill. The requirements are written against those definitions, so
 that is where they stay current.

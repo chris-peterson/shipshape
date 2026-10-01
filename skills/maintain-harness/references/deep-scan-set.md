@@ -1,5 +1,5 @@
 # The deep-scan set: who maintains it decides who analyzes it
-<!-- covers: VERSION-27, VERSION-28, VERSION-36, VERSION-42 -->
+<!-- covers: VERSION-25, VERSION-26, VERSION-34, VERSION-40 -->
 
 A plugin the user **maintains** is theirs to patch when a Claude Code release
 invalidates a hook schema, a settings key, or a frontmatter field. A plugin they

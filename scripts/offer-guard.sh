@@ -19,6 +19,9 @@ PATTERNS="${BASH_SOURCE[0]%/*}/offer-phrases.txt"
 
 if ! command -v jq >/dev/null 2>&1; then
   echo "shipshape: offer-guard needs jq, which is not on PATH; the reply was not checked." >&2
+  # Drain the payload so the writer never meets a closed pipe (SIGPIPE). A
+  # builtin, since a PATH without jq may lack cat too.
+  while IFS= read -r _; do :; done
   exit 0
 fi
 

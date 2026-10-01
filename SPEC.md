@@ -41,7 +41,8 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   drops a `{"pid","procStart"}` lease file; a version dir is live while any
   lease names a running process whose start time still matches `procStart`.
 - **Maintenance lock** — a cooperative lock held for the duration of a
-  reconcile, since `claude plugin` operations have no concurrency control.
+  `/maintain-harness` run, across both halves, since `claude plugin` operations
+  have no concurrency control and the upgrade half writes shared state too.
 - **Marketplace auto-update** — `extraKnownMarketplaces.<name>.autoUpdate` in
   settings.json; when true, a marketplace refreshes and updates its plugins at
   startup.
@@ -50,26 +51,59 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   rather than in a version cache, which an update abandons and a prune removes.
 - **Version marker** — `${CLAUDE_PLUGIN_DATA}/acknowledged-version`; the Claude
   Code version the user has acknowledged. A newer running version is *pending*.
-- **Version-change guide** — `${CLAUDE_PLUGIN_DATA}/on-claude-code-version-change.md`;
-  what the user wants done when Claude Code's version changes, written as
-  instructions. Carried out unaltered apart from its comments, so the commands
-  it names are the commands that run.
+- **Harness maintenance guide** — `${CLAUDE_PLUGIN_DATA}/harness-maintenance-guide.md`;
+  what the user wants done after each half of the harness skill, written as
+  instructions in two sections: `## After a Claude Code upgrade` and
+  `## After plugins change`. Each half carries out only its own section, and a
+  `###` subheading stays inside the section it sits in. Carried out unaltered
+  apart from its comments, so the commands it names are the commands that run.
+- **Section** — the lines under one of the guide's two headings, up to the next
+  `##` heading. Text before the first heading or under any other `##` heading
+  is *stray*: never carried out, and reported.
 - **Guide content** — the guide's lines with HTML comment spans and leading
   blank lines removed. One test of content decides both whether the guide is
   filled in and what gets carried out, which is what lets the seeded template
   explain itself without the explanation arriving as an instruction.
-- **Unfilled guide** — a guide with no content. The seeded template is unfilled
-  by construction.
-- **Version skill** — `/claude-code-version`; everything a user does about a
-  version change: read or set the guide, walk what's new, and acknowledge the
-  upgrade. It reaches the hook through `${CLAUDE_PLUGIN_ROOT}`, which Claude
-  Code resolves when the skill loads, so no shipshape version is baked into a
-  path.
+- **Unfilled section** — a section with no content. Both sections of the seeded
+  template are unfilled by construction.
+- **Harness skill** — `/maintain-harness`; shipshape's one entry point. Its
+  argument picks a half: `claude-code`, `plugins`, or `all` (the default, both
+  in that order). Each half lives in its own reference file, so a run loads only
+  what it does. The skill body states the resolved `${CLAUDE_PLUGIN_ROOT}` and
+  `${CLAUDE_PLUGIN_DATA}`, which Claude Code fills in when the skill loads, and
+  the references' commands take those values, so no shipshape version is baked
+  into a path.
+- **Version skill** — the harness skill's `claude-code` half; everything a user
+  does about a version change: read or set the guide's upgrade section, walk
+  what's new, and acknowledge the upgrade.
 - **Acknowledgement** — recording the running version in the marker, which
   clears the banner. The guide runs at that moment and only then, so the skill
   is the only path that acknowledges.
 
 ## Requirements
+
+### HARNESS — The entry point
+
+- [HARNESS-01] shipshape shall expose one user-facing skill, `/maintain-harness`,
+  whose first argument word selects what runs: `claude-code` (or `cc`),
+  `plugins`, `all`, or `guide` (show, change, or set up the guide, running
+  neither half).
+- [HARNESS-02] When `/maintain-harness` is invoked with no argument or with
+  `all`, shipshape shall run the Claude Code half and then the plugins half.
+- [HARNESS-03] Where `/maintain-harness` has no argument and the request names
+  only one half, shipshape shall run that half alone.
+- [HARNESS-04] While running `all` with no version pending, shipshape shall
+  report the acknowledged version in one line and proceed to the plugins half
+  without walking the changelog or carrying out the guide's upgrade section. Where the
+  user leaves a pending version pending, the plugins half shall still run.
+- [HARNESS-05] Where a step in the guide's upgrade section names
+  `/maintain-harness plugins`, shipshape shall carry out the plugins half for it:
+  in place under `claude-code`, and once, after the Claude Code half, under
+  `all`.
+- [HARNESS-06] When a `/maintain-harness` run begins, shipshape shall acquire the
+  maintenance lock before either half, acquire it again at the start of each
+  half so its age stays fresh, and release it when the run's mutating work ends
+  on every exit path.
 
 ### RECON — Reconciliation
 
@@ -224,66 +258,64 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
 - [VERSION-05] The version hook shall not emit the guide's content, since it fires
   at every session start while a version is pending and the guide is a one-time
   upgrade errand.
-- [VERSION-06] Where the guide is absent, the version hook shall seed it with an
-  unfilled template naming what to write in it.
-- [VERSION-07] When invoked with `--guide`, the version hook shall print the
-  guide's content and nothing else.
-- [VERSION-08] The version hook shall treat any difference in the version string as
+- [VERSION-06] When invoked with `--status`, the version hook shall take the
+  guide's path and whether its upgrade section is filled from
+  `harness-guide.sh --status`, so the guide has one reader.
+- [VERSION-07] The version hook shall treat any difference in the version string as
   a change, including a patch bump.
-- [VERSION-09] When invoked with `--ack <version>`, the version hook shall record
+- [VERSION-08] When invoked with `--ack <version>`, the version hook shall record
   that version in the marker and report what it recorded.
-- [VERSION-10] When invoked with `--status`, the version hook shall report the
+- [VERSION-09] When invoked with `--status`, the version hook shall report the
   acknowledged and running versions, whether one is pending, the changelog entry
-  for the running version, the guide's path and filled state, and the
+  for the running version, the guide's path and whether its upgrade section is
+  filled, and the
   declaration's path, whether it has been configured, and its examined and
   skipped counts, without writing the marker.
-- [VERSION-11] Where no version has been acknowledged yet, or the marker is not a
+- [VERSION-10] Where no version has been acknowledged yet, or the marker is not a
   version, the version hook shall write the marker without showing a banner.
-- [VERSION-12] Where `SHIPSHAPE_VERSION_NOTICE` is `off`, the version hook shall
-  skip the announcement without reading or writing the marker, while `--ack`,
-  `--status`, and `--guide` still answer.
-- [VERSION-13] The version hook shall read the running version from `claude
+- [VERSION-11] Where `SHIPSHAPE_VERSION_NOTICE` is `off`, the version hook shall
+  skip the announcement without reading or writing the marker, while `--ack` and
+  `--status` still answer.
+- [VERSION-12] The version hook shall read the running version from `claude
   --version`'s stdout alone, so output on stderr is never parsed as a version.
-- [VERSION-14] If the running version cannot be determined, or `CLAUDE_PLUGIN_DATA`
+- [VERSION-13] If the running version cannot be determined, or `CLAUDE_PLUGIN_DATA`
   is unset, or `jq` is not on PATH, then the version hook shall report the reason
   on stderr and leave the marker unchanged.
-- [VERSION-15] If a comment in the guide is never closed, then the version hook
-  shall report it on stderr rather than fall silent.
-- [VERSION-16] If a mode other than the announcement cannot answer, then the
+- [VERSION-14] If a mode other than the announcement cannot answer, then the
   version hook shall exit non-zero rather than report a result it didn't produce.
-- [VERSION-17] When the version skill is invoked without a mode, shipshape shall
+- [VERSION-15] When the version skill is invoked without a mode, shipshape shall
   report the acknowledged and running versions and summarize what changed.
-- [VERSION-18] When the user asks to see or change the guide, shipshape shall show
-  it and shall write their instructions into it only once they approve the text.
-- [VERSION-19] When the user asks what changed, shipshape shall summarize the
+- [VERSION-16] When the user asks to see or change the guide's upgrade section,
+  shipshape shall handle it as GUIDE-08 does.
+- [VERSION-17] When the user asks what changed, shipshape shall summarize the
   changelog entries after the acknowledged version through the running version,
   leading with what the user would act on and then walking every remaining
   entry, without acknowledging as a side effect. It shall never offer a walk in
   place of giving one, count entries it didn't show, or describe entries as
   passed over.
-- [VERSION-20] When the user acknowledges an upgrade, shipshape shall carry out the
+- [VERSION-18] When the user acknowledges an upgrade, shipshape shall carry out the
   guide's content before recording the version, and shall leave the version
   unacknowledged if a step fails.
-- [VERSION-21] Where no version is pending, shipshape shall not carry out the guide.
-- [VERSION-22] The version skill shall address the version hook and the plugin
+- [VERSION-19] Where no version is pending, shipshape shall not carry out the guide.
+- [VERSION-20] The version skill shall address the version hook and the plugin
   data dir by placeholder rather than by literal path, so it survives a
   shipshape update.
-- [VERSION-23] The version skill shall summarize what changed on every path but
+- [VERSION-21] The version skill shall summarize what changed on every path but
   the guide, so a version is never acknowledged, or offered for acknowledgement,
   without the user having been shown what it holds.
-- [VERSION-24] Where a version is pending, the version skill shall close every
+- [VERSION-22] Where a version is pending, the version skill shall close every
   path but the guide with a two-option question — acknowledge now, carrying out
   the guide, or leave it pending — rather than a prose offer.
-- [VERSION-25] The version skill shall precede that question with what
+- [VERSION-23] The version skill shall precede that question with what
   acknowledging will run, in at most three lines — the built-in guide's scope
   always, and the user's own steps where their guide is filled. Acknowledging is
   never the recording alone, so a description offering only that the banner
   stops understates a fan-out over every repo the user declared.
-- [VERSION-26] While carrying out the guide, shipshape shall establish a step's
+- [VERSION-24] While carrying out the guide, shipshape shall establish a step's
   findings against the sources the step names before recording the version,
   since recording is what ends the errand and a finding the user cannot act on
   leaves nothing for the banner to bring them back to.
-- [VERSION-27] Where a guide step asks for a pass over the user's plugins,
+- [VERSION-25] Where a guide step asks for a pass over the user's plugins,
   shipshape shall analyze the ones the user maintains and shall leave the ones
   they only use to their own maintainers, reporting nothing about them — not a
   list, not a count, and not a closing tally. The declaration has already
@@ -294,43 +326,43 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   data dir, keyed by install-manifest key, and shall accept a bare key for a
   repo that ships as no plugin, since the manifest names what the user
   installed and not the tooling that builds it.
-- [VERSION-28] shipshape shall reconcile that declaration against the install
+- [VERSION-26] shipshape shall reconcile that declaration against the install
   manifest and shall ask only about the difference: a plugin installed with no
   decision on record, a decision whose plugin is gone, or a recorded source path
   that is no longer a directory. A recorded path it cannot read shall be
   reported as a question rather than scanned or dropped, so a pass is never
   reported over a repo that was not read.
-- [VERSION-29] When the user acknowledges an upgrade, shipshape shall dispose of
+- [VERSION-27] When the user acknowledges an upgrade, shipshape shall dispose of
   every changelog entry between the acknowledged and running versions, giving
   each a line and a disposition, rather than only those the one-screen summary
   led with. The guide runs against what changed, so an entry nobody read is an
   artifact nobody checked.
-- [VERSION-30] Where a guide step fans out over independent targets, shipshape
+- [VERSION-28] Where a guide step fans out over independent targets, shipshape
   shall return one verdict per candidate per target, each anchored at the file
   and line that establishes or disproves it, and shall report the verdict count
   so the coverage is legible.
-- [VERSION-31] shipshape shall deliver a run's findings in one pass rather than
+- [VERSION-29] shipshape shall deliver a run's findings in one pass rather than
   one at a time, since the decision the user makes is which of them to act on
   and that needs all of them in view. It shall then walk the findings one at a
   time, asking per finding whether to file it or fix it now and carrying the
   file, the line and the size of the fix into the question. Delivering the set
   is what makes the findings comparable; a single closing offer over the set
   asks for one answer across findings whose answers differ.
-- [VERSION-32] While carrying out a multi-step guide, shipshape shall report the
+- [VERSION-30] While carrying out a multi-step guide, shipshape shall report the
   outcome of each step rather than each tool call it took, so the results the
   user can act on are not buried in the mechanics of reaching them.
-- [VERSION-33] shipshape shall write a file it creates for its own bookkeeping
+- [VERSION-31] shipshape shall write a file it creates for its own bookkeeping
   to a scratch path outside any repo the guide names — including where the guide
   asks for a document without naming a path, since a repo the guide names is
   shared with the user's other sessions and an invented address lands the file
   untracked beside their work. Where the guide names a path, shipshape shall
   honor it.
-- [VERSION-34] When the user acknowledges an upgrade, shipshape shall carry out
+- [VERSION-32] When the user acknowledges an upgrade, shipshape shall carry out
   its own built-in guide, and the user's guide shall add to that rather than
   replace it. An upgrade invalidates the artifacts a user already has, so a
   user who has written no guide of their own shall not receive an upgrade that
   only clears a banner.
-- [VERSION-35] The built-in guide shall check the user's own `~/.claude`
+- [VERSION-33] The built-in guide shall check the user's own `~/.claude`
   artifacts, since those are present for every user whether or not they
   maintain a plugin. Where a declared target's repo deploys into `~/.claude`,
   shipshape shall detect staleness there and land the fix in that repo, because
@@ -338,42 +370,42 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   read `~/.claude/skills/synced/` and shall never write to it: that folder is a
   cache of the user's claude.ai account, so a fix landed there reaches neither
   the account nor a source tree and is reported as a fix that held.
-- [VERSION-36] Each declared target shall carry the user's recorded disposition
+- [VERSION-34] Each declared target shall carry the user's recorded disposition
   for a finding in it — summarized, drafted for filing, or fixed in place — and
   shipshape shall act on that rather than deciding per run. `summarize` shall be
   the disposition that presumes nothing and the one a target defaults to.
-- [VERSION-37] The built-in guide shall read the changelog from its raw URL,
+- [VERSION-35] The built-in guide shall read the changelog from its raw URL,
   which needs no CLI and no credential. It shall read the first-party reference
   implementations an entry implicates through `gh`, which reaches arbitrary repo
   paths without a URL per file. Both need no configuration and reach any
   machine. A user who keeps a local checkout may put the pull in their own
   guide, where a machine-specific path belongs.
-- [VERSION-38] Where no declaration has ever been recorded, the version skill
+- [VERSION-36] Where no declaration has ever been recorded, the version skill
   shall take the user's configuration before reporting what changed, rather
   than opening with the changelog summary every configured path opens with. The
   summary describes a release against the artifacts a user maintains, and on a
   first run shipshape does not yet know what those are, so the report has
   nothing to be relevant to.
-- [VERSION-39] While taking that configuration, shipshape shall ask about
+- [VERSION-37] While taking that configuration, shipshape shall ask about
   installed plugins in groups rather than one at a time, and shall record each
   answer as it arrives. A machine carries tens of plugins whose answer is
   uniform within a marketplace, and a run that resolves the whole set without
   writing it asks again at the next upgrade.
-- [VERSION-40] Once that configuration is recorded, shipshape shall preview the
+- [VERSION-38] Once that configuration is recorded, shipshape shall preview the
   run it produces — what an upgrade will read, and what it will do with a
   finding in each target — derived from the declaration rather than described
   in general terms, and shall then ask only whether the user wants to add
   anything. Where they do, shipshape shall write their input into the guide as
   imperative prose and show them the file path and the rewritten form before
   writing it.
-- [VERSION-41] The version skill shall select the first run from the
+- [VERSION-39] The version skill shall select the first run from the
   declaration's configured state as `--status` reports it, and where the
   declaration is present but unreadable the version hook shall report that state
   as unknown rather than as unconfigured. Every mode runs `--status` and no mode
   runs anything else first, so a signal absent from it is a signal the skill
   cannot act on; and an unreadable declaration read as an absent one starts a
   first run that asks again for every decision already recorded.
-- [VERSION-42] shipshape shall reconcile the account-sync lane alongside the
+- [VERSION-40] shipshape shall reconcile the account-sync lane alongside the
   install manifest, reporting the synced skills it can name and the synced
   plugin rows it can count, and shall report a bucket file that does not parse
   as unreadable rather than as empty. Skills and plugins enabled on the user's
@@ -381,7 +413,7 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   alone reads them as absent rather than as unexamined and reports full coverage
   having never seen them. A synced entry the user maintains shall be declarable
   under a bare key, since no manifest key can address it.
-- [VERSION-43] Where the session's working directory is shipshape's own
+- [VERSION-41] Where the session's working directory is shipshape's own
   checkout, the built-in guide shall repair shipshape against what changed
   before it examines any other target, and where the repair is material it shall
   ask the user to restart with `--plugin-dir` before the rest of the pass runs.
@@ -390,10 +422,10 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   reached with a stale map; and a plugin is loaded at session start, so the
   repair does not reach the running install on its own.
 
-- [VERSION-44] Where the plugin data dir Claude Code hands the session is a
+- [VERSION-42] Where the plugin data dir Claude Code hands the session is a
   `-inline` lane and the install manifest names exactly one marketplace the same
   plugin is installed from, shipshape shall read and write the version marker,
-  the version-change guide and the declaration in that installed plugin's lane
+  the harness maintenance guide and the declaration in that installed plugin's lane
   instead. A plugin mounted with `--plugin-dir` gets a lane of its own, so the
   same machine at the same Claude Code version otherwise reads as one that has
   never run shipshape: the marker resets, the guide is absent, and an empty
@@ -402,13 +434,60 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   shipshape shall leave the session in its own lane and say why, since
   re-answering a question costs less than writing into a lane resolved from a
   guess.
-- [VERSION-45] shipshape shall answer a reconciliation whatever order its inputs
+- [VERSION-43] shipshape shall answer a reconciliation whatever order its inputs
   arrive in: a recorded checkout that has moved, or a marketplace manifest that
   does not parse, shall reach the report as the question it is even when it is
   the last row read. Both are read in loops whose exit status is the last thing
   they test, so the ordering decides between a reported question and a command
   that exits without output — and the silent exit is indistinguishable from a
   clean pass.
+
+### GUIDE — The harness maintenance guide
+
+- [GUIDE-01] shipshape shall keep the harness maintenance guide in the plugin
+  data dir, where it survives plugin updates.
+- [GUIDE-02] shipshape shall create the guide only once the user has answered
+  the setup offer (GUIDE-07) or through a migration (GUIDE-06); reading the
+  guide's path, state, or a section shall not create it. A seeded guide holds
+  both headings and comments only, so both sections are unfilled.
+- [GUIDE-03] shipshape shall read the guide by section: each half reads only its
+  own, a `###` subheading stays inside its section, headings match regardless of
+  case and trailing space, and stray text is reported on stderr and never
+  carried out.
+- [GUIDE-04] shipshape shall read a section's content with comments and leading
+  blanks removed, and shall report an unclosed comment on stderr.
+- [GUIDE-05] Where the session's data dir is a `--plugin-dir` inline lane,
+  shipshape shall read the guide from the installed plugin's lane.
+- [GUIDE-06] When the guide is read or seeded while it is absent and the older
+  `on-claude-code-version-change.md` or `after-plugin-maintenance.md` holds
+  content, shipshape shall write that content under the matching heading, with
+  any `##` heading of its own demoted to `###` and any line naming
+  `/plugin-maintenance` dropped, since the plugins section is what follows an
+  upgrade. It shall then remove each older
+  file it finds, and shall never overwrite
+  a guide already present.
+- [GUIDE-07] When a plugins run or a request about the guide finds it absent,
+  shipshape shall offer to set up both sections, proposing a
+  `/reload-plugins`-first refresh of the CLI installers the installed plugins
+  ship where any exist, and shall write only the text the user approves. Where
+  the user declines both, shipshape shall seed the guide, so the offer is not
+  repeated.
+- [GUIDE-08] When the user asks to see or change the guide, shipshape shall show
+  the file raw, and edit it only after the user approves the drafted text.
+- [GUIDE-09] When a plugins run updated, installed, or uninstalled a plugin,
+  shipshape shall carry out the guide's plugins section in the order written,
+  after releasing the maintenance lock.
+- [GUIDE-10] Where a plugins run updated, installed, and uninstalled nothing,
+  shipshape shall not carry out the plugins section.
+- [GUIDE-11] Where a plugins-section step names a command Claude cannot invoke —
+  a built-in such as `/reload-plugins`, or one marked
+  `disable-model-invocation` — shipshape shall list it for the user in the
+  section's order as the report's closing, with `/reload-plugins` appearing
+  once.
+- [GUIDE-12] shipshape shall list the CLI installers the installed plugins ship
+  (`commands/install-*.md` and `skills/install-cli/SKILL.md` under each current
+  `installPath`) as `/<plugin>:<name>`, so neither the setup offer nor a guide
+  step derives them by hand.
 
 ### REPORT — Reporting & output model
 

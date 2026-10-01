@@ -16,7 +16,7 @@
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-HOOK="$ROOT/hooks/claude-code-version.sh"
+HOOK="$ROOT/hooks/check-claude-code-version.sh"
 TARGETS="$ROOT/scripts/version-scan-targets.sh"
 
 pass=0; fail=0
@@ -46,7 +46,7 @@ JSON
 
 export CLAUDE_PLUGIN_DATA="$FIXTURES/data"
 MARKER="$CLAUDE_PLUGIN_DATA/acknowledged-version"
-GUIDE="$CLAUDE_PLUGIN_DATA/on-claude-code-version-change.md"
+GUIDE="$CLAUDE_PLUGIN_DATA/harness-maintenance-guide.md"
 DECL="$CLAUDE_PLUGIN_DATA/version-scan-targets.json"
 
 drift()  { bash "$TARGETS" --drift 2>/dev/null; }
@@ -57,7 +57,7 @@ OUT=$(bash "$HOOK" 2>/dev/null); rc=$?
 check "the hook exits 0" "$rc" '0'
 check "and prints nothing — there is no upgrade yet" "$OUT" ''
 check "it records the running version" "$(cat "$MARKER" 2>/dev/null)" '2.1.259'
-if [ -f "$GUIDE" ]; then echo "  ok: it seeds an empty guide"; pass=$((pass+1)); else echo "  FAIL: it seeds an empty guide"; fail=$((fail+1)); fi
+if [ -e "$GUIDE" ]; then echo "  FAIL: nothing writes a guide unasked"; fail=$((fail+1)); else echo "  ok: nothing writes a guide unasked"; pass=$((pass+1)); fi
 if [ -f "$DECL" ]; then echo "  FAIL: nothing writes a declaration unasked"; fail=$((fail+1)); else echo "  ok: nothing writes a declaration unasked"; pass=$((pass+1)); fi
 
 echo "== the declaration reads a data dir the hook has already seeded"
@@ -81,13 +81,13 @@ echo '2.1.240' > "$MARKER"
 OUT=$(bash "$HOOK" 2>/dev/null)
 contains "the banner names the version left behind" "$OUT" '2.1.240'
 contains "and the one now running" "$OUT" '2.1.259'
-contains "it hands off to the skill rather than a raw command" "$OUT" 'claude-code-version'
+contains "it hands off to the skill rather than a raw command" "$OUT" 'maintain-harness'
 check "the version stays pending" "$(status | jq -r '.pending')" 'true'
 check "the marker is not advanced by announcing it" "$(cat "$MARKER")" '2.1.240'
 
 echo "== first-time means both artifacts have work outstanding"
 check "the user has written no guide" "$(status | jq -r '.guide.filled')" 'false'
-check "reading it back yields nothing" "$(bash "$HOOK" --guide 2>/dev/null)" ''
+check "reading it back yields nothing" "$(bash "$ROOT/scripts/harness-guide.sh" --section upgrade 2>/dev/null)" ''
 check "and the declaration still has questions" "$(drift | jq -r '.settled')" 'false'
 check "while the upgrade is still pending" "$(status | jq -r '.pending')" 'true'
 
@@ -98,7 +98,7 @@ check "answering every target settles the declaration" "$(drift | jq -r '.settle
 check "but the guide is still unwritten" "$(status | jq -r '.guide.filled')" 'false'
 check "and the upgrade is still pending" "$(status | jq -r '.pending')" 'true'
 
-printf 'Re-train my artifacts.\n' >> "$GUIDE"
+printf '## After a Claude Code upgrade\nRe-train my artifacts.\n' > "$GUIDE"
 check "writing a guide fills it" "$(status | jq -r '.guide.filled')" 'true'
 check "and leaves the declaration where it was" "$(drift | jq -r '.settled')" 'true'
 bash "$TARGETS" --forget beta@mp2 >/dev/null 2>&1

@@ -1,7 +1,6 @@
 - [Home](/)
 - Skills
-  - [`/plugin-maintenance`](/skills/plugin-maintenance)
-  - [`/claude-code-version`](/skills/claude-code-version)
+  - [`/maintain-harness`](/skills/maintain-harness)
 - [Hooks](/hooks)
 - [Specification](/spec)
 - [Coverage](/status)

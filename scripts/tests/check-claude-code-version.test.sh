@@ -1,21 +1,22 @@
 #!/usr/bin/env bash
-# Hermetic tests for hooks/claude-code-version.sh.
+# Hermetic tests for hooks/check-claude-code-version.sh.
 #
 # Stubs `claude` on PATH and points CLAUDE_PLUGIN_DATA at a throwaway dir, so
-# the hook reads a version the test controls and writes its marker and callback
-# document inside the fixture, never the real plugin data dir. Cases that test
+# the hook reads a version the test controls and writes its marker and guide
+# inside the fixture, never the real plugin data dir. Cases that test
 # the *absence* of CLAUDE_PLUGIN_DATA run under `env -u`, since inheriting a
 # real one would write to it.
 #
 # Covers what the script promises: silence on a first run and at steady state, a
 # banner that repeats every session until it's acknowledged, a handoff to the
-# skill rather than the guide's own text, `--guide` reading the document back
-# with its comments stripped, `--status` as a read-only view of both versions,
+# skill rather than the guide's own text, `--status` reporting the guide's
+# upgrade section as harness-guide.sh reads it (harness-guide.test.sh covers the
+# guide itself), `--status` as a read-only view of both versions,
 # and a conservative no-op whenever a prerequisite is missing.
 
 set -uo pipefail
 
-SCRIPT="$(cd "$(dirname "$0")/../.." && pwd)/hooks/claude-code-version.sh"
+SCRIPT="$(cd "$(dirname "$0")/../.." && pwd)/hooks/check-claude-code-version.sh"
 BASH_BIN="$(command -v bash)"  # absolute, so the claude-missing case can blank PATH
 
 FIXTURES=$(mktemp -d /tmp/ccv-fixtures.XXXXXX)
@@ -45,7 +46,7 @@ setup() {
   DATA=$(mktemp -d "$FIXTURES/data.XXXXXX")
   BIN=$(mktemp -d "$FIXTURES/bin.XXXXXX")
   MARKER="$DATA/acknowledged-version"
-  CALLBACKS="$DATA/on-claude-code-version-change.md"
+  GUIDE="$DATA/harness-maintenance-guide.md"
   stub "$1"
 }
 stub() {
@@ -63,14 +64,15 @@ run() {  # run the script with $@ as its arguments; sets OUT, ERR, RC
   ERR=$(cat "$err"); rm -f "$err"
 }
 status() { run --status; }
-guide() { run --guide; }
 ack() {  # $@ — arguments after --ack
   OUT=$(env PATH="$BIN:$PATH" CLAUDE_PLUGIN_DATA="$DATA" bash "$SCRIPT" --ack "$@" 2>&1); RC=$?
 }
 marker() { [ -f "$MARKER" ] && cat "$MARKER" || echo absent; }
 field() { printf '%s' "$OUT" | jq -r "$1" 2>/dev/null; }
 ctx() { field '.hookSpecificOutput.additionalContext'; }
-fill() { printf 'Re-train the artifacts: /my-retrain-command\n' > "$CALLBACKS"; }
+upgrade_section() { { printf '## After a Claude Code upgrade\n'; cat; } > "$GUIDE"; }
+fill() { printf 'Re-train the artifacts: /my-retrain-command\n' | upgrade_section; }
+guide_state() { [ -e "$GUIDE" ] && echo present || echo absent; }
 declare_targets() { printf '%s\n' "$1" > "$DATA/version-scan-targets.json"; }
 
 # --- First run: installing acknowledges the version you're already on. ---
@@ -79,15 +81,13 @@ hook
 check "first run exits 0"                    "$RC"       "0"
 check "first run prints no banner"           "$OUT"      ""
 check "first run records the version"        "$(marker)" "2.1.0"
-check "first run seeds the document"         "$([ -f "$CALLBACKS" ] && echo present)" "present"
-contains "seeded document opens a comment"   "$(cat "$CALLBACKS")" "<!-- shipshape:"
+check "first run creates no guide"           "$(guide_state)" "absent"
 
-# --- Unchanged version: no banner, no churn, document left alone. ---
-before=$(cat "$CALLBACKS")
+# --- Unchanged version: no banner, no churn. ---
 hook
 check "unchanged version is silent"          "$OUT"      ""
 check "unchanged version keeps marker"       "$(marker)" "2.1.0"
-check "unchanged version keeps document"     "$(cat "$CALLBACKS")" "$before"
+check "unchanged version still creates no guide" "$(guide_state)" "absent"
 
 # --- Version moved: the banner, and a handoff to the skill. ---
 stub 2.1.1
@@ -95,15 +95,15 @@ hook
 check "changed version exits 0"              "$RC"       "0"
 check "banner is valid JSON"                 "$(field 'has("systemMessage")')" "true"
 contains "banner names both versions"        "$(field '.systemMessage')" "2.1.0 → 2.1.1"
-contains "banner names the command to run"   "$(field '.systemMessage')" "/claude-code-version"
+contains "banner names the command to run"   "$(field '.systemMessage')" "/maintain-harness"
 # <source>: <resolution>  # <reasoning> — banners stack one per plugin, so the
 # command sits where the eye lands and detail moves to the context.
-check "banner takes the standard shape"      "$(field '.systemMessage')" "Claude Code: /claude-code-version  # 2.1.0 → 2.1.1"
+check "banner takes the standard shape"      "$(field '.systemMessage')" "Claude Code: /maintain-harness  # 2.1.0 → 2.1.1"
 contains "context links the new entry"       "$(ctx)" "CHANGELOG.md#211"
 check "unacknowledged version stays pending" "$(marker)" "2.1.0"
 check "context is tagged SessionStart"       "$(field '.hookSpecificOutput.hookEventName')" "SessionStart"
 contains "context names both versions"       "$(ctx)" "moved from 2.1.0 to 2.1.1"
-contains "context hands off to the skill"    "$(ctx)" "claude-code-version\` skill"
+contains "context hands off to the skill"    "$(ctx)" "maintain-harness\` skill"
 contains "context says it repeats"           "$(ctx)" "repeats every session"
 
 # --- Acknowledgement runs the guide, so the hook offers no shortcut past it. ---
@@ -141,7 +141,7 @@ contains "the swallowed update still lands"  "$(field '.systemMessage')" "2.1.3 
 ack                                           # bare --ack falls back to the running version
 check "bare ack records the running version" "$(marker)" "2.1.9"
 
-# --- A filled guide is read through --guide, never emitted by the hook. ---
+# --- A filled guide stays out of the hook's output; the skill reads it. ---
 setup 2.1.0
 hook
 fill
@@ -150,9 +150,6 @@ hook
 contains "banner still names the versions"   "$(field '.systemMessage')" "2.1.0 → 2.2.0"
 lacks "hook keeps the guide out of context"  "$(ctx)" "/my-retrain-command"
 lacks "hook keeps the guide out of the banner" "$(field '.systemMessage')" "/my-retrain-command"
-guide
-check "--guide exits 0"                      "$RC"       "0"
-check "--guide prints the instructions"      "$OUT"      "Re-train the artifacts: /my-retrain-command"
 
 # --- A patch bump fires too (any change in the version string). ---
 ack 2.2.0
@@ -160,64 +157,33 @@ stub 2.2.1
 hook
 contains "patch bump fires"                  "$(field '.systemMessage')" "2.2.0 → 2.2.1"
 
-# --- Comments dropped; instructions around them survive, inline ones included. ---
-cat > "$CALLBACKS" <<'DOC'
-<!-- a note to myself the guide should not pass on -->
-
-Step one: /first-command <!-- an inline aside -->
-<!-- multi-line note
-     still a note
-     end of note --> Step two: /second-command
-Step three: /third-command
-DOC
-guide
-contains "content before a comment survives" "$OUT" "Step one: /first-command"
-contains "content after an inline close survives" "$OUT" "Step two: /second-command"
-contains "plain lines survive"               "$OUT" "Step three: /third-command"
-lacks "standalone comments are dropped"      "$OUT" "note to myself"
-lacks "inline comments are dropped"          "$OUT" "an inline aside"
-lacks "multi-line comment bodies are dropped" "$OUT" "still a note"
-
-# --- An unclosed comment is surfaced rather than silently swallowing the rest. ---
-printf 'Step one: /first-command\n<!-- oops, never closed\nStep two: /second-command\n' > "$CALLBACKS"
-guide
-contains "unclosed comment is reported"      "$ERR" "unclosed <!--"
-contains "text before it still emits"        "$OUT" "Step one: /first-command"
-
-# --- Comments and blanks only reads as unfilled. ---
-printf '<!-- just a note -->\n\n<!-- and another -->\n' > "$CALLBACKS"
-guide
-check "comments-and-blanks-only reads empty" "$OUT" ""
+# --- An upgrade section holding only comments reads as unfilled. ---
+printf '<!-- just a note -->\n\n<!-- and another -->\n' | upgrade_section
 status
 check "unfilled guide is reported unfilled"  "$(field '.guide.filled')" "false"
 hook
 contains "but the banner still fires"        "$(field '.systemMessage')" "2.2.0 → 2.2.1"
 
-# --- A document holding JSON metacharacters survives both readers intact. ---
-printf 'Run "/quote-command" \\ then check <tag> & done\n' > "$CALLBACKS"
-guide
-check "quotes and backslashes survive"       "$OUT" 'Run "/quote-command" \ then check <tag> & done'
+# --- Steps under the other heading leave the upgrade section unfilled. ---
+printf '## After plugins change\n/reload-plugins\n' > "$GUIDE"
 status
-check "quoted document keeps valid JSON"     "$(field '.guide.filled')" "true"
+check "a plugins-only guide reads unfilled here" "$(field '.guide.filled')" "false"
 
-# --- Deleting the document re-seeds it rather than disabling the feature. ---
-rm "$CALLBACKS"
+# --- A deleted guide stays deleted: its absence is what the setup offer reads. ---
+rm "$GUIDE"
 hook
-check "deleted document is re-seeded"        "$([ -f "$CALLBACKS" ] && echo present)" "present"
-rm "$CALLBACKS"
-guide
-check "--guide re-seeds it too"              "$([ -f "$CALLBACKS" ] && echo present)" "present"
+check "a deleted guide is not re-created"    "$(guide_state)" "absent"
 
 # --- --status: the read-only view every mode of the skill starts from. ---
 setup 2.1.0
-hook                                          # records 2.1.0, seeds the document
+hook                                          # records 2.1.0
 status
 check "--status exits 0"                     "$RC"       "0"
 check "--status reports the acknowledged"    "$(field '.acknowledged')" "2.1.0"
 check "--status reports the running version" "$(field '.current')"      "2.1.0"
 check "settled machine is not pending"       "$(field '.pending')"      "false"
-check "--status reports the guide path"      "$(field '.guide.path')"   "$CALLBACKS"
-check "seeded guide reads as unfilled"       "$(field '.guide.filled')" "false"
+check "--status reports the guide path"      "$(field '.guide.path')"   "$GUIDE"
+check "an absent guide reads as unfilled"    "$(field '.guide.filled')" "false"
 stub 2.1.1
 status
 check "a moved version is pending"           "$(field '.pending')"      "true"
@@ -280,7 +246,7 @@ OUT=$(env -u CLAUDE_PLUGIN_DATA PATH="$BIN:$PATH" "$BASH_BIN" "$SCRIPT" 2>/dev/n
 check "missing data dir exits 0"             "$RC"       "0"
 check "missing data dir prints no banner"    "$OUT"      ""
 check "missing data dir writes nothing"      "$(marker)" "absent"
-for arg in --ack --status --guide; do
+for arg in --ack --status; do
   env -u CLAUDE_PLUGIN_DATA PATH="$BIN:$PATH" "$BASH_BIN" "$SCRIPT" "$arg" >/dev/null 2>&1; RC=$?
   check "$arg without a data dir fails loudly" "$RC" "1"
 done
@@ -331,7 +297,7 @@ check "ack with a bad version fails loudly"  "$RC"       "1"
 
 # --- A --plugin-dir mount reads the installed plugin's lane, not its own. ---
 # Claude Code names the data dir `<plugin>-inline` when the plugin is mounted
-# with --plugin-dir, and VERSION-43 sends the user into exactly such a session,
+# with --plugin-dir, and VERSION-41 sends the user into exactly such a session,
 # so the pin, the guide and the declaration have to follow them into it.
 setup 2.1.0
 PLUGINS=$(mktemp -d "$FIXTURES/plugins.XXXXXX")
@@ -341,7 +307,7 @@ JSON
 LANES=$(mktemp -d "$FIXTURES/lanes.XXXXXX")
 INSTALLED="$LANES/shipshape-mp"; mkdir -p "$INSTALLED"
 printf '2.1.4\n' > "$INSTALLED/acknowledged-version"
-printf 'Pull the mirror first.\n' > "$INSTALLED/on-claude-code-version-change.md"
+printf '## After a Claude Code upgrade\nPull the mirror first.\n' > "$INSTALLED/harness-maintenance-guide.md"
 DATA="$LANES/shipshape-inline"; mkdir -p "$DATA"
 printf '2.1.0\n' > "$DATA/acknowledged-version"
 stub 2.1.4
@@ -349,8 +315,7 @@ export CLAUDE_PLUGINS_DIR="$PLUGINS"
 run --status
 check "inline mount reports the installed pin"       "$(field '.acknowledged')" "2.1.4"
 check "inline mount is not pending"                  "$(field '.pending')"      "false"
-run --guide
-check "inline mount reads the installed guide"       "$OUT"                     "Pull the mirror first."
+check "inline mount reads the installed guide"       "$(field '.guide.filled')" "true"
 ack 2.1.5
 check "inline mount records into the installed lane" "$(cat "$INSTALLED/acknowledged-version")" "2.1.5"
 check "inline mount leaves its own pin alone"        "$(cat "$DATA/acknowledged-version")"      "2.1.0"
@@ -369,5 +334,5 @@ check "uninstalled inline mount keeps its own pin"   "$(field '.acknowledged')" 
 unset CLAUDE_PLUGINS_DIR
 
 echo
-echo "claude-code-version: pass=$pass fail=$fail"
+echo "check-claude-code-version: pass=$pass fail=$fail"
 [ "$fail" = 0 ]

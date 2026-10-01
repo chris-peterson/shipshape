@@ -2,10 +2,9 @@
 # SessionStart hook: announce a Claude Code version change, and hand the
 # handling to the skill that runs the instructions you wrote for it.
 #
-#   claude-code-version.sh              the hook — announce while a version is unacknowledged
-#   claude-code-version.sh --ack [ver]  acknowledge: record `ver` (default: the running version)
-#   claude-code-version.sh --status     report both versions, the guide and the declaration, as JSON
-#   claude-code-version.sh --guide      print the guide's content (nothing when unfilled)
+#   check-claude-code-version.sh              the hook — announce while a version is unacknowledged
+#   check-claude-code-version.sh --ack [ver]  acknowledge: record `ver` (default: the running version)
+#   check-claude-code-version.sh --status     report both versions, the guide's upgrade section and the declaration, as JSON
 #
 # Claude Code updates itself in the background, and the new version takes effect
 # at the next launch. Two things go unnoticed when it does: the change itself,
@@ -23,7 +22,7 @@
 #
 # The two halves land on the two channels a SessionStart hook has. The banner
 # goes out as `systemMessage`, the only hook output Claude Code shows the user,
-# and it names `/claude-code-version` so the person reading it has something to
+# and it names `/maintain-harness` so the person reading it has something to
 # act on. `additionalContext` carries the same handoff for Claude: what moved,
 # and the skill to run once the user has taken the update in.
 #
@@ -33,13 +32,14 @@
 # a version is unacknowledged, and a one-time upgrade errand then ran again in
 # every window that opened before someone dismissed the banner. Acknowledgement
 # is the moment the errand belongs to, and the skill owns that moment: it reads
-# the guide through `--guide`, carries it out, then records the version.
+# the guide's upgrade section, carries it out, then records the version.
+# scripts/harness-guide.sh owns the guide itself.
 #
 # State and document both live under $CLAUDE_PLUGIN_DATA, the directory Claude
 # Code guarantees survives plugin updates
 # (https://code.claude.com/docs/en/plugins-reference#persistent-data-directory).
 # A version cache would not: an update moves shipshape to a new version dir, and
-# /plugin-maintenance prunes the old one.
+# /maintain-harness plugins prunes the old one.
 #
 # Opt out with SHIPSHAPE_VERSION_NOTICE=off in the `env` block of
 # ~/.claude/settings.json.
@@ -57,11 +57,10 @@ case "${1:-}" in
   "")        ;;
   --ack)     mode=ack; ack_version="${2:-}" ;;
   --status)  mode=status ;;
-  --guide)   mode=guide ;;
-  *)         printf 'usage: %s [--ack [version] | --status | --guide]\n' "$SELF" >&2; exit 2 ;;
+  *)         printf 'usage: %s [--ack [version] | --status]\n' "$SELF" >&2; exit 2 ;;
 esac
 
-# covers: VERSION-12
+# covers: VERSION-11
 if [ "$mode" = hook ] && [ "${SHIPSHAPE_VERSION_NOTICE:-on}" = "off" ]; then
   exit 0
 fi
@@ -70,7 +69,7 @@ fi
 # same convention covers a missing jq in enforce-autoupdate.sh. The other modes
 # have a caller waiting on an answer, so a missing prerequisite is theirs to
 # see — nothing was recorded and nothing can be reported.
-# covers: VERSION-14, VERSION-16
+# covers: VERSION-13, VERSION-14
 bail() {
   [ "$mode" = hook ] || exit 1
   exit 0
@@ -88,7 +87,7 @@ if ! command -v jq >/dev/null 2>&1; then
   bail
 fi
 
-# covers: VERSION-44
+# covers: VERSION-42
 # A --plugin-dir session is handed its own `<plugin>-inline` data dir, which
 # would read as a machine that has never run shipshape. plugin-data-dir.sh
 # resolves it back to the installed plugin's lane; it needs the jq checked for
@@ -98,7 +97,7 @@ if ! CLAUDE_PLUGIN_DATA="$("$BASH" "${SELF%/*}/../scripts/plugin-data-dir.sh" "$
 fi
 
 marker="$CLAUDE_PLUGIN_DATA/acknowledged-version"
-CALLBACKS="$CLAUDE_PLUGIN_DATA/on-claude-code-version-change.md"
+GUIDE_SCRIPT="${SELF%/*}/../scripts/harness-guide.sh"
 
 record() {  # $1 version — written via a temp file so a concurrent reader never sees a torn marker
   mkdir -p "$CLAUDE_PLUGIN_DATA"
@@ -110,7 +109,7 @@ record() {  # $1 version — written via a temp file so a concurrent reader neve
 # stderr is dropped rather than folded in: a node warning or an update notice
 # printed ahead of the version would otherwise be parsed *as* the version, and a
 # warning that varies per run (a PID) would announce a change every session.
-# covers: VERSION-01, VERSION-13
+# covers: VERSION-01, VERSION-12
 read_version() {
   local reported
   if ! reported="$(claude --version 2>/dev/null)"; then
@@ -125,7 +124,7 @@ read_version() {
   printf '%s' "$reported"
 }
 
-# covers: VERSION-09
+# covers: VERSION-08
 if [ "$mode" = ack ]; then
   # The version to record is the one that was announced, passed through by the
   # skill. Claude Code can update its own binary mid-session, so re-reading it
@@ -139,69 +138,6 @@ if [ "$mode" = ack ]; then
   fi
   record "$ack_version"
   printf 'shipshape: acknowledged Claude Code %s.\n' "$ack_version"
-  exit 0
-fi
-
-# Seeded whenever absent, so the name never has to be guessed. Comment lines
-# only: until a real line is added, content() reads it as unfilled.
-# covers: VERSION-06
-if [ ! -e "$CALLBACKS" ]; then
-  mkdir -p "$CLAUDE_PLUGIN_DATA"
-  cat > "$CALLBACKS" <<'TEMPLATE'
-<!-- shipshape: what to do when Claude Code's version changes. -->
-<!-- Write instructions here, naming the commands you want run. They are
-     carried out once, when you acknowledge the upgrade with
-     /claude-code-version. For example:
-
-       Re-train my AI artifacts against this Claude Code version:
-         1. /my-retrain-command
-         2. /plugin-maintenance
-
-     Comments are dropped, so nothing fires while this file holds only this
-     one. -->
-TEMPLATE
-fi
-
-# The document's lines with HTML comment spans and leading blanks removed. One
-# test of content decides both whether the document is filled in and what gets
-# carried out, so the seeded template explains itself without becoming an
-# instruction. Spans are matched across the line rather than at its start, so an
-# inline `<!-- note -->` neither leaks nor takes the instruction beside it with
-# it.
-# covers: VERSION-15
-content() {
-  awk '
-    {
-      rest = $0; out = ""; touched = inc
-      while (length(rest) > 0) {
-        if (inc) {
-          p = index(rest, "-->")
-          if (p == 0) { rest = ""; break }
-          inc = 0; touched = 1; rest = substr(rest, p + 3)
-        } else {
-          p = index(rest, "<!--")
-          if (p == 0) { out = out rest; rest = ""; break }
-          out = out substr(rest, 1, p - 1)
-          inc = 1; touched = 1; rest = substr(rest, p + 4)
-        }
-      }
-      sub(/[[:space:]]+$/, "", out)
-      if (out == "" && touched) next        # the line was comment through and through
-      if (!started && out == "") next       # leading blanks
-      started = 1
-      print out
-    }
-    END {
-      # Silence with no signal is the failure mode here: an unclosed comment
-      # swallows the rest of the document, and the reader would just go quiet.
-      if (inc) print "shipshape: unclosed <!-- in " FILENAME "; the rest of the document was read as a comment." > "/dev/stderr"
-    }
-  ' "$CALLBACKS"
-}
-
-# covers: VERSION-07
-if [ "$mode" = guide ]; then
-  content
   exit 0
 fi
 
@@ -221,12 +157,13 @@ current="$(read_version)" || bail
 # GitHub slugifies the changelog's `## 2.1.227` heading by dropping the dots.
 entry="$CHANGELOG#${current//./}"
 
-# covers: VERSION-10, VERSION-11
+# covers: VERSION-09, VERSION-10
 if [ "$mode" = status ]; then
   # A query never writes: an unacknowledged version stays unacknowledged, so
   # asking what's pending can't be what dismisses it.
-  filled=false
-  if [ -n "$(content)" ]; then filled=true; fi
+  # The guide's own reader answers for it, so "filled" has one definition.
+  # covers: VERSION-06
+  guide="$("$BASH" "$GUIDE_SCRIPT" --status)"
 
   # Whether the deep-scan set has ever been declared is what separates a first
   # run from a configured one, and `--status` is the one command the skill runs
@@ -237,7 +174,7 @@ if [ "$mode" = status ]; then
   # An unreadable declaration is not an absent one: reported as unconfigured, it
   # sends the skill into a first run that asks for every decision the user has
   # already made. It answers null, and says why on stderr.
-  # covers: VERSION-41
+  # covers: VERSION-39
   decl_path="$CLAUDE_PLUGIN_DATA/version-scan-targets.json"
   declaration='{"configured": null, "examined": null, "skipped": null}'
   if [ ! -f "$decl_path" ]; then
@@ -252,13 +189,13 @@ if [ "$mode" = status ]; then
   fi
 
   jq -n --arg ack "$acknowledged" --arg cur "$current" --arg entry "$entry" \
-        --arg guide "$CALLBACKS" --argjson filled "$filled" \
+        --argjson guide "$guide" \
         --arg decl "$decl_path" --argjson declaration "$declaration" \
     '{acknowledged: (if $ack == "" then null else $ack end),
       current: $cur,
       pending: ($ack != "" and $ack != $cur),
       changelog: $entry,
-      guide: {path: $guide, filled: $filled},
+      guide: {path: $guide.path, filled: $guide.upgrade.filled},
       declaration: ({path: $decl} + $declaration)}'
   exit 0
 fi
@@ -279,23 +216,24 @@ fi
 # The skill is what gets named, rather than a shell command: a slash command is
 # short enough to sit on the line, it carries no path to go stale when shipshape
 # updates, and it's the path that runs the user's guide.
-# covers: VERSION-02, VERSION-03, VERSION-08
+# covers: VERSION-02, VERSION-03, VERSION-07
 # `<source>: <resolution>  # <reasoning>`. Session banners stack, one line per
 # plugin with something to say, so the command to type sits where the eye lands
 # and the rest goes after the marker. The changelog entry moves to the context:
 # the skill named here is what walks the reader through it anyway.
-banner="Claude Code: /claude-code-version  # $acknowledged → $current"
+banner="Claude Code: /maintain-harness  # $acknowledged → $current"
 
 # covers: VERSION-04, VERSION-05
 context="Claude Code moved from $acknowledged to $current — $entry. The banner announcing it repeats every session until the version is acknowledged.
 
-shipshape's \`claude-code-version\` skill handles it: it walks what changed,
-carries out the version-change instructions the user wrote, and records the
-version, which is what clears the banner. Invoke it once the user has taken the
-update in — they ask what changed, they ask you to deal with it, or they say
-thanks and move on. Don't invoke it unprompted while they haven't seen the
-banner, and don't record the version any other way: the instructions run at
-acknowledgement, so acknowledging around the skill silently drops them."
+shipshape's \`maintain-harness\` skill handles it: it walks what changed,
+carries out the version-change instructions the user wrote, records the
+version, which is what clears the banner, and then updates their plugins.
+Invoke it once the user has taken the update in: with no argument when they
+ask you to deal with it, or with \`claude-code\` when they only ask what changed
+or say thanks and move on. Don't invoke it unprompted while they haven't seen
+the banner, and don't record the version any other way: the instructions run
+at acknowledgement, so acknowledging around the skill silently drops them."
 
 jq -nc --arg banner "$banner" --arg context "$context" \
   '{systemMessage: $banner, hookSpecificOutput: {hookEventName: "SessionStart", additionalContext: $context}}'

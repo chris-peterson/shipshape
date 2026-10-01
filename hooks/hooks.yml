@@ -6,5 +6,5 @@ hooks:
     description: Enforce marketplace auto-update.
   - event: SessionStart
     matcher: '*'
-    command: 'bash "${CLAUDE_PLUGIN_ROOT}/hooks/claude-code-version.sh"'
-    description: Announce a Claude Code version change, and hand it to /claude-code-version.
+    command: 'bash "${CLAUDE_PLUGIN_ROOT}/hooks/check-claude-code-version.sh"'
+    description: Announce a Claude Code version change, and hand it to /maintain-harness.

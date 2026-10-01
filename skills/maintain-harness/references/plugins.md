@@ -1,12 +1,3 @@
----
-name: plugin-maintenance
-description: Reconcile installed Claude Code plugins against your desired set (enabledPlugins in settings.json) — update what stays, install/uninstall to match, and prune stale caches and orphan data dirs. Use when updating, reconciling, or cleaning up installed plugins, or when a version-change guide names /plugin-maintenance.
-hooks:
-  Stop:
-    - hooks:
-        - type: command
-          command: 'bash "${CLAUDE_PLUGIN_ROOT}/scripts/offer-guard.sh"'
----
 
 # Plugin Maintenance
 
@@ -35,7 +26,7 @@ So gate every extra uninstall on the install manifest, not on `claude plugin lis
 ```mermaid
 %%{ init: { 'look': 'handDrawn' } }%%
 flowchart TD
-    Start(["/plugin-maintenance"]) --> Lock{Acquire maintenance lock}
+    Start(["/maintain-harness plugins"]) --> Lock{Re-acquire maintenance lock}
     Lock -->|held by another run| Bail([Bail: another reconcile active])
     Lock -->|acquired| List["claude plugin list"]
     List --> Read["Read enabledPlugins from settings.json"]
@@ -54,12 +45,15 @@ flowchart TD
     Auto --> Unlock["Release lock"]
     Ask --> Unlock
     Unlock --> Reload["/reload-plugins"]
-    Reload --> Done([Done])
+    Reload --> Changed{Plugins changed?}
+    Changed -->|yes| Guide["Carry out the guide plugins section"]
+    Changed -->|no| Done([Done])
+    Guide --> Done
 ```
 
 ## Output model: composition-first, scannable surfaces
 
-The run is presented on three surfaces: an inventory summary + plan table up front, the native task list for progress, and a scannable final report at the end. **[references/output-format.md](references/output-format.md)** is the source of truth for all three: the shared emoji vocabulary, the composition line both the summary and the report lead with, the per-surface layouts, and the terminal-is-append-only reasoning behind them. Read it before rendering; the rest of this file assumes that vocabulary.
+The run is presented on three surfaces: an inventory summary + plan table up front, the native task list for progress, and a scannable final report at the end. **[output-format.md](output-format.md)** is the source of truth for all three: the shared emoji vocabulary, the composition line both the summary and the report lead with, the per-surface layouts, and the terminal-is-append-only reasoning behind them. Read it before rendering; the rest of this file assumes that vocabulary.
 
 ### Voice: report outcomes, not your reasoning
 <!-- covers: REPORT-06, REPORT-07 -->
@@ -75,10 +69,10 @@ The user cares about **what changed and what they must do next** — not how you
 ## Step 0: Take the maintenance lock
 <!-- covers: RECON-01, RECON-02, RECON-03 -->
 
-`claude plugin` has **no concurrency control**: install/update/uninstall all mutate the same shared state — the install manifest, the per-marketplace git clones, the per-version caches — with no locking. Two reconciles, or a reconcile overlapping another session's plugin operations, can interleave and leave that state in a mix neither intended (an uninstall in one session racing an update in another). So take a cooperative lock for the duration of the reconcile:
+`claude plugin` has **no concurrency control**: install/update/uninstall all mutate the same shared state — the install manifest, the per-marketplace git clones, the per-version caches — with no locking. Two reconciles, or a reconcile overlapping another session's plugin operations, can interleave and leave that state in a mix neither intended (an uninstall in one session racing an update in another). The router took the cooperative maintenance lock before either half ran; acquire it again here, which refreshes it for this half:
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-maintenance-lock.sh" acquire
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/maintenance-lock.sh" acquire
 ```
 
 - **Exit 0** — lock acquired (or already yours; it's re-entrant within a session). Proceed.
@@ -99,7 +93,7 @@ claude plugin list
 cat ~/.claude/settings.json | jq '.enabledPlugins'
 ```
 
-Build two sets of `<plugin>@<marketplace>` keys: **installed** (with scope) and **desired**. Note the enabled/disabled split while you're here — it feeds the composition line. Once you've diffed them (Step 3's classification), render the **inventory summary + plan table** (surface 1 in references/output-format.md) — the composition line (installed / enabled / disabled) the user sees before anything changes.
+Build two sets of `<plugin>@<marketplace>` keys: **installed** (with scope) and **desired**. Note the enabled/disabled split while you're here — it feeds the composition line. Once you've diffed them (Step 3's classification), render the **inventory summary + plan table** (surface 1 in output-format.md) — the composition line (installed / enabled / disabled) the user sees before anything changes.
 
 Also read the install manifest — Step 3 gates uninstalls on it (see "a plugin shared by two marketplaces"):
 
@@ -146,7 +140,7 @@ Updates are fast and network-bound, and with the marketplaces already refreshed 
 
 **Surface and retry failures — never lose one in the output.** If an update reports `Plugin not found` or another transient error, retry it once serially and reflect the real outcome in the final report. An update that stays failed is a row the user needs to see, not a silent gap.
 
-Track the pass on the **native task list** (surface 2 in references/output-format.md) — mark the `Update plugins` task `in_progress` before the first update, `completed` after the last. Don't emit a line per plugin; the results land in the final report (Step 3).
+Track the pass on the **native task list** (surface 2 in output-format.md) — mark the `Update plugins` task `in_progress` before the first update, `completed` after the last. Don't emit a line per plugin; the results land in the final report (Step 3).
 
 ## Step 3: Reconcile differences
 <!-- covers: RECON-10, RECON-11, RECON-11a, RECON-14, GUARD-01, GUARD-02 -->
@@ -162,7 +156,7 @@ Track the pass on the **native task list** (surface 2 in references/output-forma
   - Ask before installing — the desired set may be aspirational or out-of-date.
   - If the install fails on a marketplace-declared command (see Step 2), report it ⌨️ **needs your terminal** with the same line for the user's own shell. Their yes to the offer can't stand in for the acceptance Claude Code requires at the prompt.
 
-The reconcile outcomes feed the **final report** (surface 3 in references/output-format.md), which defines the emoji each status maps to. If nothing changed at all, the report is the composition line plus a one-line "nothing to reconcile."
+The reconcile outcomes feed the **final report** (surface 3 in output-format.md), which defines the emoji each status maps to. If nothing changed at all, the report is the composition line plus a one-line "nothing to reconcile."
 
 ## Step 4: Scan caches and data dirs
 <!-- covers: PRUNE-01, PRUNE-02, PRUNE-03, PRUNE-04, PRUNE-05, PRUNE-12, PRUNE-16 -->
@@ -272,7 +266,7 @@ Exit 2 means a path was refused as malformed. That's a bug in what you passed ra
 **First, release the maintenance lock from Step 0** — the mutating work is done, so hold it no longer than necessary (the reload is a human action outside this run):
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-maintenance-lock.sh" release
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/maintenance-lock.sh" release
 ```
 
 Release on every exit path, including the early ones — if you bailed out mid-reconcile after acquiring the lock, release it before you stop. (A missed release isn't fatal: the lock goes stale and the next run steals it, but an explicit release frees a waiting session immediately.)
@@ -295,6 +289,27 @@ Two notes worth stating in the report:
 
 Skip this entirely if Step 3 made no changes and Step 5 pruned nothing — there's nothing to reload.
 
+## Step 7: Carry out the guide's plugins section
+<!-- covers: GUIDE-07, GUIDE-09, GUIDE-10, GUIDE-11 -->
+
+The user can write instructions for what follows a run that changed their plugins, under the **After plugins change** heading of their [harness maintenance guide](guide.md): refreshing a plugin's CLI wrapper, re-running a setup command, notifying something. Start from the guide's state:
+
+```bash
+CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash "${CLAUDE_PLUGIN_ROOT}/scripts/harness-guide.sh" --status
+```
+
+**`present` false: set it up first,** on every run whether or not plugins changed, per [guide.md](guide.md#set-it-up). Then continue below with what it now holds.
+
+**Carry it out only when plugins changed:** at least one ⬆️ updated, an install, or an uninstall. A run that refreshed, pruned, or skipped only leaves the section unread. Where `plugins.filled` is false there's nothing to carry out; say nothing about it. Otherwise read the section:
+
+```bash
+CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash "${CLAUDE_PLUGIN_ROOT}/scripts/harness-guide.sh" --section plugins
+```
+
+Carry it out in the order written, once the lock is released. A step that names the installers the plugins ship takes its list from `harness-guide.sh --installers`; any other step that asks Claude to find things reads the install manifest's `installPath`s for the current versions, not the `${CLAUDE_PLUGIN_ROOT}` this session loaded.
+
+**A command only the user can type is listed, not attempted.** `/reload-plugins` is built in, and a command with `disable-model-invocation: true` refuses the Skill tool. Collect those in the section's order and close the report with them as one numbered list (see the closing in output-format.md). Where the section names `/reload-plugins`, it replaces Step 6's reload ask rather than joining it, so the reload appears once and in the position the guide put it.
+
 ## CLI reference
 
 ```bash
@@ -316,5 +331,5 @@ Cache:                 ~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/
 Data:                  ~/.claude/plugins/data/<plugin>-<marketplace>/
 Known marketplaces:    ~/.claude/plugins/known_marketplaces.json
 Installed manifest:    ~/.claude/plugins/installed_plugins.json
-Maintenance lock:      ~/.claude/plugins/.plugin-maintenance.lock
+Maintenance lock:      ~/.claude/plugins/.harness-maintenance.lock
 ```

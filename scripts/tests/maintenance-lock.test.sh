@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# Hermetic tests for plugin-maintenance-lock.sh.
+# Hermetic tests for maintenance-lock.sh.
 #
-# Uses PLUGIN_MAINT_LOCK to point the lock at a throwaway file and simulates
+# Uses MAINT_LOCK to point the lock at a throwaway file and simulates
 # distinct sessions by setting CLAUDE_CODE_SESSION_ID per invocation.
 
 set -uo pipefail
 
-SCRIPT="$(cd "$(dirname "$0")/.." && pwd)/plugin-maintenance-lock.sh"
+SCRIPT="$(cd "$(dirname "$0")/.." && pwd)/maintenance-lock.sh"
 LOCK=$(mktemp -u /tmp/pm-lock.XXXXXX.json)
-export PLUGIN_MAINT_LOCK="$LOCK"
+export MAINT_LOCK="$LOCK"
 
 pass=0; fail=0
 run() {  # $1 expected-exit  $2 label  $3.. command (env prefix ok)
@@ -33,9 +33,9 @@ check "lockfile still present after B release" "$([ -f "$LOCK" ] && echo yes)" "
 run 0 "release by owner (A)"                      env CLAUDE_CODE_SESSION_ID=A bash "$SCRIPT" release
 check "lockfile removed after A release" "$([ -f "$LOCK" ] || echo gone)" "gone"
 
-# Stale steal: A holds, but PLUGIN_MAINT_STALE=0 makes any existing lock stale.
+# Stale steal: A holds, but MAINT_STALE=0 makes any existing lock stale.
 env CLAUDE_CODE_SESSION_ID=A bash "$SCRIPT" acquire >/dev/null 2>&1
-run 0 "stale lock is stolen (B, stale=0)"         env CLAUDE_CODE_SESSION_ID=B PLUGIN_MAINT_STALE=0 bash "$SCRIPT" acquire
+run 0 "stale lock is stolen (B, stale=0)"         env CLAUDE_CODE_SESSION_ID=B MAINT_STALE=0 bash "$SCRIPT" acquire
 check "lock now owned by B" "$(sed -n 's/.*"session"[^"]*"\([^"]*\)".*/\1/p' "$LOCK")" "B"
 
 # An unreadable lock age must not be read as "old enough to steal". Shadow
@@ -57,12 +57,12 @@ esac
 # The stale steal must still work when stat does read — an unreadable age is the
 # only thing this guard blocks.
 run 0 "a readable stale lock is still stolen" \
-  env CLAUDE_CODE_SESSION_ID=B PLUGIN_MAINT_STALE=0 bash "$SCRIPT" acquire
+  env CLAUDE_CODE_SESSION_ID=B MAINT_STALE=0 bash "$SCRIPT" acquire
 rm -f "$SHADOW/stat"; rmdir "$SHADOW"
 
 run 2 "usage error on bad subcommand"             env CLAUDE_CODE_SESSION_ID=A bash "$SCRIPT" frobnicate
 
 rm -f "$LOCK"
 echo
-echo "plugin-maintenance-lock: pass=$pass fail=$fail"
+echo "maintenance-lock: pass=$pass fail=$fail"
 [ "$fail" = 0 ]
