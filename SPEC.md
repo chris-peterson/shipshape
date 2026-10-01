@@ -109,6 +109,9 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   maintenance lock before either half, acquire it again at the start of each
   half so its age stays fresh, and release it when the run's mutating work ends
   on every exit path.
+- [HARNESS-07] The harness skill shall be started only by the user typing it,
+  never invoked by Claude, since a run updates, uninstalls, and prunes the
+  user's plugins.
 
 ### RECON — Reconciliation
 
@@ -268,7 +271,9 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
 - [VERSION-03] When the banner is shown, the version hook shall leave the marker
   unchanged, so the announcement outlives the session it appears in.
 - [VERSION-04] The version hook shall deliver the banner on its user-visible channel
-  and the handoff to the version skill as model context.
+  and the handoff to the version skill as model context. The handoff shall tell
+  Claude to name the command for the user to type, since only the user starts
+  the harness skill (HARNESS-07).
 - [VERSION-05] The version hook shall not emit the guide's content, since it fires
   at every session start while a version is pending and the guide is a one-time
   upgrade errand.

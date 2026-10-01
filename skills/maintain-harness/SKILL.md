@@ -2,6 +2,7 @@
 name: maintain-harness
 description: "Bring your Claude Code harness current: handle a Claude Code version change (what's new, the instructions you wrote for an upgrade, and acknowledging it, which clears shipshape's banner), then reconcile installed plugins against enabledPlugins (update, install/uninstall to match, prune stale caches and orphan data dirs). Use when Claude Code upgraded, when updating, reconciling, or cleaning up plugins, or to see or set the guide of steps that runs after each."
 argument-hint: "[all | claude-code | plugins | guide]"
+disable-model-invocation: true
 hooks:
   Stop:
     - hooks:
@@ -10,7 +11,7 @@ hooks:
 ---
 
 # Maintain harness
-<!-- covers: REPORT-08 -->
+<!-- covers: REPORT-08, HARNESS-07 -->
 
 shipshape keeps two things current: Claude Code itself, and the user's plugins.
 Each is one half of this skill, kept in its own reference so a run loads only the

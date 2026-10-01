@@ -2,14 +2,18 @@
 
 ## Unreleased
 
+### Breaking
+
+- **`/plugin-maintenance` and `/claude-code-version` are now `/maintain-harness plugins` and `/maintain-harness claude-code`.** The old names no longer resolve; type the new ones instead.
+- **Only you start `/maintain-harness`.** A run updates, uninstalls, and prunes your plugins, so Claude no longer runs it when you ask about a Claude Code upgrade; it names the command for you to type.
+
 ### Added
 
-- **`/maintain-harness` brings your whole harness current in one run.** It handles a pending Claude Code upgrade, then reconciles your plugins. `/maintain-harness claude-code` runs the upgrade alone, and `/maintain-harness plugins` runs the plugin reconcile alone. The version banner names `/maintain-harness`.
-- **One guide holds your own steps for both halves.** `harness-maintenance-guide.md` in shipshape's data dir has a section for after a Claude Code upgrade and one for after plugins change, and each half carries out only its own. A `###` subheading, one per plugin say, stays inside its section. Commands only you can type, like `/reload-plugins` or a plugin's CLI installer, close the report as a numbered list in the order you wrote them. The first run that finds no guide offers to write it, starting from the CLI installers your plugins ship. Ask `/maintain-harness guide` to show or change it.
+- **`/maintain-harness` brings your whole harness current in one run.** It handles a pending Claude Code upgrade, then reconciles your plugins; `/maintain-harness all` does the same. `/maintain-harness claude-code` runs the upgrade alone, `/maintain-harness plugins` runs the plugin reconcile alone, and `/maintain-harness guide` shows, changes, or sets up your guide without running either. The version banner names `/maintain-harness`.
+- **One guide holds your own steps for both halves.** `harness-maintenance-guide.md` in shipshape's data dir has a section for after a Claude Code upgrade and one for after plugins change, and each half carries out only its own. A `###` subheading, one per plugin say, stays inside its section. Commands only you can type, like `/reload-plugins` or a plugin's CLI installer, close the report as a numbered list in the order you wrote them. The first run that finds no guide offers to write it, starting from the CLI installers your plugins ship. Run `/maintain-harness guide` to show or change it.
 
 ### Changed
 
-- **`/plugin-maintenance` and `/claude-code-version` are now `/maintain-harness plugins` and `/maintain-harness claude-code`.** The old names no longer resolve.
 - **One maintenance lock covers a whole `/maintain-harness` run**, so a second session's run stops and names the first instead of interleaving with either half.
 - **Steps in `on-claude-code-version-change.md` move into the new guide.** The next `/maintain-harness` run puts them under the upgrade heading, drops any `/plugin-maintenance` step (the plugins section covers it), and removes the old file.
 

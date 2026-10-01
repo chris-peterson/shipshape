@@ -46,7 +46,7 @@ Its argument picks what runs:
 
 | Run | What it does |
 |---|---|
-| `/maintain-harness` | Handles a pending Claude Code upgrade, then reconciles your plugins. With no upgrade pending, it says so in one line and goes straight to plugins. |
+| `/maintain-harness`, `/maintain-harness all` | Handles a pending Claude Code upgrade, then reconciles your plugins. With no upgrade pending, it says so in one line and goes straight to plugins. |
 | `/maintain-harness claude-code` | [The upgrade alone](/?id=maintain-harness-claude-code): what's new, your instructions, acknowledge |
 | `/maintain-harness plugins` | [The plugins alone](/?id=your-plugins-maintain-harness-plugins): reconcile, update, and prune |
 | `/maintain-harness guide` | [Your guide](/?id=your-harness-maintenance-guide): show it, change it, or set it up |
@@ -189,9 +189,8 @@ Claude Code: /maintain-harness  # 2.1.226 → 2.1.227
 
 It stays up until the new version is **acknowledged**: every session repeats the
 line until you do, so an update doesn't scroll past unread in a session you
-opened to do something else. Ask what changed, say you've seen it, or ask Claude
-to handle the upgrade, and it runs the skill. Type `/maintain-harness`
-yourself if the line is still there next session.
+opened to do something else. Type `/maintain-harness` to handle it; Claude
+never starts a run on its own, since a run changes your plugins.
 
 The first session after installing shipshape records the version you're on and
 says nothing, since there's no delta to report yet.

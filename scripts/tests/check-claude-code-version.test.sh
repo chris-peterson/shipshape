@@ -103,7 +103,8 @@ contains "context links the new entry"       "$(ctx)" "CHANGELOG.md#211"
 check "unacknowledged version stays pending" "$(marker)" "2.1.0"
 check "context is tagged SessionStart"       "$(field '.hookSpecificOutput.hookEventName')" "SessionStart"
 contains "context names both versions"       "$(ctx)" "moved from 2.1.0 to 2.1.1"
-contains "context hands off to the skill"    "$(ctx)" "maintain-harness\` skill"
+contains "context hands off to the user"     "$(ctx)" "to type \`/maintain-harness\`"
+lacks "context leaves the run to the user"   "$(ctx)" "Invoke it"
 contains "context says it repeats"           "$(ctx)" "repeats every session"
 
 # --- Acknowledgement runs the guide, so the hook offers no shortcut past it. ---

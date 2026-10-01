@@ -223,17 +223,16 @@ fi
 # the skill named here is what walks the reader through it anyway.
 banner="Claude Code: /maintain-harness  # $acknowledged → $current"
 
-# covers: VERSION-04, VERSION-05
+# covers: VERSION-04, VERSION-05, HARNESS-07
 context="Claude Code moved from $acknowledged to $current — $entry. The banner announcing it repeats every session until the version is acknowledged.
 
-shipshape's \`maintain-harness\` skill handles it: it walks what changed,
-carries out the version-change instructions the user wrote, records the
-version, which is what clears the banner, and then updates their plugins.
-Invoke it once the user has taken the update in: with no argument when they
-ask you to deal with it, or with \`claude-code\` when they only ask what changed
-or say thanks and move on. Don't invoke it unprompted while they haven't seen
-the banner, and don't record the version any other way: the instructions run
-at acknowledgement, so acknowledging around the skill silently drops them."
+shipshape's \`/maintain-harness\` handles it: it walks what changed, carries
+out the version-change instructions the user wrote, records the version, which
+is what clears the banner, and then updates their plugins. Only the user can
+start it. When they ask what changed or ask you to deal with the update, tell
+them to type \`/maintain-harness\`, or \`/maintain-harness claude-code\` for the
+upgrade alone. Don't record the version any other way: the instructions run at
+acknowledgement, so acknowledging around the skill silently drops them."
 
 jq -nc --arg banner "$banner" --arg context "$context" \
   '{systemMessage: $banner, hookSpecificOutput: {hookEventName: "SessionStart", additionalContext: $context}}'

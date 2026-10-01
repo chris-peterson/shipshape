@@ -4,7 +4,7 @@ Tracks coverage of the requirements in [SPEC.md](./SPEC.md) against the single
 in-repo implementation. Status vocabulary: **Covered** · **Partial** ·
 **Missing** · **Contradicts**.
 
-**Coverage: 114/114 requirements Covered (100%)**
+**Coverage: 115/115 requirements Covered (100%)**
 **Evidence pointers:** file
 
 Location holds the file. To find the spot inside it, grep for the requirement
@@ -24,6 +24,7 @@ means an edit can't leave the two disagreeing.
 | HARNESS-04 | Covered | skills/maintain-harness/SKILL.md |
 | HARNESS-05 | Covered | skills/maintain-harness/SKILL.md |
 | HARNESS-06 | Covered | skills/maintain-harness/SKILL.md; scripts/maintenance-lock.sh |
+| HARNESS-07 | Covered | skills/maintain-harness/SKILL.md; hooks/check-claude-code-version.sh |
 
 ## RECON — Reconciliation
 
