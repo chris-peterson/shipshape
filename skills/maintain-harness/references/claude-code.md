@@ -129,10 +129,19 @@ Walk the entries **after** `acknowledged` through `current` — every release th
 skipped, not just the one they landed on. When nothing is pending, walk the
 entry for `current` instead and say that's where they already are.
 
+**Not every version has an entry.** Claude Code ships versions the changelog
+never mentions, so the headings can jump (`## 1.2.9` straight to `## 1.2.5`).
+Name the versions in the range that have no heading, say the changelog has no
+entries for them, and walk the ones it has. Say nothing about what those
+versions contained: an absent entry doesn't mean internal fixes, or anything
+else. Where `current` is one of them, its anchor lands at the top of the file,
+so cite the file rather than the entry, and when nothing is pending, say the
+changelog has no entry for `current` instead of walking an older one.
+
 **Read the whole file, not the anchored entry.** `--status`'s `changelog` URL
 carries an anchor for `current` (`#21259`), which is the citation to hand the
-user; several skipped releases need every entry between two versions. Read it
-straight from the raw file:
+user where `current` has an entry; several skipped releases need every entry
+between two versions. Read it straight from the raw file:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/anthropics/claude-code/refs/heads/main/CHANGELOG.md
