@@ -13,6 +13,10 @@
 - **One maintenance lock covers a whole `/maintain-harness` run**, so a second session's run stops and names the first instead of interleaving with either half.
 - **Steps in `on-claude-code-version-change.md` move into the new guide.** The next `/maintain-harness` run puts them under the upgrade heading, drops any `/plugin-maintenance` step (the plugins section covers it), and removes the old file.
 
+### Fixed
+
+- **The what-changed walk names the versions the Claude Code changelog skips.** Some releases ship with no changelog entry. The walk now lists those versions as having none instead of guessing what was in them. When the version you're running is one of them, it says so instead of walking an older entry. (#19)
+
 ## 0.13.0
 
 ### Added

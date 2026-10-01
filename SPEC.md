@@ -248,9 +248,11 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
 - [VERSION-01] When a session starts, the version hook shall compare the running
   Claude Code version against the version marker.
 - [VERSION-02] While the running version differs from the marker, the version hook
-  shall show the user a banner at every session start, naming both versions,
-  linking the changelog entry for the running version, and naming the version
-  skill.
+  shall show the user a banner at every session start, naming both versions and
+  the version skill, and shall link the changelog in the handoff, anchored at the
+  running version's heading. The anchor reaches an entry only where the running
+  version has one; Claude Code ships versions the changelog never mentions, and
+  for those the link opens the top of the file.
 - [VERSION-03] When the banner is shown, the version hook shall leave the marker
   unchanged, so the announcement outlives the session it appears in.
 - [VERSION-04] The version hook shall deliver the banner on its user-visible channel
@@ -292,7 +294,8 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   leading with what the user would act on and then walking every remaining
   entry, without acknowledging as a side effect. It shall never offer a walk in
   place of giving one, count entries it didn't show, or describe entries as
-  passed over.
+  passed over. A version in that range with no changelog entry shall be named as
+  having none, without characterizing what it contained.
 - [VERSION-18] When the user acknowledges an upgrade, shipshape shall carry out the
   guide's content before recording the version, and shall leave the version
   unacknowledged if a step fails.
