@@ -39,7 +39,9 @@ lost data:
   there: `synced` is claude.ai's, and nothing local installed it or can put it
   back. Those carry no install-manifest row, so the manifest alone reads them as
   orphans. They're reported, not hidden, because the same class catches what a
-  removed marketplace left behind.
+  removed marketplace left behind. The reconcile applies the same registry test
+  through `plugin-unmanaged.sh`: a `<name>@synced` plugin is governed in
+  claude.ai, so it is never updated, installed, or uninstalled, only reported.
 - **Project-scope plugins are never uninstalled.** They're checked into someone's
   repo and shared with their team.
 - **The parent `cache/<marketplace>/` and `data/` directories are never
@@ -85,6 +87,7 @@ scripts/offer-guard.sh              Stop hook maintain-harness declares in front
 scripts/offer-phrases.txt           the phrases offer-guard.sh blocks, one extended regex per line
 scripts/plugin-cache-in-use.sh      lease liveness — exit 0 in use, exit 1 delete-eligible
 scripts/plugin-cache-scan.sh        classifies cache and data entries against the install manifest
+scripts/plugin-unmanaged.sh         lists installed and desired keys whose origin isn't a registered marketplace
 scripts/plugin-cache-prune.sh       deletes the paths it is handed, and refuses everything else
 scripts/maintenance-lock.sh         the cooperative lock one /maintain-harness run holds across both halves
 scripts/plugin-data-dir.sh          resolves a --plugin-dir session back to the installed plugin's data dir

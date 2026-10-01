@@ -29,6 +29,11 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   the user has said should be enabled; disk state may have drifted from it.
 - **Installed set** — the plugins reported by `claude plugin list`, each with a
   `<plugin>@<marketplace>` key, version, scope, and status.
+- **Managed plugin** — one whose key's `@<origin>` is a marketplace in
+  `known_marketplaces.json`. The rest are *unmanaged*: `<name>@synced` is a
+  plugin turned on in claude.ai and governed there, which nothing local
+  installed and no local marketplace serves. Both sets are diffed over managed
+  keys only.
 - **Install manifest** — `~/.claude/plugins/installed_plugins.json`; records
   each on-disk install once, keyed by `<plugin>@<marketplace>`.
 - **Scope** — a plugin's origin: **user** (personal, safe to reconcile),
@@ -152,6 +157,13 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   `-y` cannot stand in for that acceptance: Claude Code ignores the flag inside
   a session, and the skill's shell has no TTY to prompt on, so the command is
   printed and declined.
+- [RECON-16] shipshape shall leave every unmanaged plugin out of the diff, the
+  updates, installs, and uninstalls, and shall list each installed one in the
+  final report under its origin: `synced` as managed in claude.ai, any other
+  origin as not a registered marketplace. If the marketplace registry, the
+  plugin list, or the settings file cannot be read, then shipshape shall stop
+  the reconcile and report which, since an unreadable registry would mark every
+  plugin unmanaged and an unreadable list or settings file would hide one.
 
 ### GUARD — Guardrails
 

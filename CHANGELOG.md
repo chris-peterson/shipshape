@@ -15,6 +15,7 @@
 
 ### Fixed
 
+- **Plugins synced from claude.ai are left alone.** A `<name>@synced` plugin is governed in claude.ai, so `/maintain-harness plugins` no longer offers to uninstall it, counts it as missing, or tries to update it. It gets its own row in the report, marked as managed in claude.ai. A plugin from any origin that isn't a registered marketplace is treated the same way. (#15)
 - **The what-changed walk names the versions the Claude Code changelog skips.** Some releases ship with no changelog entry. The walk now lists those versions as having none instead of guessing what was in them. When the version you're running is one of them, it says so instead of walking an older entry. (#19)
 
 ## 0.13.0

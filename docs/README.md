@@ -94,7 +94,9 @@ in `~/.claude/settings.json` (`enabledPlugins`), then:
    run, so if another session is already maintaining its harness, the run stops
    and names it rather than interleaving.
 2. **Inventory**: list what's installed (`claude plugin list`) and read your
-   desired set.
+   desired set. A plugin you turned on in claude.ai (`<name>@synced`) is
+   governed there, so it's set aside here and reported as managed in claude.ai
+   rather than reconciled.
 3. **Update**: `claude plugin update` every plugin in both sets, one at a
    time. Updating in parallel makes plugins from the same marketplace collide
    over its clone, and the failures hide in the output.
