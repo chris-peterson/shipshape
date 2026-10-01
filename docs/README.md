@@ -19,8 +19,8 @@ tells you what changed, and keeps what it can current.
 
 | What moves | What shipshape does about it |
 |---|---|
-| Claude Code itself | the `claude-code-version` hook posts a banner when the version moves, and `/claude-code-version` walks what's new, runs the instructions you wrote for an upgrade, and clears the banner |
-| Your installed plugins | `/plugin-maintenance` reconciles them against your `enabledPlugins`, updates what stays, and prunes the caches and data dirs an uninstall leaves for later |
+| Claude Code itself | the `check-claude-code-version` hook posts a banner when the version moves, and `/maintain-harness claude-code` walks what's new, runs the instructions you wrote for an upgrade, and clears the banner |
+| Your installed plugins | `/maintain-harness plugins` reconciles them against your `enabledPlugins`, updates what stays, and prunes the caches and data dirs an uninstall leaves for later |
 | Your marketplaces | the `enforce-autoupdate` hook enables `autoUpdate`, so plugins keep themselves current without you asking |
 
 > [!TIP]
@@ -41,13 +41,35 @@ claude plugin install shipshape@chris-peterson
 
 ## Skills
 
-| Skill | What it does |
+One skill, [`/shipshape:maintain-harness`](/skills/maintain-harness), covers both.
+Its argument picks what runs:
+
+| Run | What it does |
 |---|---|
-| [`/shipshape:claude-code-version`](/skills/claude-code-version) | Handle a Claude Code upgrade: what's new, your instructions, acknowledge |
-| [`/shipshape:plugin-maintenance`](/skills/plugin-maintenance) | Reconcile, update, and prune your installed plugins |
+| `/maintain-harness` | Handles a pending Claude Code upgrade, then reconciles your plugins. With no upgrade pending, it says so in one line and goes straight to plugins. |
+| `/maintain-harness claude-code` | [The upgrade alone](/?id=maintain-harness-claude-code): what's new, your instructions, acknowledge |
+| `/maintain-harness plugins` | [The plugins alone](/?id=your-plugins-maintain-harness-plugins): reconcile, update, and prune |
+| `/maintain-harness guide` | [Your guide](/?id=your-harness-maintenance-guide): show it, change it, or set it up |
 
 Both hooks run at session start and need nothing from you: the wiring is on the
 [hooks](/hooks) page.
+
+## Configuration
+
+shipshape works with no setup. What you can shape is what it acts on and what
+runs after it does:
+
+| To change | Edit | Details |
+|---|---|---|
+| Which plugins `/maintain-harness plugins` keeps installed | `enabledPlugins` in `~/.claude/settings.json` | [Your plugins](/?id=your-plugins-maintain-harness-plugins) |
+| What runs after an upgrade, and after plugins change | `harness-maintenance-guide.md` in shipshape's data dir | [Your harness maintenance guide](/?id=your-harness-maintenance-guide) |
+| Which repos the upgrade check may report on, file against, or fix | `version-scan-targets.json` in shipshape's data dir, written from your answers | [The built-in check](/?id=the-built-in-check) |
+| Whether the version banner shows | `SHIPSHAPE_VERSION_NOTICE` in the `env` block of `~/.claude/settings.json` | [What happens when](/?id=what-happens-when) |
+| Whether a marketplace auto-updates | `extraKnownMarketplaces.<name>.autoUpdate` in `~/.claude/settings.json` | [Auto-update](/?id=auto-update) |
+
+shipshape's data dir is `~/.claude/plugins/data/shipshape-<marketplace>/`. Ask
+`/maintain-harness guide` to show or change your guide rather than hunting for the
+file.
 
 ## In action
 
@@ -56,20 +78,21 @@ an uninstall takes the data dir with it:
 
 <div class="cw-session" data-cw-session="session"></div>
 
-## The `/plugin-maintenance` skill
+## Your plugins: `/maintain-harness plugins`
 
 Run it from inside Claude Code whenever you want to tidy up:
 
 ```text
-/plugin-maintenance
+/maintain-harness plugins
 ```
 
 It reconciles **installed** plugins against the **desired** set you've declared
 in `~/.claude/settings.json` (`enabledPlugins`), then:
 
 1. **Lock**: take a cooperative maintenance lock, since `claude plugin` has no
-   concurrency control of its own. If another session is already reconciling,
-   the run stops and names it rather than interleaving.
+   concurrency control of its own. The lock covers the whole `/maintain-harness`
+   run, so if another session is already maintaining its harness, the run stops
+   and names it rather than interleaving.
 2. **Inventory**: list what's installed (`claude plugin list`) and read your
    desired set.
 3. **Update**: `claude plugin update` every plugin in both sets, one at a
@@ -84,6 +107,9 @@ in `~/.claude/settings.json` (`enabledPlugins`), then:
 6. **Reload**: plugins on disk aren't the plugins your session is running, so
    it hands you `/reload-plugins` to apply them. Only you can type it, and it
    reaches only the session you type it in.
+7. **Your guide**: when the run updated, installed, or uninstalled a plugin,
+   it carries out the plugins section of
+   [your guide](/?id=your-harness-maintenance-guide).
 
 It lists **every enabled plugin**, and each gets a row with its version and result,
 so you can confirm each plugin's disposition at a glance rather than re-running
@@ -98,7 +124,7 @@ asking, and that's where accumulated state lives. It leaves the superseded
 **version cache** in place, marked orphaned, for a background sweep to remove
 about 14 days later.
 
-`/plugin-maintenance` inverts both. Its own uninstalls pass `--keep-data`, so a
+`/maintain-harness plugins` inverts both. Its own uninstalls pass `--keep-data`, so a
 data dir survives to be reported and you decide whether it goes. And it prunes
 stale version caches now rather than two weeks from now, so the cache holds one
 version per plugin. It reads each version's live `.in_use` leases first, so it
@@ -106,7 +132,7 @@ never prunes a version another running session is still loaded from.
 
 > [!TIP]
 > The desired set is your own `enabledPlugins`. Curate that map and
-> `/plugin-maintenance` becomes "make my machine match what I declared."
+> `/maintain-harness plugins` becomes "make my machine match what I declared."
 
 ## Auto-update
 
@@ -147,35 +173,34 @@ changelog. And the staleness it leaves in your own AI artifacts: the rules,
 skills, hooks, and plugin manifests you wrote against the version before it, whose
 hook schemas, settings keys, and frontmatter fields may not mean what they did.
 
-The `claude-code-version` hook watches for it, and `/claude-code-version` is where
+The `check-claude-code-version` hook watches for it, and `/maintain-harness` is where
 you deal with it.
 
 ### The banner
 
 When the version has moved, the next session opens with one line naming both
-versions, linking that release's changelog entry, and naming the command that
-handles it:
+versions and naming the command that handles it:
 
 ```text
-Claude Code 2.1.226 → 2.1.227 · https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md#21227 · /claude-code-version to review and clear
+Claude Code: /maintain-harness  # 2.1.226 → 2.1.227
 ```
 
 It stays up until the new version is **acknowledged**: every session repeats the
 line until you do, so an update doesn't scroll past unread in a session you
 opened to do something else. Ask what changed, say you've seen it, or ask Claude
-to handle the upgrade, and it runs the skill. Type `/claude-code-version`
+to handle the upgrade, and it runs the skill. Type `/maintain-harness`
 yourself if the line is still there next session.
 
 The first session after installing shipshape records the version you're on and
 says nothing, since there's no delta to report yet.
 
-### `/claude-code-version`
+### `/maintain-harness claude-code`
 
-One skill, and it picks what to do from what you asked for:
+The upgrade half picks what to do from what you asked for:
 
 | Ask for | What happens |
 |---|---|
-| your guide | Shows the instructions that run on a version change, and writes new ones once you've approved the text |
+| your guide | Shows the upgrade section of [your guide](/?id=your-harness-maintenance-guide), and writes new steps once you've approved the text |
 | what's new | What landed between the version you acknowledged and the one you're running: what you'd act on first, then every other entry |
 | acknowledge, dismiss, "handled" | Summarizes what changed, runs the built-in check and your own guide, records the version, and the banner is gone |
 
@@ -196,7 +221,7 @@ the repos you've said are yours to patch.
 
 Which repos those are is the one thing shipshape can't work out from disk: a
 plugin you maintain and a plugin you merely use look identical there. So the
-first `/claude-code-version` asks, one plugin author at a time, and records your
+first `/maintain-harness claude-code` asks, one plugin author at a time, and records your
 answer:
 
 | Your answer | What a finding in that repo becomes |
@@ -209,63 +234,25 @@ answer:
 Later runs reconcile that against what you have installed and ask only about
 the difference, so a plugin you've already answered for never comes up again.
 
-### Your version-change guide
-
-Anything you want done *on top of* the built-in check is a document you write.
-It's created for you, so you never have to guess its name. Look in your
-shipshape data dir after the first session:
-
-```text
-~/.claude/plugins/data/shipshape-<marketplace>/on-claude-code-version-change.md
-```
-
-It arrives holding only comments explaining what to write. An empty document is
-a finished state rather than an unfinished one: the built-in check still runs;
-there's just nothing extra to add to it. Write plain instructions into it,
-naming the commands you want run:
-
-```markdown
-Re-train my AI artifacts against this Claude Code version:
-  1. /my-retrain-command
-  2. /plugin-maintenance
-```
-
-Everything you write reaches Claude unaltered apart from HTML comments, which
-are dropped: that's what keeps the template's own explanation from arriving as
-an instruction, and it leaves you a place for notes to yourself. Handing Claude
-the text *is* the mechanism: nothing here can invoke a slash command on your
-behalf, but text Claude reads is text Claude acts on, so the commands your
-document names are the commands that run. That also means the document can carry
-the reasoning, not just a list. Say why a step matters and Claude has it at the
-point of doing the work.
-
-It runs when you acknowledge the upgrade, once. The hook that spots the version
-change fires at every session start until you do, which is right for a banner
-and wrong for an errand, so the announcement and the errand are separated, and
-acknowledging is what joins them.
-
-You don't have to open the file yourself: `/claude-code-version` will show it to
-you and write what you dictate.
-
 ### What happens when
 
 | Situation | What you get |
 |---|---|
-| First session after installing | The version is recorded, the document is created. Nothing else. |
+| First session after installing | The version is recorded. Nothing else. |
 | Version unchanged | Silent. |
 | Version changed | The banner, repeating every session until acknowledged. |
-| You acknowledge, document written | What changed, the built-in check, your instructions carried out, then the banner clears. |
-| You acknowledge, document still all comments | What changed, the built-in check, then the banner clears. |
+| You acknowledge, upgrade section written | What changed, the built-in check, your instructions carried out, then the banner clears. |
+| You acknowledge, upgrade section empty | What changed, the built-in check, then the banner clears. |
 | After it's acknowledged | Silent, until the next version change. |
 
 Any difference in the version string counts, patch bumps included, so `2.1.220 →
 2.1.221` announces just like `2.1 → 2.2`.
 
-The marker and your document both live in `${CLAUDE_PLUGIN_DATA}`, the
+The marker and your guide both live in `${CLAUDE_PLUGIN_DATA}`, the
 [directory Claude Code guarantees survives plugin
 updates](https://code.claude.com/docs/en/plugins-reference#persistent-data-directory).
 A version cache would not survive: an update moves shipshape to a new version
-dir, and `/plugin-maintenance` prunes the old one.
+dir, and `/maintain-harness plugins` prunes the old one.
 
 To silence the banner, set `SHIPSHAPE_VERSION_NOTICE` to `off` in the `env`
 block of `~/.claude/settings.json`:
@@ -277,3 +264,67 @@ block of `~/.claude/settings.json`:
   }
 }
 ```
+
+## Your harness maintenance guide
+
+Anything you want done *on top of* what shipshape does is a document you write:
+one file, a section for each half.
+
+```text
+~/.claude/plugins/data/shipshape-<marketplace>/harness-maintenance-guide.md
+```
+
+```markdown
+## After a Claude Code upgrade
+
+Re-train my AI artifacts against this Claude Code version: /my-retrain-command
+
+## After plugins change
+
+1. /reload-plugins
+
+### my-plugin
+2. /my-plugin:install-my-plugin
+```
+
+| Section | Carried out |
+|---|---|
+| After a Claude Code upgrade | once, when you acknowledge a new version, after the built-in check |
+| After plugins change | at the end of a run that updated, installed, or uninstalled a plugin |
+
+One file because the default run does both halves in a row, and a step in one
+often depends on the other. A `###` subheading, one per plugin say, stays inside
+its section. Text outside the two sections never runs, and the run tells you
+where it is.
+
+You don't have to write it from scratch. The first run that finds no guide looks
+for the CLI installers your plugins ship and offers a plugins section that
+refreshes them, and asks whether you want anything run on an upgrade. Say no to
+both and it writes the file with both sections empty, so it doesn't ask again.
+An empty section is a finished state: the built-in check still runs on every
+upgrade.
+
+A reload has to come before a plugin's own installer: until you run
+`/reload-plugins`, the session still points at the version it started on, and an
+installer run from there re-pins to the version you just updated away from.
+Commands only you can type, like `/reload-plugins` and any marked
+`disable-model-invocation`, close the report as a numbered list in the order you
+wrote them.
+
+Everything you write reaches Claude unaltered apart from HTML comments, which
+are dropped: that's what keeps the template's own explanation from arriving as
+an instruction, and it leaves you a place for notes to yourself. Handing Claude
+the text *is* the mechanism: nothing here can invoke a slash command on your
+behalf, but text Claude reads is text Claude acts on, so the commands your guide
+names are the commands that run. That also means it can carry the reasoning, not
+just a list. Say why a step matters and Claude has it at the point of doing the
+work.
+
+The upgrade section runs when you acknowledge, once. The hook that spots the
+version change fires at every session start until you do, which is right for a
+banner and wrong for an errand, so the announcement and the errand are
+separated, and acknowledging is what joins them.
+
+If you wrote steps into `on-claude-code-version-change.md` or
+`after-plugin-maintenance.md`, the next `/maintain-harness` run moves them under the
+matching heading and removes the old file.

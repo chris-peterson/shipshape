@@ -1,6 +1,6 @@
 # The built-in guide: the errand every upgrade earns
 
-<!-- covers: VERSION-27, VERSION-31, VERSION-34, VERSION-35, VERSION-36, VERSION-37, VERSION-43 -->
+<!-- covers: VERSION-25, VERSION-29, VERSION-32, VERSION-33, VERSION-34, VERSION-35, VERSION-41 -->
 
 An upgrade invalidates artifacts whether or not the user has written a guide.
 Their rules were written against a system prompt that has moved, their hooks
@@ -15,7 +15,7 @@ is always present is the user's own `~/.claude`.
 ## 1. Read what changed
 
 Walk every changelog entry between `acknowledged` and `current`, per the
-[What changed](../SKILL.md#what-changed) section, which carries the read. A user
+[What changed](claude-code.md#what-changed) section, which carries the read. A user
 who keeps a local checkout can put the pull in their own guide, where a
 machine-specific path belongs; the skill does not hold one.
 
@@ -106,7 +106,7 @@ not gate — it names what the install manifest cannot, and the same reference
 says what to do with it.
 
 Each target answers with the verdict contract from
-[Acknowledge](../SKILL.md#acknowledge): one anchored verdict per candidate, no
+[Acknowledge](claude-code.md#acknowledge): one anchored verdict per candidate, no
 hedges, counted in the report.
 
 ## 5. Act on each finding by its target's disposition

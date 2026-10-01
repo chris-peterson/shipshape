@@ -6,9 +6,9 @@
 # and `<plugin>-inline` when the plugin is mounted with --plugin-dir instead of
 # installed. Same machine, same user, same Claude Code version — so a session
 # started that way reads its own empty lane and concludes shipshape has never
-# run here: the acknowledged-version pin resets, the version-change guide is
+# run here: the acknowledged-version pin resets, the harness maintenance guide is
 # gone, and the deep-scan declaration reads as unconfigured, which sends the
-# skill into a first run for decisions already on disk. VERSION-43 sends the
+# skill into a first run for decisions already on disk. VERSION-41 sends the
 # user into precisely such a session, so the state has to follow them into it.
 #
 # The install manifest is what resolves it, rather than a `<plugin>-*` glob over
@@ -25,7 +25,7 @@
 # Env:    CLAUDE_PLUGIN_DATA  the directory to resolve, when no argument is given
 #         CLAUDE_PLUGINS_DIR  override ~/.claude/plugins (tests)
 
-# covers: VERSION-44
+# covers: VERSION-42
 set -euo pipefail
 
 data="${1:-${CLAUDE_PLUGIN_DATA:-}}"

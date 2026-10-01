@@ -1,33 +1,37 @@
 #!/usr/bin/env bash
-# Advisory lock for a plugin-maintenance reconcile.
+# Advisory lock for a /maintain-harness run, across both of its halves.
 #
 # `claude plugin` mutates shared state — the install manifest, the per-marketplace
-# git clones, the per-version caches — with no locking of its own. Two reconciles,
-# or a reconcile racing another session's plugin operations, can interleave and
-# leave that state in a mix neither intended. This is a cooperative lock: the
-# skill acquires it before touching plugins and releases it at the end. It does
-# not stop a caller that ignores it.
+# git clones, the per-version caches — with no locking of its own, and the
+# upgrade half writes the acknowledged version, the guide, and edits in the
+# repos the user declared. Two runs, or a run racing another session's plugin
+# operations, can interleave and leave that state in a mix neither intended.
+# This is a cooperative lock: the skill acquires it before either half and
+# releases it when the run's mutating work ends. It does not stop a caller that
+# ignores it.
 #
 # Identity is the Claude Code session ($CLAUDE_CODE_SESSION_ID), so the lock is
 # re-entrant within a session (each skill step runs in a fresh shell) and
 # mutually exclusive across sessions. A lock older than the stale threshold is
-# treated as abandoned — a crashed run that never released — and stolen.
+# treated as abandoned — a crashed run that never released — and stolen. A
+# re-entrant acquire refreshes the lock's age, so a run that re-acquires at the
+# start of each half keeps a long upgrade pass from reading as abandoned.
 #
-# Usage:  plugin-maintenance-lock.sh acquire
-#         plugin-maintenance-lock.sh release
+# Usage:  maintenance-lock.sh acquire
+#         maintenance-lock.sh release
 # Exit:   0 = acquired, or released (or nothing to release)
 #         3 = acquire failed: another live session holds the lock (bail)
 #         2 = usage error
 #
-# Env:    PLUGIN_MAINT_LOCK   override the lockfile path (tests)
-#         PLUGIN_MAINT_STALE  override the stale threshold in seconds (default 1800)
+# Env:    MAINT_LOCK   override the lockfile path (tests)
+#         MAINT_STALE  override the stale threshold in seconds (default 1800)
 
-# covers: RECON-01, RECON-03, RECON-15
+# covers: RECON-01, RECON-03, RECON-15, HARNESS-06
 set -euo pipefail
 
 cmd="${1:-}"
-lock="${PLUGIN_MAINT_LOCK:-$HOME/.claude/plugins/.plugin-maintenance.lock}"
-stale="${PLUGIN_MAINT_STALE:-1800}"
+lock="${MAINT_LOCK:-$HOME/.claude/plugins/.harness-maintenance.lock}"
+stale="${MAINT_STALE:-1800}"
 me="${CLAUDE_CODE_SESSION_ID:-pid-$$}"
 
 # Read a string field from the lockfile JSON (jq if present, else a sed fallback).
@@ -64,16 +68,16 @@ case "$cmd" in
       # plugin-cache-in-use.sh takes toward a lease it cannot disprove.
       mtime=$(mtime_of "$lock" || true)
       if [ -z "$mtime" ]; then
-        echo "plugin-maintenance-lock: cannot read the age of '$lock' (no \`stat\` dialect on this system works); treating it as held by session ${owner:-unknown} — not acquiring" >&2
+        echo "maintenance-lock: cannot read the age of '$lock' (no \`stat\` dialect on this system works); treating it as held by session ${owner:-unknown} — not acquiring" >&2
         exit 3
       fi
       age=$(( $(date +%s) - mtime ))
       if [ "$age" -lt "$stale" ]; then
         started=$(field_of "$lock" started)
-        echo "plugin-maintenance-lock: held by session ${owner:-unknown} since ${started:-?} (${age}s ago); another maintenance run is active — not acquiring" >&2
+        echo "maintenance-lock: held by session ${owner:-unknown} since ${started:-?} (${age}s ago); another maintenance run is active — not acquiring" >&2
         exit 3
       fi
-      echo "plugin-maintenance-lock: clearing stale lock from session ${owner:-unknown} (${age}s old)" >&2
+      echo "maintenance-lock: clearing stale lock from session ${owner:-unknown} (${age}s old)" >&2
     fi
     printf '{"session":"%s","started":"%s"}\n' "$me" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$lock"
     exit 0
@@ -84,7 +88,7 @@ case "$cmd" in
     exit 0
     ;;
   *)
-    echo "usage: plugin-maintenance-lock.sh acquire|release" >&2
+    echo "usage: maintenance-lock.sh acquire|release" >&2
     exit 2
     ;;
 esac

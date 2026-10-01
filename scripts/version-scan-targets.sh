@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Answer which repos a version-change guide should analyze in depth, and record
+# Answer which repos an upgrade run should analyze in depth, and record
 # the user's decisions so the question is asked once rather than every upgrade.
 #
 # A plugin the user MAINTAINS is theirs to patch when a Claude Code release
@@ -75,8 +75,8 @@
 #         CLAUDE_PLUGINS_DIR  override ~/.claude/plugins (tests)
 #         CLAUDE_SKILLS_DIR   override ~/.claude/skills (tests)
 
-# covers: VERSION-27, VERSION-28, VERSION-34, VERSION-35, VERSION-42, VERSION-44,
-#         VERSION-45
+# covers: VERSION-25, VERSION-26, VERSION-32, VERSION-33, VERSION-40, VERSION-42,
+#         VERSION-43
 set -euo pipefail
 
 plugins="${CLAUDE_PLUGINS_DIR:-$HOME/.claude/plugins}"

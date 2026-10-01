@@ -1,14 +1,4 @@
----
-name: claude-code-version
-description: Handle a Claude Code version change — what's new, the instructions to run on an upgrade, and acknowledging it, which clears shipshape's banner.
-hooks:
-  Stop:
-    - hooks:
-        - type: command
-          command: 'bash "${CLAUDE_PLUGIN_ROOT}/scripts/offer-guard.sh"'
----
-
-# Claude Code version
+# Claude Code
 
 shipshape tracks the Claude Code version the user has **acknowledged**, and
 banners every session start while the running version is ahead of it. This skill
@@ -16,23 +6,23 @@ is everything a person does about that: read or set the instructions that run on
 a version change, walk what changed, and acknowledge the upgrade.
 
 Acknowledging is what runs their instructions. The `SessionStart` hook announces
-and stops there, so this skill is the only path that dispatches the guide —
+and stops there, so this half of the skill is the only path that dispatches the guide —
 recording the version any other way clears the banner and silently drops the
 errand it was announcing.
 
 ## Start with the facts
-<!-- covers: VERSION-22 -->
+<!-- covers: VERSION-20 -->
 
 ```bash
-CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude-code-version.sh --status
+CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash ${CLAUDE_PLUGIN_ROOT}/hooks/check-claude-code-version.sh --status
 ```
 
-Run it as written, at the top of every mode. Both paths arrive already resolved
-for the install that's running; a path recalled or copied from elsewhere carries
-shipshape's own version and goes stale at the next update. Keep the
-`CLAUDE_PLUGIN_DATA` assignment too — the variable reaches hook processes, not
-the shell a Bash tool call runs in. The same holds for the `--guide` and `--ack`
-commands below.
+Run it at the top of every mode, with both variables replaced by the paths
+SKILL.md resolved for the install that's running; a path recalled or copied from
+elsewhere carries shipshape's own version and goes stale at the next update.
+Keep the `CLAUDE_PLUGIN_DATA` assignment too — the variable reaches hook
+processes, not the shell a Bash tool call runs in. The same holds for the
+guide and `--ack` commands below.
 
 ```json
 {
@@ -40,7 +30,7 @@ commands below.
   "current": "2.1.235",
   "pending": true,
   "changelog": "https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md#21235",
-  "guide": { "path": "…/on-claude-code-version-change.md", "filled": true },
+  "guide": { "path": "…/harness-maintenance-guide.md", "filled": true },
   "declaration": { "path": "…/version-scan-targets.json", "configured": true,
                    "examined": 12, "skipped": 15 }
 }
@@ -61,7 +51,7 @@ is on disk but unreadable — never a first run; surface the stderr line and sto
 since reconfiguring would ask again for every decision already recorded.
 
 ## Pick the mode
-<!-- covers: VERSION-17, VERSION-23, VERSION-38, VERSION-41 -->
+<!-- covers: VERSION-15, VERSION-21, VERSION-36, VERSION-39 -->
 
 **Nothing configured yet outranks every mode below.** Where `--status` reports
 `declaration.configured` false, this is the user's first run, and the changelog
@@ -69,11 +59,11 @@ summary is the wrong thing to open with: shipshape does not yet know which repos
 are theirs to patch or what they want done about a finding, so a screen of
 release notes has nothing to be relevant *to*. Say it's the first run, take the input the guide
 needs, and only then turn to what changed. The procedure is
-[references/first-run.md](references/first-run.md).
+[first-run.md](first-run.md).
 
 | What was asked | Mode |
 |---|---|
-| *(`declaration.configured` is false)* | [First run](references/first-run.md) |
+| *(`declaration.configured` is false)* | [First run](first-run.md) |
 | "what runs when the version changes", "set my upgrade instructions", "show the guide" | [The guide](#the-guide) |
 | "what's new", "what changed", "walk me through it" | [What changed](#what-changed) |
 | "handled", "acknowledge", "dismiss", "clear the banner", or the user has taken the update in | [Acknowledge](#acknowledge) |
@@ -88,11 +78,11 @@ With no argument, report the status line, summarize what changed, then close
 with the question. When a banner is up, lead with the two versions:
 
 ```text
-Claude Code 2.1.234 → 2.1.235, unacknowledged. Your version-change guide is written.
+Claude Code 2.1.234 → 2.1.235, unacknowledged. Your guide's upgrade section is written.
 ```
 
 ## Close with the question
-<!-- covers: VERSION-24, VERSION-25 -->
+<!-- covers: VERSION-22, VERSION-23 -->
 
 While `pending` is true, every path but the guide ends in one
 **AskUserQuestion**. What precedes it is a screen of prose, and a sentence
@@ -105,7 +95,7 @@ a description promising only that a banner stops understates a fan-out over
 every repo they declared. Put **at most three lines** above the question:
 the built-in guide's scope in the user's own terms — how many repos it checks,
 named as the set it will act on rather than netted against the ones it won't —
-and where `guide.filled` is true, what their own steps add, read from `--guide`.
+and where `guide.filled` is true, what their own steps add, read from the upgrade section.
 This is a reminder, not the document: fold related steps together, and drop the
 rationale the guide carries for you.
 
@@ -121,35 +111,19 @@ rationale the guide carries for you.
 stop — nothing is recorded, and there's nothing to add after their answer.
 
 ## The guide
-<!-- covers: VERSION-18 -->
+<!-- covers: VERSION-16 -->
 
-The guide is the user's own instructions for a version change, at `guide.path`.
-Read that file raw and show it, comments included — the comments are their notes
-and the seeded explanation, and only the acknowledge step strips them.
-
-To set it, write plain instructions naming the commands they want run:
-
-```markdown
-Re-train my AI artifacts against this Claude Code version:
-  1. /my-retrain-command
-  2. /plugin-maintenance
-```
-
-Draft against what they asked for, show them the text, and edit the file once
-they approve. Everything in it reaches the model unaltered apart from HTML
-comments, so it can carry the *why* of a step and not just the list. Leave the
-seeded comment block in place unless they ask for it gone.
-
-Then show what would actually run, so a stray `<!--` doesn't go unnoticed:
-
-```bash
-CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude-code-version.sh --guide
-```
+The user's own instructions for a version change are the **After a Claude Code
+upgrade** section of their [harness maintenance guide](guide.md), at
+`guide.path`. Showing, changing, and setting it up are in
+[guide.md](guide.md). A step for after a plugin update belongs under the
+plugins heading instead: `/maintain-harness` runs the plugins half after this
+one, so the upgrade section never needs to name it.
 
 Setting the guide is not acknowledging. Leave a pending version pending.
 
 ## What changed
-<!-- covers: VERSION-19, VERSION-37 -->
+<!-- covers: VERSION-17, VERSION-35 -->
 
 Walk the entries **after** `acknowledged` through `current` — every release they
 skipped, not just the one they landed on. When nothing is pending, walk the
@@ -165,7 +139,7 @@ curl -fsSL https://raw.githubusercontent.com/anthropics/claude-code/refs/heads/m
 ```
 
 The first-party examples worth reading alongside it are in
-[references/default-guide.md](references/default-guide.md).
+[default-guide.md](default-guide.md).
 
 **Lead with what's noteworthy, then walk everything.** First the items *this*
 user would act on: a new skill, command, or tool; a changed default; and
@@ -185,7 +159,7 @@ Walking is not acknowledging. While `pending` is true, close with the
 [question](#close-with-the-question).
 
 ## Acknowledge
-<!-- covers: VERSION-20, VERSION-21, VERSION-23, VERSION-26, VERSION-29, VERSION-30, VERSION-31, VERSION-32, VERSION-33, VERSION-34 -->
+<!-- covers: VERSION-18, VERSION-19, VERSION-21, VERSION-24, VERSION-27, VERSION-28, VERSION-29, VERSION-30, VERSION-31, VERSION-32 -->
 
 Stop here when `pending` is false: there's no upgrade to handle, and the guide
 is an upgrade errand rather than something to run on request. Say what's
@@ -207,17 +181,17 @@ or not they ever wrote a guide, so this runs every time: read what changed,
 repair shipshape itself where the session is in its checkout, check their own
 `~/.claude`, fan out over the targets they've declared, and act on each finding
 by that target's recorded disposition. The procedure is
-[references/default-guide.md](references/default-guide.md) — read it before
+[default-guide.md](default-guide.md) — read it before
 starting, since the disposition decides whether a finding is summarized, drafted
 for filing, or fixed in place.
 
-**3. Read the user's own guide.** It *adds* to the built-in guide rather than
-replacing it. Comments are already stripped; empty output means they have
+**3. Read the user's own guide.** Its upgrade section *adds* to the built-in
+guide rather than replacing it. Comments are already stripped; empty output means they have
 written nothing extra, which is not the same as nothing to do — step 2 is the
 errand.
 
 ```bash
-CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude-code-version.sh --guide
+CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash ${CLAUDE_PLUGIN_ROOT}/scripts/harness-guide.sh --section upgrade
 ```
 
 Where their guide restates something the built-in guide already covers, do it
@@ -280,7 +254,7 @@ on one they saw earlier. Claude Code can update its own binary mid-session, and
 recording a version nobody was shown swallows that change.
 
 ```bash
-CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude-code-version.sh --ack <version>
+CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash ${CLAUDE_PLUGIN_ROOT}/hooks/check-claude-code-version.sh --ack <version>
 ```
 
 **6. Report** what ran and what was recorded. The script prints its own line;

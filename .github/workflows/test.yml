@@ -1,0 +1,25 @@
+name: Test
+
+# Both runners, because the scripts read date and stat output in BSD and GNU
+# dialects, and each dialect is only exercised on its own platform.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: extractions/setup-just@v4
+      - run: just test

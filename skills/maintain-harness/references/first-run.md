@@ -1,6 +1,6 @@
 # First run: configure, preview, then report
 
-<!-- covers: VERSION-38, VERSION-39, VERSION-40 -->
+<!-- covers: VERSION-36, VERSION-37, VERSION-38 -->
 
 The built-in guide runs against the repos the user maintains and the
 dispositions they chose. On a first run neither exists, so a changelog summary
@@ -16,7 +16,7 @@ than asking again for decisions already on disk.
 ## Open with two lines
 
 ```text
-This is the first time running `/shipshape:claude-code-version`.
+This is the first time running `/shipshape:maintain-harness`.
 
 A couple quick questions…
 ```
@@ -148,14 +148,17 @@ Did we miss anything?
 
 An open question, because either kind of answer can arrive. A **repo** is
 recorded as a target, resolved and confirmed like the rest. A **step** — pull a
-mirror first, run a project's own export recipe — goes into their guide, written
-as imperative prose: each step naming the command or path it acts on, with the
+mirror first, run a project's own export recipe — goes under the upgrade
+heading of their [guide](guide.md), seeded first if it's absent, written as
+imperative prose: each step naming the command or path it acts on, with the
 *why* kept only where it changes what the step does.
 
 Show them the file and the wording, and write only once they approve:
 
 ```text
-~/.claude/plugins/data/shipshape-<marketplace>/on-claude-code-version-change.md
+~/.claude/plugins/data/shipshape-<marketplace>/harness-maintenance-guide.md
+
+  ## After a Claude Code upgrade
 
   Refresh the local mirror before the changelog read:
       git -C <mirror-path> pull -p
@@ -168,4 +171,4 @@ configuration — the built-in guide is the errand.
 
 The summary now has something to be relevant to: lead with the entries touching
 the artifacts they just named, and close with the acknowledge question per
-[the skill](../SKILL.md#close-with-the-question).
+[the Claude Code half](claude-code.md#close-with-the-question).

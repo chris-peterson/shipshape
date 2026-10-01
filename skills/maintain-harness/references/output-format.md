@@ -96,3 +96,13 @@ When plugins actually changed, the movers show their version transition in the s
 ```
 
 Close with the **one action the user takes** — `/reload-plugins` if anything changed on disk, or an explicit "nothing changed, no reload needed" if not. If nothing changed at all — no updates, no installs, no uninstalls, no prune — the report is just the composition line plus that one closing line; don't pad it.
+
+<!-- covers: GUIDE-11 -->
+When the guide's plugins section (Step 7) leaves commands only the user can type, the closing becomes one numbered list in the guide's order, with `/reload-plugins` appearing once:
+
+```text
+Run these, in order:
+1. /reload-plugins
+2. /foo:install-foo
+3. /bar:install-bar
+```

@@ -38,8 +38,8 @@ eq "$(resolve "$LANES/shipshape-mp")" "$LANES/shipshape-mp" \
    "the installed lane resolves to itself"
 
 echo "== a marketplace name carrying the separator"
-manifest '{ "version": 2, "plugins": { "shipshape@getty-claude-marketplace": [{ "scope": "user" }] } }'
-eq "$(resolve "$LANES/shipshape-inline")" "$LANES/shipshape-getty-claude-marketplace" \
+manifest '{ "version": 2, "plugins": { "shipshape@your-claude-marketplace": [{ "scope": "user" }] } }'
+eq "$(resolve "$LANES/shipshape-inline")" "$LANES/shipshape-your-claude-marketplace" \
    "a hyphenated marketplace survives the join"
 
 echo "== a name that is a prefix of another plugin's"
