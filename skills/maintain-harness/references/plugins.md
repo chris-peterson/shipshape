@@ -9,6 +9,7 @@ Claude Code clears both directories on its own schedule, and what this skill cha
 
 - **Desired plugins:** `~/.claude/settings.json` → `enabledPlugins` (a map of `<plugin>@<marketplace>` → bool). This is the set you've declared should be enabled; the disk state may have drifted from it.
 - **Installed plugins:** `claude plugin list` output. Format: each entry has `<plugin>@<marketplace>`, `Version`, `Scope` (user/project/local), `Status` (enabled/disabled).
+- **Managed plugins:** only keys whose `@<origin>` is a registered marketplace (a key of `~/.claude/plugins/known_marketplaces.json`). `<name>@synced` is a plugin turned on in claude.ai and governed there: nothing local installed it, and no local marketplace can update or reinstall it. A key from any unregistered origin, on either side, stays out of the reconcile and is reported as not managed (Step 1).
 
 ## Guardrail: a plugin shared by two marketplaces
 <!-- covers: GUARD-03 -->
@@ -81,7 +82,7 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/maintenance-lock.sh" acquire
 Release it in Step 6, on every exit path. The lock self-clears if this run crashes (a lock older than the stale threshold is treated as abandoned and stolen by the next run), so a missed release degrades to a stale-lock steal, not a permanent block.
 
 ## Step 1: Inventory
-<!-- covers: RECON-05, RECON-06, AUTO-06 -->
+<!-- covers: RECON-05, RECON-06, RECON-16, AUTO-06 -->
 
 These are read-only reads of disk state — safe to run in parallel (the concurrency hazard is only among *mutating* `claude plugin` operations, handled in Step 2):
 
@@ -92,6 +93,14 @@ claude plugin list
 ```bash
 cat ~/.claude/settings.json | jq '.enabledPlugins'
 ```
+
+Then set aside what isn't shipshape's to reconcile:
+
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-unmanaged.sh"
+```
+
+It prints one row per key whose origin is not a registered marketplace, from either side: `<key>|installed|<scope>|<enabled|disabled>` or `<key>|desired|-|<true|false>`. No rows is the common case. Remove every listed key from both sets before diffing, so it is never an extra to uninstall nor a missing install, and never pass one to `claude plugin update`. Each listed install still gets its row in the final report (output-format.md). **A non-zero exit stops the half**: it means the registry, the plugin list, or the settings file couldn't be read, and reconciling without knowing which plugins are managed is the guess this step exists to prevent. Report the script's stderr line and release the lock.
 
 Build two sets of `<plugin>@<marketplace>` keys: **installed** (with scope) and **desired**. Note the enabled/disabled split while you're here — it feeds the composition line. Once you've diffed them (Step 3's classification), render the **inventory summary + plan table** (surface 1 in output-format.md) — the composition line (installed / enabled / disabled) the user sees before anything changes.
 
@@ -314,6 +323,7 @@ Carry it out in the order written, once the lock is released. A step that names 
 
 ```bash
 claude plugin list                                    # inventory
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-unmanaged.sh"   # keys from an unregistered origin (`@synced`), left out of the reconcile
 claude plugin marketplace update                       # refresh all marketplaces once (do before updates)
 claude plugin update <plugin>@<marketplace>           # update (run serialized, not in parallel)
 claude plugin install <plugin>@<marketplace>          # install
