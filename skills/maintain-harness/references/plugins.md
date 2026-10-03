@@ -65,7 +65,7 @@ The user cares about **what changed and what they must do next** — not how you
 - **No narrated investigation.** If a check surprises you — a lease reads as in-use, a version looks off — resolve it with silent tool calls, then report the *conclusion* in one line. Never walk the user through your hypotheses, your `ps` spelunking, or your "that's almost certainly wrong… actually it's correct" reversals. That is internal dialog; it belongs in no message.
 - **Trust the skill's own tooling.** The lock script and `plugin-cache-in-use.sh` return verdicts you act on, not verdicts you audit out loud (see Step 4). If the script says a dir is in use, it's in use — report it and move on.
 - **Stay in scope.** Report only this run's plugin maintenance. Don't append status on unrelated parked work, other sessions' tasks, or what you were doing before the skill was invoked.
-- **The final summary is an emoji-tagged status block, not prose.** Emit surface 3 as the reference defines it, ending with the one action the user takes (`/reload-plugins`, or "nothing changed").
+- **The final summary is an emoji-tagged status block, not prose.** Emit surface 3 as the reference defines it, ending with the steps the user takes as exact commands (`/reload-plugins`, or "nothing changed"), and nothing after them.
 
 ## Step 0: Take the maintenance lock
 <!-- covers: RECON-01, RECON-02, RECON-03 -->
@@ -280,18 +280,15 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/maintenance-lock.sh" release
 
 Release on every exit path, including the early ones — if you bailed out mid-reconcile after acquiring the lock, release it before you stop. (A missed release isn't fatal: the lock goes stale and the next run steals it, but an explicit release frees a waiting session immediately.)
 
-Installs, uninstalls, and updates change plugins on disk but don't take effect in the running session — Claude Code reads the plugin set once at startup and freezes it. `/reload-plugins` re-reads it in place (no restart). It's a built-in command that only a human can type: there's no CLI flag, hook, or skill that triggers a reload, and no way to reload across sessions — each running session is an independent process. So the reconcile only lands where the user runs the reload:
+Installs, uninstalls, and updates change plugins on disk but don't take effect in the running session — Claude Code reads the plugin set once at startup and freezes it. `/reload-plugins` re-reads it in place (no restart). It's a built-in command that only a human can type: there's no CLI flag, hook, or skill that triggers a reload, and no way to reload across sessions — each running session is an independent process. So the reconcile only lands where the user runs the reload, and the ask is the closing step in output-format.md, worded as the command alone:
 
 ```text
-Ask the user to run /reload-plugins in this session — and in any other active
-Claude Code session, since each loads plugins independently. If it warns that
-the reload will re-read the conversation, it has skipped: rerun it as
-/reload-plugins --force.
+Run /reload-plugins here and in your other sessions (/reload-plugins --force if it warns).
 ```
 
 Name the `--force` rerun in the ask, not after the user reports the warning. A reload that would invalidate the prompt cache warns and does nothing until it's rerun with the flag, so a plain "run `/reload-plugins`" can leave the reconcile unapplied while reading as done.
 
-Two notes worth stating in the report:
+The reasons behind the ask stay out of the report; the closing carries the command, not its rationale:
 
 - **Other running sessions still need their own reload.** This reconcile only landed in the session that ran it; every other live session keeps the plugin set it loaded at startup until it reloads or restarts. (Their *loaded* version dirs were protected from pruning by the `.in_use` check in Step 5 — they're stale, not broken.)
 - **Auto-update makes reloads routine, not rare.** Claude Code checks for marketplace and plugin updates *after* a session starts, with a random delay of up to ten minutes, so a session launches on whatever was on disk and picks the new versions up either through a reload it prompts for or at the next launch. With shipshape's `SessionStart` hook enabling auto-update, expect that prompt in ordinary sessions — this step isn't only for the session that ran a manual reconcile.
@@ -317,7 +314,7 @@ CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash "${CLAUDE_PLUGIN_ROOT}/scripts/har
 
 Carry it out in the order written, once the lock is released. A step that names the installers the plugins ship takes its list from `harness-guide.sh --installers`; any other step that asks Claude to find things reads the install manifest's `installPath`s for the current versions, not the `${CLAUDE_PLUGIN_ROOT}` this session loaded.
 
-**A command only the user can type is listed, not attempted.** `/reload-plugins` is built in, and a command with `disable-model-invocation: true` refuses the Skill tool. Collect those in the section's order and close the report with them as one numbered list (see the closing in output-format.md). Where the section names `/reload-plugins`, it replaces Step 6's reload ask rather than joining it, so the reload appears once and in the position the guide put it.
+**A command only the user can type is listed, not attempted.** `/reload-plugins` is built in, and a command with `disable-model-invocation: true` refuses the Skill tool. Collect those in the section's order and close the report with them as one numbered list of exact commands (see the closing in output-format.md). Where the section names `/reload-plugins`, it replaces Step 6's reload ask rather than joining it, so the reload appears once and in the position the guide put it.
 
 ## CLI reference
 

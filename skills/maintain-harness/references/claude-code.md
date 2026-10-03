@@ -78,8 +78,12 @@ With no argument, report the status line, summarize what changed, then close
 with the question. When a banner is up, lead with the two versions:
 
 ```text
-Claude Code 2.1.234 → 2.1.235, unacknowledged. Your guide's upgrade section is written.
+Claude Code 2.1.234 → 2.1.235
 ```
+
+The user ran this skill to deal with the upgrade, so the line leaves out the
+pending state and any setup that's already in place. Add to it only what needs
+their action.
 
 ## Close with the question
 <!-- covers: VERSION-22, VERSION-23 -->

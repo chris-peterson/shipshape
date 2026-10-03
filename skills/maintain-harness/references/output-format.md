@@ -103,14 +103,30 @@ When plugins actually changed, the movers show their version transition in the s
 | oss-registry | devkit     | —               | 🔄 refreshed |
 ```
 
-Close with the **one action the user takes** — `/reload-plugins` if anything changed on disk, or an explicit "nothing changed, no reload needed" if not. If nothing changed at all — no updates, no installs, no uninstalls, no prune — the report is just the composition line plus that one closing line; don't pad it.
+<!-- covers: REPORT-10 -->
+Close with **what the user does**, and end the reply there. Anything after the
+steps buries them, so the closing is the last thing in the reply.
+
+Each step is the exact command, with no reason attached. The user acts on the
+list and reads past any explanation, so a step that needs a sentence to justify
+it costs them the step. When anything changed on disk, the step is
+`/reload-plugins`. When nothing changed, the closing is one line saying no reload
+is needed. If nothing changed at all (no updates, installs, uninstalls or
+prunes), the report is just the composition line plus that closing line.
+
+```text
+Run /reload-plugins here and in your other sessions (/reload-plugins --force if it warns).
+```
 
 <!-- covers: GUIDE-11 -->
-When the guide's plugins section (Step 7) leaves commands only the user can type, the closing becomes one numbered list in the guide's order, with `/reload-plugins` appearing once:
+When the guide's plugins section (Step 7) leaves commands only the user can type,
+the closing is one numbered list of exact commands, in the order they must run,
+with `/reload-plugins` appearing once and ahead of every plugin's installer,
+since an installer runs whichever version the session has loaded:
 
 ```text
 Run these, in order:
-1. /reload-plugins
+1. /reload-plugins (--force if it warns), here and in your other sessions
 2. /foo:install-foo
 3. /bar:install-bar
 ```

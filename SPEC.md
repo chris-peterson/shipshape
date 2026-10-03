@@ -303,7 +303,9 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
 - [VERSION-14] If a mode other than the announcement cannot answer, then the
   version hook shall exit non-zero rather than report a result it didn't produce.
 - [VERSION-15] When the version skill is invoked without a mode, shipshape shall
-  report the acknowledged and running versions and summarize what changed.
+  report the acknowledged and running versions and summarize what changed. The
+  status line shall carry nothing beyond the versions except what needs the
+  user's action.
 - [VERSION-16] When the user asks to see or change the guide's upgrade section,
   shipshape shall handle it as GUIDE-08 does.
 - [VERSION-17] When the user asks what changed, shipshape shall summarize the
@@ -530,6 +532,9 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
 - [REPORT-09] Where a rewrite still matches, shipshape shall let the reply
   through and name the phrase to the user rather than block again, and a phrase
   quoted inside a code span or fence shall not count as an offer.
+- [REPORT-10] shipshape shall end a run's reply with the steps the user takes,
+  each given as the exact command in the order it must run, with no rationale
+  attached and nothing after them.
 
 ## Future Requirements
 
