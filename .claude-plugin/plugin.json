@@ -16,5 +16,6 @@
     "upgrades",
     "harness"
   ],
-  "homepage": "https://chris-peterson.github.io/shipshape/#/"
+  "homepage": "https://chris-peterson.github.io/shipshape/#/",
+  "documentationUrl": "https://chris-peterson.github.io/shipshape/#/"
 }
