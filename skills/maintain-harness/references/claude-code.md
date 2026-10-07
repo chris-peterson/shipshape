@@ -186,16 +186,16 @@ clearing. Skip it only when they've already had the walk this session.
 The guide runs against what changed, and an entry nobody read cannot be checked
 against anything, so the complete set — every release after `acknowledged`
 through `current` — is the candidate list the guide's steps run over. The
-closing report gives each entry one line and a disposition: acts on the user's
+closing report gives each entry one line and a category: acts on the user's
 artifacts, harness-internal, or not applicable.
 
 **2. Run the built-in guide.** An upgrade invalidates the user's artifacts whether
 or not they ever wrote a guide, so this runs every time: read what changed,
 repair shipshape itself where the session is in its checkout, check their own
 `~/.claude`, fan out over the targets they've declared, and act on each finding
-by that target's recorded disposition. The procedure is
+by that target's recorded action. The procedure is
 [default-guide.md](default-guide.md) — read it before
-starting, since the disposition decides whether a finding is summarized, drafted
+starting, since the action decides whether a finding is summarized, drafted
 for filing, or fixed in place.
 
 **3. Read the user's own guide.** Its upgrade section *adds* to the built-in
@@ -257,7 +257,7 @@ One closing offer to file the set asks for a single answer across findings whose
 answers differ.
 
 **A step that names the user's plugins means the ones they maintain.** The
-built-in guide has already resolved that set and each target's disposition — reuse
+built-in guide has already resolved that set and each target's action — reuse
 its answer rather than deriving a second one from the guide's wording.
 
 **5. Record the version.** Use the version the user was *shown* — the one this

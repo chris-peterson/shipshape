@@ -354,11 +354,11 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   that is no longer a directory. A recorded path it cannot read shall be
   reported as a question rather than scanned or dropped, so a pass is never
   reported over a repo that was not read.
-- [VERSION-27] When the user acknowledges an upgrade, shipshape shall dispose of
-  every changelog entry between the acknowledged and running versions, giving
-  each a line and a disposition, rather than only those the one-screen summary
-  led with. The guide runs against what changed, so an entry nobody read is an
-  artifact nobody checked.
+- [VERSION-27] When the user acknowledges an upgrade, shipshape shall account
+  for every changelog entry between the acknowledged and running versions,
+  giving each a line and a category, rather than only those the one-screen
+  summary led with. The guide runs against what changed, so an entry nobody
+  read is an artifact nobody checked.
 - [VERSION-28] Where a guide step fans out over independent targets, shipshape
   shall return one verdict per candidate per target, each anchored at the file
   and line that establishes or disproves it, and shall report the verdict count
@@ -392,10 +392,10 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   read `~/.claude/skills/synced/` and shall never write to it: that folder is a
   cache of the user's claude.ai account, so a fix landed there reaches neither
   the account nor a source tree and is reported as a fix that held.
-- [VERSION-34] Each declared target shall carry the user's recorded disposition
+- [VERSION-34] Each declared target shall carry the user's recorded action
   for a finding in it — summarized, drafted for filing, or fixed in place — and
   shipshape shall act on that rather than deciding per run. `summarize` shall be
-  the disposition that presumes nothing and the one a target defaults to.
+  the action that presumes nothing and the one a target defaults to.
 - [VERSION-35] The built-in guide shall read the changelog from its raw URL,
   which needs no CLI and no credential. It shall read the first-party reference
   implementations an entry implicates through `gh`, which reaches arbitrary repo
