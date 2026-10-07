@@ -157,9 +157,9 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   headers, or a `command` source printing the plugin directory — then shipshape
   shall report the plugin as needing the user's own terminal, quoting the
   command line to run there, and shall not retry it as a transient failure.
-  `-y` cannot stand in for that acceptance: Claude Code ignores the flag inside
-  a session, and the skill's shell has no TTY to prompt on, so the command is
-  printed and declined.
+  No flag can stand in for that acceptance, `-y` and `--accept-command` alike:
+  Claude Code ignores either one inside a session, and the skill's shell has no
+  TTY to prompt on, so the command is printed and declined.
 - [RECON-16] shipshape shall leave every unmanaged plugin out of the diff, the
   updates, installs, and uninstalls, and shall list each installed one in the
   final report under its origin: `synced` as managed in claude.ai, any other
