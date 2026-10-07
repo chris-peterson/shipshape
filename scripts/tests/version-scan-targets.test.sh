@@ -113,17 +113,17 @@ export HOME="$HOME_ORIG"
 
 echo "== recording decisions"
 bash "$SCRIPT" --set alpha@mp1 issue "$SRC_A" >/dev/null 2>&1
-eq "$?" '0' "a disposition with a real directory is accepted"
+eq "$?" '0' "an action with a real directory is accepted"
 bash "$SCRIPT" --set beta@mp1 skip >/dev/null 2>&1
 bash "$SCRIPT" --set gamma@mp2 skip >/dev/null 2>&1
 eq "$(field '[.new[].key]')" '[]' "nothing new once every plugin is decided"
 eq "$(field '.settled')" 'true' "settled once every question is answered"
 eq "$(field '[.targets[].key]')" '["alpha@mp1"]' "the examined set holds only the non-skip rows"
-eq "$(field '[.targets[].action]')" '["issue"]' "and carries each row's disposition"
+eq "$(field '[.targets[].action]')" '["issue"]' "and carries each row's action"
 eq "$(field '.skip | sort')" '["beta@mp1","gamma@mp2"]' "skips are reported"
 eq "$(drift | jq -r '.targets[0].src')" "$SRC_A" "the recorded source path comes back"
 
-echo "== every disposition round-trips"
+echo "== every action round-trips"
 for a in summarize issue edit; do
   bash "$SCRIPT" --set alpha@mp1 "$a" "$SRC_A" >/dev/null 2>&1
   eq "$(drift | jq -r '.targets[] | select(.key=="alpha@mp1") | .action')" "$a" "$a is recorded"
@@ -162,12 +162,12 @@ eq "$(field '.gone')" '[]' "a forgotten key stops being reported"
 
 echo "== refusals"
 bash "$SCRIPT" --set eps@mp1 issue "$ROOT/src/nope" >/dev/null 2>&1
-eq "$?" '2' "a disposition refuses a path that is not a directory"
+eq "$?" '2' "an action refuses a path that is not a directory"
 eq "$(drift | jq -r '[.new[].key] | index("eps@mp1") // "absent"')" 'absent' "and records nothing"
 bash "$SCRIPT" --set alpha@mp1 maybe >/dev/null 2>&1
 eq "$?" '2' "an unknown action is refused"
 bash "$SCRIPT" --set alpha@mp1 issue >/dev/null 2>&1
-eq "$?" '2' "a disposition without a source path is refused"
+eq "$?" '2' "an action without a source path is refused"
 bash "$SCRIPT" --set beta@mp1 skip "$SRC_A" >/dev/null 2>&1
 eq "$?" '2' "skip refuses a source path"
 eq "$(drift | jq -r '.targets[] | select(.key=="alpha@mp1") | .src')" "$SRC_A" "a refused --set leaves the prior decision intact"
@@ -188,7 +188,7 @@ cat > "$DECL" <<JSON
     "alpha@mp1": { "action": "edit", "src": "$SRC_A" },
     "delta@mp3": { "action": "skip" } } }
 JSON
-eq "$(drift | jq -r '.targets[] | select(.key=="alpha@mp1") | .action')" 'edit' "a hand-set disposition comes back unchanged"
+eq "$(drift | jq -r '.targets[] | select(.key=="alpha@mp1") | .action')" 'edit' "a hand-set action comes back unchanged"
 eq "$(field '.skip')" '["delta@mp3"]' "and so does a hand-set skip"
 bash "$SCRIPT" --set alpha@mp1 issue "$SRC_A" >/dev/null 2>&1
 eq "$(jq -r '.targets["delta@mp3"].action' "$DECL")" 'skip' "a write carries the other rows over"
@@ -251,7 +251,7 @@ OUT=$(CLAUDE_PLUGIN_DATA="$LANES/alpha-inline" bash "$SCRIPT" --drift 2>/dev/nul
 eq "$(printf '%s' "$OUT" | jq -r '.targets[0].key')" 'alpha@mp1' \
    "an inline mount reads the installed lane's declaration"
 eq "$(printf '%s' "$OUT" | jq -r '.targets[0].action')" 'issue' \
-   "carrying the disposition that lane recorded"
+   "carrying the action that lane recorded"
 eq "$(printf '%s' "$OUT" | jq -r '[.new[].key] | join(",")')" 'delta@mp3' \
    "and asks only about what that declaration leaves out"
 CLAUDE_PLUGIN_DATA="$LANES/alpha-inline" bash "$SCRIPT" --set delta@mp3 skip >/dev/null 2>&1

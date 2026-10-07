@@ -46,7 +46,7 @@ already in hand, reached by the version that had the defect.
 
 So when the working directory is shipshape's own repo, take the changelog to
 shipshape before anything else, land the fixes there, and run `just test`. Its
-disposition is `edit` by construction here — the checkout is open in front of
+action is `edit` by construction here — the checkout is open in front of
 the user.
 
 Where the change is material — a script the skill calls, a bucket it reads, a
@@ -109,7 +109,7 @@ Each target answers with the verdict contract from
 [Acknowledge](claude-code.md#acknowledge): one anchored verdict per candidate, no
 hedges, counted in the report.
 
-## 5. Act on each finding by its target's disposition
+## 5. Act on each finding by its target's action
 
 `action` is what happens to a finding, and it is the user's recorded preference
 rather than a judgment to make per run:
@@ -124,8 +124,8 @@ rather than a judgment to make per run:
 An `edit` target still reports what was changed. A fix nobody was told about is
 indistinguishable from a fix that never happened.
 
-A target's recorded disposition is its default, not a verdict on the run. Where
-a finding lands somewhere other than where its disposition points — a
+A target's recorded action is its default, not a verdict on the run. Where
+a finding lands somewhere other than where its action points — a
 `summarize` target whose finding is a one-line fix, an `issue` target the user
 is sitting in — offer the other shape when the walk reaches it.
 
@@ -133,9 +133,9 @@ is sitting in — offer the other shape when the walk reaches it.
 
 One pass, in this order, and nothing per tool call:
 
-1. The changelog disposition — every entry, one line each.
+1. The changelog: every entry, one line each, with its category.
 2. What the user's own `~/.claude` needs, and where the fix belongs.
-3. Per target: the verdict count, then the findings in their disposition's shape.
+3. Per target: the verdict count, then the findings in their action's shape.
 
 **Report only what the run was configured to act on.** The declared set is the
 answer to what shipshape is for; a count of the plugins outside it is a fact

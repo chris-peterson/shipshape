@@ -3,7 +3,7 @@
 <!-- covers: VERSION-36, VERSION-37, VERSION-38 -->
 
 The built-in guide runs against the repos the user maintains and the
-dispositions they chose. On a first run neither exists, so a changelog summary
+actions they chose. On a first run neither exists, so a changelog summary
 has nothing to be about. Configure first, report second.
 
 Detect it from `--status`, which every mode already runs:
@@ -28,7 +28,7 @@ not been given a reason to care about. Each question carries its own list.
 ## 1. Which repos are theirs to patch
 
 The one thing shipshape cannot derive. Read
-[deep-scan-set.md](deep-scan-set.md) for the buckets and dispositions.
+[deep-scan-set.md](deep-scan-set.md) for the buckets and actions.
 
 **Walk one source owner at a time** — the `source` each `new` entry carries,
 cut down to its host and owner. One question per owner, and the question is
@@ -96,8 +96,7 @@ Record each answer as it arrives. A run that resolves the set without writing it
 asks again next upgrade.
 
 **Keep the words plain.** The user is meeting this for the first time: no
-"disposition", no "bare key", no "sub-group", no counting things as
-"singletons". Say what the choice does to them — *fix it and show me*, *just
+"bare key", no "sub-group", no counting things as "singletons". Say what the choice does to them — *fix it and show me*, *just
 tell me about it*.
 
 **Then offer the repos they already work in.** A repo that isn't a plugin can
