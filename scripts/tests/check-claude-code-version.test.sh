@@ -7,6 +7,9 @@
 # the *absence* of CLAUDE_PLUGIN_DATA run under `env -u`, since inheriting a
 # real one would write to it.
 #
+# `hook` runs opted in (SHIPSHAPE_VERSION_NOTICE=on), since most cases test the
+# banner; `default_hook` runs as a user who never set it.
+#
 # Covers what the script promises: silence on a first run and at steady state, a
 # banner that repeats every session until it's acknowledged, a handoff to the
 # skill rather than the guide's own text, `--status` reporting the guide's
@@ -53,11 +56,12 @@ stub() {
   printf '#!/bin/sh\nprintf "%%s (Claude Code)\\n" "%s"\n' "$1" > "$BIN/claude"
   chmod +x "$BIN/claude"
 }
-hook() {  # run the hook; sets OUT (stdout), ERR (stderr), RC. Extra args pass through as env.
+default_hook() {  # run the hook as a user who never set SHIPSHAPE_VERSION_NOTICE; sets OUT (stdout), ERR (stderr), RC. Extra args pass through as env.
   local err; err=$(mktemp "$FIXTURES/err.XXXXXX")
-  OUT=$(env PATH="$BIN:$PATH" CLAUDE_PLUGIN_DATA="$DATA" "$@" bash "$SCRIPT" 2>"$err"); RC=$?
+  OUT=$(env -u SHIPSHAPE_VERSION_NOTICE PATH="$BIN:$PATH" CLAUDE_PLUGIN_DATA="$DATA" "$@" bash "$SCRIPT" 2>"$err"); RC=$?
   ERR=$(cat "$err"); rm -f "$err"
 }
+hook() { default_hook SHIPSHAPE_VERSION_NOTICE=on "$@"; }  # run the hook opted in
 run() {  # run the script with $@ as its arguments; sets OUT, ERR, RC
   local err; err=$(mktemp "$FIXTURES/err.XXXXXX")
   OUT=$(env PATH="$BIN:$PATH" CLAUDE_PLUGIN_DATA="$DATA" bash "$SCRIPT" "$@" 2>"$err"); RC=$?
@@ -228,18 +232,46 @@ check "unrecorded marker reports null"       "$(field '.acknowledged')" "null"
 check "unrecorded marker is not pending"     "$(field '.pending')"      "false"
 check "--status records nothing"             "$(marker)"                "absent"
 
-# --- Opt-out silences the banner, not the modes the user asked for. ---
+# --- The banner is opt-in. Unset, the hook records a first-run baseline for the
+# --- skill and nothing more; `--status` and `--ack` still answer. ---
 setup 2.1.0
-hook                                          # seed the marker
+default_hook
+check "default first run exits 0"            "$RC"       "0"
+check "default first run prints no banner"   "$OUT"      ""
+check "default first run records a baseline" "$(marker)" "2.1.0"
 stub 2.1.1
-hook SHIPSHAPE_VERSION_NOTICE=off
-check "opt-out prints no banner"             "$OUT"      ""
-check "opt-out leaves the marker alone"      "$(marker)" "2.1.0"
-OUT=$(env PATH="$BIN:$PATH" CLAUDE_PLUGIN_DATA="$DATA" SHIPSHAPE_VERSION_NOTICE=off \
-  bash "$SCRIPT" --status 2>/dev/null); RC=$?
-check "opt-out still answers --status"       "$(field '.pending')" "true"
-hook                                          # re-enabled: the pending delta still lands
-contains "re-enabled banner shows the delta" "$(field '.systemMessage')" "2.1.0 → 2.1.1"
+default_hook
+check "default prints no banner on a change" "$OUT"      ""
+check "default leaves the marker alone"      "$(marker)" "2.1.0"
+printf '#!/bin/sh\nexit 1\n' > "$BIN/claude"
+default_hook
+check "default with a marker never runs claude" "$ERR"   ""
+stub 2.1.1
+for value in off 0 false no '' enabled; do
+  default_hook SHIPSHAPE_VERSION_NOTICE="$value"
+  check "'$value' prints no banner"          "$OUT"      ""
+done
+for value in 1 on ON true True yes; do
+  default_hook SHIPSHAPE_VERSION_NOTICE="$value"
+  contains "'$value' opts in"                "$(field '.systemMessage')" "2.1.0 → 2.1.1"
+done
+status
+check "default still answers --status"       "$(field '.pending')" "true"
+hook                                          # opting in later: the pending delta lands
+contains "opted-in banner shows the delta"   "$(field '.systemMessage')" "2.1.0 → 2.1.1"
+ack 2.1.1
+check "default still records an --ack"       "$(marker)" "2.1.1"
+for bad in 'not a version"' ''; do
+  printf '%s\n' "$bad" > "$MARKER"
+  default_hook
+  check "default prints no banner over marker '$bad'" "$OUT"      ""
+  check "default resets marker '$bad' to current"     "$(marker)" "2.1.1"
+done
+chmod 000 "$MARKER"
+ack 2.1.2
+chmod 644 "$MARKER"
+check "--ack over an unreadable marker exits 0"   "$RC"       "0"
+check "--ack over an unreadable marker records"   "$(marker)" "2.1.2"
 
 # --- No data dir: surfaced on stderr, nothing written, session unaffected. ---
 setup 2.1.0
@@ -252,15 +284,28 @@ for arg in --ack --status; do
   check "$arg without a data dir fails loudly" "$RC" "1"
 done
 
-# --- `claude` unreachable: conservative no-op, marker untouched. ---
+# --- `claude --version` fails: conservative no-op, marker untouched. ---
 setup 2.1.0
 hook
-OUT=$(env PATH=/nonexistent CLAUDE_PLUGIN_DATA="$DATA" "$BASH_BIN" "$SCRIPT" 2>/dev/null); RC=$?
-check "unreachable claude exits 0"           "$RC"       "0"
-check "unreachable claude is silent"         "$OUT"      ""
-check "unreachable claude keeps marker"      "$(marker)" "2.1.0"
-env PATH=/nonexistent CLAUDE_PLUGIN_DATA="$DATA" "$BASH_BIN" "$SCRIPT" --status >/dev/null 2>&1; RC=$?
-check "unreachable claude fails --status"    "$RC"       "1"
+printf '#!/bin/sh\nexit 1\n' > "$BIN/claude"
+hook
+check "failing claude exits 0"               "$RC"       "0"
+check "failing claude is silent"             "$OUT"      ""
+contains "failing claude is reported"        "$ERR"      "claude --version"
+check "failing claude keeps marker"          "$(marker)" "2.1.0"
+status
+check "failing claude fails --status"        "$RC"       "1"
+
+# --- `jq` missing: conservative no-op, marker untouched. ---
+setup 2.1.0
+hook
+stub 2.1.1
+OUT=$(env PATH="$BIN" CLAUDE_PLUGIN_DATA="$DATA" SHIPSHAPE_VERSION_NOTICE=on "$BASH_BIN" "$SCRIPT" 2>/dev/null); RC=$?
+check "missing jq exits 0"                   "$RC"       "0"
+check "missing jq is silent"                 "$OUT"      ""
+check "missing jq keeps marker"              "$(marker)" "2.1.0"
+env PATH="$BIN" CLAUDE_PLUGIN_DATA="$DATA" "$BASH_BIN" "$SCRIPT" --status >/dev/null 2>&1; RC=$?
+check "missing jq fails --status"            "$RC"       "1"
 
 # --- Version read off stdout only: a warning on stderr is not the version. ---
 setup 2.1.0

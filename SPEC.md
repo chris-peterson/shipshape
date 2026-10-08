@@ -260,10 +260,12 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
 
 ### VERSION — Claude Code version changes
 
-- [VERSION-01] When a session starts, the version hook shall compare the running
-  Claude Code version against the version marker.
-- [VERSION-02] While the running version differs from the marker, the version hook
-  shall show the user a banner at every session start, naming both versions and
+- [VERSION-01] Where `SHIPSHAPE_VERSION_NOTICE` is truthy (`1`, `on`, `true`, or
+  `yes`, in any case), when a session starts, the version hook shall compare the
+  running Claude Code version against the version marker.
+- [VERSION-02] Where `SHIPSHAPE_VERSION_NOTICE` is truthy, while the running
+  version differs from the marker, the version hook shall show the user a banner
+  at every session start, naming both versions and
   the version skill, and shall link the changelog in the handoff, anchored at the
   running version's heading. The anchor reaches an entry only where the running
   version has one; Claude Code ships versions the changelog never mentions, and
@@ -292,9 +294,11 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   skipped counts, without writing the marker.
 - [VERSION-10] Where no version has been acknowledged yet, or the marker is not a
   version, the version hook shall write the marker without showing a banner.
-- [VERSION-11] Where `SHIPSHAPE_VERSION_NOTICE` is `off`, the version hook shall
-  skip the announcement without reading or writing the marker, while `--ack` and
-  `--status` still answer.
+- [VERSION-11] Where `SHIPSHAPE_VERSION_NOTICE` is not truthy, the version hook
+  shall skip the announcement, and shall read the running version only to write
+  the marker where it is missing or not a version, so `/maintain-harness
+  claude-code` has a baseline to walk from. `--ack` and `--status` answer either
+  way.
 - [VERSION-12] The version hook shall read the running version from `claude
   --version`'s stdout alone, so output on stderr is never parsed as a version.
 - [VERSION-13] If the running version cannot be determined, or `CLAUDE_PLUGIN_DATA`

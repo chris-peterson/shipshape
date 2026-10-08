@@ -19,9 +19,10 @@ tells you what changed, and keeps what it can current.
 
 | What moves | What shipshape does about it |
 |---|---|
-| Claude Code itself | the `check-claude-code-version` hook posts a banner when the version moves, and `/maintain-harness claude-code` walks what's new, runs the instructions you wrote for an upgrade, and clears the banner |
-| Your installed plugins | `/maintain-harness plugins` reconciles them against your `enabledPlugins`, updates what stays, and prunes the caches and data dirs an uninstall leaves for later |
-| Your marketplaces | the `enforce-autoupdate` hook enables `autoUpdate`, so plugins keep themselves current without you asking |
+| Claude Code itself | `/maintain-harness claude-code` tells you what's new since the version you last acknowledged and runs the steps you wrote for an upgrade; [turn on the banner](/?id=the-banner) to hear about a new version as soon as you restart |
+| Your rules, skills, hooks, and settings | the same run checks them against what changed, in `~/.claude` and in the repos you've said are yours |
+| Your marketplaces | auto-update is turned on for each one when a session starts, so your plugins keep themselves current |
+| Your installed plugins | `/maintain-harness plugins` matches them to the `enabledPlugins` you declared, updates them, and cleans up the caches and data dirs that updates and uninstalls leave behind |
 
 > [!TIP]
 > [Thoughtworks' Technology Radar](https://www.thoughtworks.com/radar) (Vol. 34,
@@ -64,7 +65,7 @@ runs after it does:
 | Which plugins `/maintain-harness plugins` keeps installed | `enabledPlugins` in `~/.claude/settings.json` | [Your plugins](/?id=your-plugins-maintain-harness-plugins) |
 | What runs after an upgrade, and after plugins change | `harness-maintenance-guide.md` in shipshape's data dir | [Your harness maintenance guide](/?id=your-harness-maintenance-guide) |
 | Which repos the upgrade check may report on, file against, or fix | `version-scan-targets.json` in shipshape's data dir, written from your answers | [The built-in check](/?id=the-built-in-check) |
-| Whether the version banner shows | `SHIPSHAPE_VERSION_NOTICE` in the `env` block of `~/.claude/settings.json` | [What happens when](/?id=what-happens-when) |
+| Whether a version change posts a banner (off by default) | `SHIPSHAPE_VERSION_NOTICE` in the `env` block of `~/.claude/settings.json` | [The banner](/?id=the-banner) |
 | Whether a marketplace auto-updates | `extraKnownMarketplaces.<name>.autoUpdate` in `~/.claude/settings.json` | [Auto-update](/?id=auto-update) |
 
 shipshape's data dir is `~/.claude/plugins/data/shipshape-<marketplace>/`. Ask
@@ -175,13 +176,26 @@ changelog. And the staleness it leaves in your own AI artifacts: the rules,
 skills, hooks, and plugin manifests you wrote against the version before it, whose
 hook schemas, settings keys, and frontmatter fields may not mean what they did.
 
-The `check-claude-code-version` hook watches for it, and `/maintain-harness` is where
-you deal with it.
+`/maintain-harness` is where you deal with it, and the `check-claude-code-version`
+hook can tell you when to.
 
 ### The banner
 
-When the version has moved, the next session opens with one line naming both
-versions and naming the command that handles it:
+The banner is off by default. It's for you if you re-tune your harness on every
+Claude Code release and want to know the moment a restart picks one up. Turn it
+on by setting `SHIPSHAPE_VERSION_NOTICE` in the `env` block of
+`~/.claude/settings.json` to `1` or `true` (`on` and `yes` work too, in any case):
+
+```json
+{
+  "env": {
+    "SHIPSHAPE_VERSION_NOTICE": "1"
+  }
+}
+```
+
+With it on, the first session after the version moves opens with one line naming
+both versions and the command that handles it:
 
 ```text
 Claude Code: /maintain-harness  # 2.1.226 → 2.1.227
@@ -193,7 +207,8 @@ opened to do something else. Type `/maintain-harness` to handle it; Claude
 never starts a run on its own, since a run changes your plugins.
 
 The first session after installing shipshape records the version you're on and
-says nothing, since there's no delta to report yet.
+says nothing, whether the banner is on or off. That's the version
+`/maintain-harness claude-code` walks from until you acknowledge a newer one.
 
 ### `/maintain-harness claude-code`
 
@@ -241,7 +256,8 @@ the difference, so a plugin you've already answered for never comes up again.
 |---|---|
 | First session after installing | The version is recorded. Nothing else. |
 | Version unchanged | Silent. |
-| Version changed | The banner, repeating every session until acknowledged. |
+| Version changed, banner off (the default) | Silent. `/maintain-harness` finds it pending when you run it. |
+| Version changed, banner on | The banner, repeating every session until acknowledged. |
 | You acknowledge, upgrade section written | What changed, the built-in check, your instructions carried out, then the banner clears. |
 | You acknowledge, upgrade section empty | What changed, the built-in check, then the banner clears. |
 | After it's acknowledged | Silent, until the next version change. |
@@ -254,17 +270,6 @@ The marker and your guide both live in `${CLAUDE_PLUGIN_DATA}`, the
 updates](https://code.claude.com/docs/en/plugins-reference#persistent-data-directory).
 A version cache would not survive: an update moves shipshape to a new version
 dir, and `/maintain-harness plugins` prunes the old one.
-
-To silence the banner, set `SHIPSHAPE_VERSION_NOTICE` to `off` in the `env`
-block of `~/.claude/settings.json`:
-
-```json
-{
-  "env": {
-    "SHIPSHAPE_VERSION_NOTICE": "off"
-  }
-}
-```
 
 ## Your harness maintenance guide
 

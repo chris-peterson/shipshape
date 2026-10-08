@@ -2,7 +2,7 @@
 # SessionStart hook: announce a Claude Code version change, and hand the
 # handling to the skill that runs the instructions you wrote for it.
 #
-#   check-claude-code-version.sh              the hook — announce while a version is unacknowledged
+#   check-claude-code-version.sh              the hook — announce while a version is unacknowledged, when opted in
 #   check-claude-code-version.sh --ack [ver]  acknowledge: record `ver` (default: the running version)
 #   check-claude-code-version.sh --status     report both versions, the guide's upgrade section and the declaration, as JSON
 #
@@ -28,8 +28,8 @@
 #
 # The guide the user wrote is dispatched by that skill, not emitted here. A hook
 # cannot invoke a slash command, so handing over the document's text was once
-# the only way to make it run — but this hook fires at every session start while
-# a version is unacknowledged, and a one-time upgrade errand then ran again in
+# the only way to make it run — but an opted-in hook fires at every session start
+# while a version is unacknowledged, and a one-time upgrade errand then ran again in
 # every window that opened before someone dismissed the banner. Acknowledgement
 # is the moment the errand belongs to, and the skill owns that moment: it reads
 # the guide's upgrade section, carries it out, then records the version.
@@ -41,8 +41,12 @@
 # A version cache would not: an update moves shipshape to a new version dir, and
 # /maintain-harness plugins prunes the old one.
 #
-# Opt out with SHIPSHAPE_VERSION_NOTICE=off in the `env` block of
-# ~/.claude/settings.json.
+# The banner is opt-in: set SHIPSHAPE_VERSION_NOTICE to a truthy value (1, on,
+# true, yes, in any case) in the `env` block of ~/.claude/settings.json. It's for
+# people who re-tune their harness on every Claude Code release; for everyone
+# else a banner at every session start is noise. Without it, the hook still
+# records a first-run baseline, so /maintain-harness claude-code has a version
+# to walk from when someone runs it.
 
 set -euo pipefail
 
@@ -59,11 +63,6 @@ case "${1:-}" in
   --status)  mode=status ;;
   *)         printf 'usage: %s [--ack [version] | --status]\n' "$SELF" >&2; exit 2 ;;
 esac
-
-# covers: VERSION-11
-if [ "$mode" = hook ] && [ "${SHIPSHAPE_VERSION_NOTICE:-on}" = "off" ]; then
-  exit 0
-fi
 
 # A hook reports and stands down: erroring every session start is noise, and the
 # same convention covers a missing jq in enforce-autoupdate.sh. The other modes
@@ -150,6 +149,21 @@ if [ -f "$marker" ]; then
   if ! [[ "$acknowledged" =~ $VERSION_RE ]]; then
     acknowledged=""
   fi
+fi
+
+notice_on() {
+  case "$(printf '%s' "${SHIPSHAPE_VERSION_NOTICE:-}" | tr '[:upper:]' '[:lower:]')" in
+    1|on|true|yes) return 0 ;;
+    *)             return 1 ;;
+  esac
+}
+
+# With a valid marker on disk there is nothing left for an un-opted hook to do,
+# and exiting here skips the `claude --version` that every other path pays for.
+# A missing or mangled marker falls through to be rewritten (VERSION-10).
+# covers: VERSION-11
+if [ "$mode" = hook ] && ! notice_on && [ -n "$acknowledged" ]; then
+  exit 0
 fi
 
 current="$(read_version)" || bail

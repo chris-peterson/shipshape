@@ -28,12 +28,12 @@ marketplace:
 suite:
   group: safety
   # Activated by the user (/maintain-harness) and by
-  # SessionStart hooks that enable marketplace auto-update and announce a Claude
-  # Code version change.
+  # SessionStart hooks that enable marketplace auto-update and, opted in,
+  # announce a Claude Code version change.
   activations: [user, session]
   gloss: "shipshape: your harness, current and tidy."
   pitch: "Feeling overwhelmed by the rate of change? It tells you what moved, and keeps your plugins current."
-  what: "Two jobs for your Claude Code harness: telling you what changed, and keeping current what it can. Claude Code itself updates in the background and the new version takes effect at your next launch, so that session opens with a banner naming both versions, and /maintain-harness walks you through what changed, runs the re-training instructions you wrote for an upgrade, and clears the banner. Your plugins it maintains directly: reconciling what's installed against the set you've declared, updating them, and pruning the stale version caches an update leaves behind and the data dirs an uninstall would have deleted unasked, without touching a version a live session still holds, plus a load-time hook that enables marketplace auto-update so they keep themselves current."
+  what: "Two jobs for your Claude Code harness: telling you what changed, and keeping current what it can. Claude Code itself updates in the background and the new version takes effect at your next launch; /maintain-harness walks you through what changed since the version you last acknowledged, runs the re-training instructions you wrote for an upgrade, and records the new version. Opt in and a banner announces each version change in the first session it lands in. Your plugins it maintains directly: reconciling what's installed against the set you've declared, updating them, and pruning the stale version caches an update leaves behind and the data dirs an uninstall would have deleted unasked, without touching a version a live session still holds, plus a load-time hook that enables marketplace auto-update so they keep themselves current."
   cmds:
     - ["/maintain-harness", "Handle a Claude Code upgrade, then reconcile, update, and prune your plugins"]
     - ["/maintain-harness claude-code", "Just the upgrade: what's new, your instructions, acknowledge"]
@@ -49,9 +49,9 @@ suite:
   # <<< shipyard:describe <<<
   session:
     # One session, one run: the upgrade half and then the plugins half.
-    # Acknowledging clears the banner, so the version errand is over for good.
-    - { t: event, text: "session start: Claude Code 2.1.234 → 2.1.235 · repeats every session until you acknowledge it" }
-    - { t: cmd, cmd: "/maintain-harness", out: "Walked that release's changelog entry: nothing in it touches a hook schema or settings key your own rules depend on. Ran the instructions in your guide, and acknowledged 2.1.235 — banner cleared. Then plugins: 19 enabled · 15 current, 4 refreshed · 🗑️ 9 undeclared uninstalled, data dirs kept for you to judge · 🧹 6 stale caches pruned (~4.1M), 1 pinned by a live session. Run /reload-plugins to apply it here." }
+    # Acknowledging records the version, so the version errand is over for good.
+    - { t: event, text: "background update: Claude Code 2.1.234 → 2.1.235, unacknowledged" }
+    - { t: cmd, cmd: "/maintain-harness", out: "Walked that release's changelog entry: nothing in it touches a hook schema or settings key your own rules depend on. Ran the instructions in your guide, and acknowledged 2.1.235. Then plugins: 19 enabled · 15 current, 4 refreshed · 🗑️ 9 undeclared uninstalled, data dirs kept for you to judge · 🧹 6 stale caches pruned (~4.1M), 1 pinned by a live session. Run /reload-plugins to apply it here." }
     - { t: event, text: "next launch: marketplace auto-update enabled for all 4 marketplaces" }
     - { t: note, text: "Plugins keep themselves current, and a Claude Code upgrade stops being something you find out about later." }
 
