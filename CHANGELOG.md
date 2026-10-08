@@ -5,6 +5,17 @@
 ### Changed
 
 - **The Claude Code version banner is opt-in.** Sessions no longer open with a line announcing a version change unless you set `SHIPSHAPE_VERSION_NOTICE` in the `env` block of `~/.claude/settings.json` to `1` or `true` (`on` and `yes` work too, in any case). `/maintain-harness` still finds a pending upgrade and walks it when you run it, and marketplace auto-update stays enabled as before. If you'd set the variable to `off`, you can remove it.
+- **A run's reply ends with the commands you run, and nothing after them.** Each step is the exact command, in the order it has to run, with no reason attached. `/reload-plugins` comes ahead of any plugin's installer, and the reload step names `--force` and your other sessions up front.
+- **The Claude Code status line shows the two versions**, plus anything that needs your action.
+
+### Fixed
+
+- **An update blocked on a marketplace-declared command goes straight to your terminal.** Claude Code ignores `--accept-command` inside a session as it does `-y`, so shipshape quotes the line to run in your own shell instead of trying either flag.
+
+### Other
+
+- The upgrade report labels each changelog entry with a category and each target with an action.
+- The plugin manifest links the docs site as its documentation.
 
 ## 1.0.0
 
