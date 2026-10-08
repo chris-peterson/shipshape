@@ -78,7 +78,7 @@ check "and forgetting it returns to nothing configured" "$(drift | jq -c '[.targ
 
 echo "== the upgrade: Claude Code moves while the marker stays put"
 echo '2.1.240' > "$MARKER"
-OUT=$(bash "$HOOK" 2>/dev/null)
+OUT=$(SHIPSHAPE_VERSION_NOTICE=on bash "$HOOK" 2>/dev/null)
 contains "the banner names the version left behind" "$OUT" '2.1.240'
 contains "and the one now running" "$OUT" '2.1.259'
 contains "it hands off to the skill rather than a raw command" "$OUT" 'maintain-harness'

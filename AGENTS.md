@@ -1,14 +1,20 @@
 # shipshape
 
-A Claude Code plugin with two goals for a user's **harness**: that they know
-what's changing in it, and that it stays current. It covers Claude Code itself
-(announcing a version change, walking the changelog delta, running the
-instructions they wrote for an upgrade) and their *other* plugins (reconciling
-what's installed against what they declared, updating it, pruning the stale
-version caches an update leaves behind and the data dirs an uninstall would
-have deleted unasked, enabling marketplace auto-update). What the skills do for a
-*user* lives on the docs site (https://chris-peterson.github.io/shipshape);
-this file is for working on the plugin itself.
+A Claude Code plugin that keeps a user's **harness** current and tells them
+what's changing in it:
+
+- **Claude Code itself**: walking the changelog delta, running the instructions
+  they wrote for an upgrade, and announcing a version change to users who opt in.
+- **Their AI artifacts**: on an upgrade, checking the rules, skills, hooks, and
+  settings in `~/.claude` and in the repos they declared against what changed.
+- **Their marketplaces**: enabling auto-update.
+- **Their other plugins**: reconciling what's installed against what they
+  declared, updating it, and pruning the stale version caches an update leaves
+  behind and the data dirs an uninstall would have deleted unasked.
+
+What the skills do for a *user* lives on the docs site
+(https://chris-peterson.github.io/shipshape); this file is for working on the
+plugin itself.
 
 `SPEC.md` is the requirement source of record and `STATUS.md` is its coverage
 ledger. A change to behavior updates the requirement and the ledger in the same

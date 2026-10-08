@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- **The Claude Code version banner is opt-in.** Sessions no longer open with a line announcing a version change unless you set `SHIPSHAPE_VERSION_NOTICE` in the `env` block of `~/.claude/settings.json` to `1` or `true` (`on` and `yes` work too, in any case). `/maintain-harness` still finds a pending upgrade and walks it when you run it, and marketplace auto-update stays enabled as before. If you'd set the variable to `off`, you can remove it.
+
 ## 1.0.0
 
 ### Breaking

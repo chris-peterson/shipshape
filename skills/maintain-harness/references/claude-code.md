@@ -1,9 +1,10 @@
 # Claude Code
 
-shipshape tracks the Claude Code version the user has **acknowledged**, and
-banners every session start while the running version is ahead of it. This skill
-is everything a person does about that: read or set the instructions that run on
-a version change, walk what changed, and acknowledge the upgrade.
+shipshape tracks the Claude Code version the user has **acknowledged**, and,
+where they've opted in with a truthy `SHIPSHAPE_VERSION_NOTICE`, banners every
+session start while the running version is ahead of it. This skill is
+everything a person does about that: read or set the instructions that run on a
+version change, walk what changed, and acknowledge the upgrade.
 
 Acknowledging is what runs their instructions. The `SessionStart` hook announces
 and stops there, so this half of the skill is the only path that dispatches the guide —
@@ -37,8 +38,9 @@ guide and `--ack` commands below.
 ```
 
 `acknowledged` is null before shipshape's first session has recorded anything.
-`pending` is the banner: true means one is up. `guide.filled` is false while the
-document holds nothing but comments, which is what it ships as.
+`pending` true means a newer version is waiting, and the banner is up where the
+user has opted in. `guide.filled` is false while the document holds nothing but
+comments, which is what it ships as.
 
 `declaration.configured` is what picks the first run, and it is the only field
 that does: an empty guide is the ordinary end state of a *finished*
@@ -107,8 +109,8 @@ rationale the guide carries for you.
 |---|---|
 | `header` | `Version` |
 | `question` | `Acknowledge Claude Code <current>?` |
-| First option | **Acknowledge + run guide** — names what the run covers, then "records `<current>`. The banner stops." Where `guide.filled` is false the label is **Acknowledge + run the built-in guide**, and the description is the built-in guide's scope rather than the recording. |
-| Second option | **Ask me again later** — "Leaves it pending. The banner is back next session." |
+| First option | **Acknowledge + run guide** — names what the run covers, then "records `<current>`." Where `guide.filled` is false the label is **Acknowledge + run the built-in guide**, and the description is the built-in guide's scope rather than the recording. |
+| Second option | **Ask me again later** — "Leaves it pending for your next run." |
 
 **Acknowledge** is the go-ahead: the summary is already given, so pick up
 [acknowledging](#acknowledge) at its guide step. On **Ask me again later**,
@@ -284,6 +286,6 @@ A tally of the plugins left to their own maintainers is a number about somebody
 else's software, and the declaration already settled that they are not this
 run's business.
 
-A non-zero exit means nothing was recorded and the banner will be back next
-session — surface the script's stderr rather than reporting a dismissal that
-didn't happen.
+A non-zero exit means nothing was recorded and the version is still pending —
+surface the script's stderr rather than reporting a dismissal that didn't
+happen.
