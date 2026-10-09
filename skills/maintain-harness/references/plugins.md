@@ -152,7 +152,7 @@ Updates are fast and network-bound, and with the marketplaces already refreshed 
 Track the pass on the **native task list** (surface 2 in output-format.md) — mark the `Update plugins` task `in_progress` before the first update, `completed` after the last. Don't emit a line per plugin; the results land in the final report (Step 3).
 
 ## Step 3: Reconcile differences
-<!-- covers: RECON-10, RECON-11, RECON-11a, RECON-14, GUARD-01, GUARD-02 -->
+<!-- covers: RECON-10, RECON-11, RECON-11a, RECON-14, RECON-17, GUARD-01, GUARD-02 -->
 
 - **Extras** (installed, not desired):
   - **Shared on-disk install** (see the guardrail above — the extra's key is absent from `installed_plugins.json` while another row for the same plugin name is present) → **do not uninstall.** Removing this marketplace key deletes the plugin's only install record, taking the enabled copy with it. Surface it as a warning with the manifest-vs-list evidence and let the user resolve it deliberately (re-point `enabledPlugins`, or uninstall and reinstall from the desired marketplace). Report as "skipped (shared install)".
@@ -164,6 +164,19 @@ Track the pass on the **native task list** (surface 2 in output-format.md) — m
   - Offer to install: `claude plugin install <plugin>@<marketplace>`
   - Ask before installing — the desired set may be aspirational or out-of-date.
   - If the install fails on a marketplace-declared command (see Step 2), report it ⌨️ **needs your terminal** with the same line for the user's own shell. Their yes to the offer can't stand in for the acceptance Claude Code requires at the prompt.
+  - **Read the install's whole output, not its exit or its first line.** When the settings file the install writes its enable into is one Claude Code won't load, the install (Claude Code 2.1.295 and later) still exits 0 and prints `✔ Successfully installed plugin: …` on stdout, then a second line naming the file:
+
+    ```text
+    ⚠ /Users/you/.claude/settings.json does not load (its "cleanupPeriodDays" is not valid), so Claude Code ignores the whole file, including anything this command wrote there. Fix the file, then run this command again if its change is missing. If a newer Claude Code wrote the file, update Claude Code instead.
+    ```
+
+    The install record exists, but the enable has no effect, so the plugin isn't running. Report it 🔧 **needs your fix**, not ➕ installed, quoting the path and the parenthesized reason from that line. Then check whether the enable landed in the named file:
+
+    ```bash
+    jq -e --arg k '<plugin>@<marketplace>' '.enabledPlugins[$k] == true' '<file>'
+    ```
+
+    A file with an invalid value took the write, so fixing it is the whole step. A file that isn't a JSON object took nothing, so where the check fails the closing adds `claude plugin enable <plugin>@<marketplace>` after the fix (output-format.md). That step is only for a plugin the desired set enables (`true` in `enabledPlugins`). A plugin the user keeps disabled (`false`) gets the file fix alone, so the run never turns on what they turned off. When the named file is `~/.claude/settings.json`, it's the file Step 1 read the desired set from, so Claude Code is ignoring every plugin enabled there, not only this one: say so once, on the row.
 
 The reconcile outcomes feed the **final report** (surface 3 in output-format.md), which defines the emoji each status maps to. If nothing changed at all, the report is the composition line plus a one-line "nothing to reconcile."
 
@@ -323,7 +336,7 @@ claude plugin list                                    # inventory
 bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-unmanaged.sh"   # keys from an unregistered origin (`@synced`), left out of the reconcile
 claude plugin marketplace update                       # refresh all marketplaces once (do before updates)
 claude plugin update <plugin>@<marketplace>           # update (run serialized, not in parallel)
-claude plugin install <plugin>@<marketplace>          # install
+claude plugin install <plugin>@<marketplace>          # install; a "does not load" line after its success means not enabled (Step 3)
 claude plugin uninstall <plugin>@<marketplace> -y --keep-data   # uninstall, keeping the data dir for Step 5 to ask about
 claude plugin --help                                  # full subcommand list (includes prune, enable, disable)
 ```

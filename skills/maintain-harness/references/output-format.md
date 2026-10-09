@@ -21,6 +21,7 @@ A shared emoji vocabulary ties the surfaces together — the same marker means t
 | 🔒 | stale cache pinned by a live session (not pruned) · 🧹 pruned |
 | ⚠️ | needs your judgment (orphan data dir, shared-install anomaly) |
 | ⌨️ | needs your terminal (a marketplace-declared command only you can accept) |
+| 🔧 | needs your fix (installed, but the settings file holding its enable does not load) |
 
 ## 1. Inventory summary + plan table
 
@@ -64,6 +65,13 @@ A plugin `plugin-unmanaged.sh` lists (Step 1) gets its row too, with its origin 
 
 ```text
 | synced       | helper     | 2.0.0   | ☁️ managed in claude.ai |
+```
+
+<!-- covers: RECON-17 -->
+An install whose output names a settings file that does not load (plugins.md Step 3) reads `🔧 not enabled`, with the file and the reason Claude Code gave in parentheses:
+
+```text
+| acme-tools   | gadget     | 1.0.0   | 🔧 not enabled: ~/.claude/settings.json does not load (its "cleanupPeriodDays" is not valid) |
 ```
 
 ```text
@@ -116,6 +124,18 @@ prunes), the report is just the composition line plus that closing line.
 
 ```text
 Run /reload-plugins here and in your other sessions (/reload-plugins --force if it warns).
+```
+
+A 🔧 row puts a numbered list ahead of the reload: fixing the file, which is
+the one step that isn't a command and names the file with Claude Code's reason,
+then `claude plugin enable <plugin>@<marketplace>` for each plugin the desired
+set enables whose enable didn't land in it. A plugin the user keeps disabled
+gets no enable step. A reload before the fix loads the same ignored file.
+
+```text
+Run these, in order:
+1. Fix ~/.claude/settings.json: its "cleanupPeriodDays" is not valid
+2. /reload-plugins (--force if it warns), here and in your other sessions
 ```
 
 <!-- covers: GUIDE-11 -->

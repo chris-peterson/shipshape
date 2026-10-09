@@ -140,6 +140,14 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   shall retry it once serially and report the real outcome.
 - [RECON-10] Where a desired plugin is not installed, shipshape shall offer to
   install it and ask before installing.
+- [RECON-17] If an install succeeds but its output names a settings file that
+  does not load, then shipshape shall report the plugin as not enabled rather
+  than installed, naming that file and the reason Claude Code gave, and shall
+  close the run with fixing that file, followed by
+  `claude plugin enable <plugin>@<marketplace>` where the desired set enables
+  the plugin and the file holds no enable for it. Claude Code ignores a settings file that does not load, so the
+  install record exists while the enable it wrote has no effect, and the
+  command still exits 0.
 - [RECON-11] When an installed user-scope plugin is not in the desired set,
   shipshape shall uninstall it with `--keep-data` and verify against the install
   manifest that its key is gone.
@@ -538,7 +546,8 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   quoted inside a code span or fence shall not count as an offer.
 - [REPORT-10] shipshape shall end a run's reply with the steps the user takes,
   each given as the exact command in the order it must run, with no rationale
-  attached and nothing after them.
+  attached and nothing after them. A step that is a file to fix rather than a
+  command names the file and what Claude Code reported wrong with it.
 
 ## Future Requirements
 

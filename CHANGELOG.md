@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **A plugin installed into a settings file that doesn't load is reported as not enabled.** Claude Code 2.1.295 and later warns after an install when the settings file it wrote to doesn't load, and ignores that whole file, so the plugin isn't running. `/maintain-harness plugins` now marks it 🔧 with the file and what's wrong with it, and the closing steps start with fixing that file (plus `claude plugin enable` where the enable didn't land) ahead of `/reload-plugins`.
+
 ## 1.1.0
 
 ### Changed
