@@ -11,3 +11,7 @@ Agent instructions live in [AGENTS.md](./AGENTS.md).
   idempotent: once every marketplace is auto-updating, it exits 0 and changes
   nothing.
 - Mount the working tree as a plugin to exercise the skill: `claude --plugin-dir .`
+  With the Bash sandbox on, that session's shell can't write into the checkout
+  (Claude Code runs a `--plugin-dir` folder's code outside the sandbox), so
+  `just generate`, `just docs`, and `git commit` fail there. Run them from a
+  session that doesn't mount the tree; Edit and Write still work.

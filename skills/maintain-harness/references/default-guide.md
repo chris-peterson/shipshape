@@ -53,6 +53,10 @@ Where the change is material — a script the skill calls, a bucket it reads, a
 step it runs — the running install is still the old one, since a plugin is
 loaded at session start. Say so and ask the user to restart with
 `claude --plugin-dir .` so the rest of the pass runs on the repaired version.
+Land every shell write to the checkout first: the fixes, `just test`, and any
+`just generate`. With the Bash sandbox on, a shell command can't write into a
+`--plugin-dir` folder, so the restarted session can read the repair but not
+regenerate or commit it.
 That is what makes the next upgrade start from a better place instead of
 rediscovering the same gap.
 

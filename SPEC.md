@@ -450,11 +450,14 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
 - [VERSION-41] Where the session's working directory is shipshape's own
   checkout, the built-in guide shall repair shipshape against what changed
   before it examines any other target, and where the repair is material it shall
-  ask the user to restart with `--plugin-dir` before the rest of the pass runs.
+  ask the user to restart with `--plugin-dir` before the rest of the pass runs,
+  having first landed every shell write the repair needs in the checkout.
   shipshape reads the changelog, the install manifest, the plugin cache and
   `~/.claude`, so a release that moves any of those leaves every later verdict
   reached with a stale map; and a plugin is loaded at session start, so the
-  repair does not reach the running install on its own.
+  repair does not reach the running install on its own. A sandboxed shell
+  cannot write into a `--plugin-dir` folder, so a write left for the restarted
+  session is refused there.
 
 - [VERSION-42] Where the plugin data dir Claude Code hands the session is a
   `-inline` lane and the install manifest names exactly one marketplace the same
