@@ -1,7 +1,7 @@
 name: Test
 
-# Both runners, because the scripts read date and stat output in BSD and GNU
-# dialects, and each dialect is only exercised on its own platform.
+# Every runner, because the scripts read date, stat and ps output in BSD, GNU
+# and git-bash dialects, and each dialect is only exercised on its own platform.
 
 on:
   push:
@@ -17,8 +17,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v6
       - uses: extractions/setup-just@v4
