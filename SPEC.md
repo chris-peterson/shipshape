@@ -529,7 +529,7 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
 ### REPORT — Reporting & output model
 
 - [REPORT-01] shipshape shall present a run using three surfaces: an inventory
-  summary + plan table, the native task list, and a final report.
+  summary + plan table, a progress surface, and a final report.
 - [REPORT-02] shipshape shall lead both the opening summary and the closing
   report with the same composition line (installed / enabled / disabled).
 - [REPORT-03] shipshape shall tag statuses with the shared emoji vocabulary.
@@ -551,6 +551,13 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   each given as the exact command in the order it must run, with no rationale
   attached and nothing after them. A step that is a file to fix rather than a
   command names the file and what Claude Code reported wrong with it.
+- [REPORT-11] Where the session offers the harness task tools, shipshape shall
+  carry a run's progress on the native task list; where it does not, shipshape
+  shall post the same items as a markdown checklist, re-posted as each finishes.
+  shipshape shall decide which from the session's tool list, never by calling a
+  task tool to see whether it errors, and shall not say which it took. Claude
+  Code offers the task tools to a fixed list of model ids, so a current model on
+  a default install has none.
 
 ## Future Requirements
 

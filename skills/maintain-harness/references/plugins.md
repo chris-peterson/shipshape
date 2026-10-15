@@ -54,7 +54,7 @@ flowchart TD
 
 ## Output model: composition-first, scannable surfaces
 
-The run is presented on three surfaces: an inventory summary + plan table up front, the native task list for progress, and a scannable final report at the end. **[output-format.md](output-format.md)** is the source of truth for all three: the shared emoji vocabulary, the composition line both the summary and the report lead with, the per-surface layouts, and the terminal-is-append-only reasoning behind them. Read it before rendering; the rest of this file assumes that vocabulary.
+The run is presented on three surfaces: an inventory summary + plan table up front, a progress surface (the native task list where the session offers it), and a scannable final report at the end. **[output-format.md](output-format.md)** is the source of truth for all three: the shared emoji vocabulary, the composition line both the summary and the report lead with, the per-surface layouts, and the terminal-is-append-only reasoning behind them. Read it before rendering; the rest of this file assumes that vocabulary.
 
 ### Voice: report outcomes, not your reasoning
 <!-- covers: REPORT-06, REPORT-07 -->
@@ -149,7 +149,7 @@ Updates are fast and network-bound, and with the marketplaces already refreshed 
 
 **Surface and retry failures — never lose one in the output.** If an update reports `Plugin not found` or another transient error, retry it once serially and reflect the real outcome in the final report. An update that stays failed is a row the user needs to see, not a silent gap.
 
-Track the pass on the **native task list** (surface 2 in output-format.md) — mark the `Update plugins` task `in_progress` before the first update, `completed` after the last. Don't emit a line per plugin; the results land in the final report (Step 3).
+Track the pass on the progress surface (section 2 in output-format.md): the `Update plugins` item opens before the first update and closes after the last. Don't emit a line per plugin; the results land in the final report (Step 3).
 
 ## Step 3: Reconcile differences
 <!-- covers: RECON-10, RECON-11, RECON-11a, RECON-14, RECON-17, GUARD-01, GUARD-02 -->

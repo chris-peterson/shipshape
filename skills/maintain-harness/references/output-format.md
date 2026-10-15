@@ -1,9 +1,9 @@
 # Output format: composition-first, scannable surfaces
 <!-- covers: REPORT-01, REPORT-02, REPORT-03, REPORT-04 -->
 
-Don't narrate the run as a scroll of per-plugin lines. Use three surfaces: an **inventory summary + plan table** up front, the **native task list** for progress, and a **scannable final report** at the end. Both the opening summary and the closing report lead with the same composition line (installed / enabled / disabled) and share one emoji vocabulary, so the run reads as one coherent thing.
+Don't narrate the run as a scroll of per-plugin lines. Use three surfaces: an **inventory summary + plan table** up front, a **progress surface** (the native task list where the session offers it), and a **scannable final report** at the end. Both the opening summary and the closing report lead with the same composition line (installed / enabled / disabled) and share one emoji vocabulary, so the run reads as one coherent thing.
 
-Know what the terminal can and can't do, so this isn't cargo-culted: message text is **append-only**. A printed line can't be redrawn — there's no cursor control in rendered markdown — so a hand-typed progress bar or `- [ ]` checklist just stacks copies and scrolls *worse*. The **only** surface Claude can mutate after emitting it is the harness task list (`TaskCreate` / `TaskUpdate`), which re-renders in place as items flip to `completed`. That's what carries progress; the tables are two separate renders (a plan, then its refresh), not one mutated in place.
+Know what the terminal can and can't do, so this isn't cargo-culted: message text is **append-only**. A printed line can't be redrawn — there's no cursor control in rendered markdown — so a hand-typed progress bar or `- [ ]` checklist stacks a new copy each time it's posted. Where the session offers the harness task tools (`TaskCreate` / `TaskUpdate`), the task list is the **only** surface Claude can mutate after emitting it: it re-renders in place as items flip to `completed`, so it carries progress. Where the session doesn't offer them, a checklist re-posted as each item finishes carries it instead, at the cost of one copy per item (section 2). The tables are two separate renders (a plan, then its refresh), not one mutated in place.
 
 ## Emoji vocabulary
 
@@ -44,15 +44,23 @@ Then a **plan table** — but only when there's a mix of actions worth previewin
 ```
 
 ## 2. Progress
+<!-- covers: REPORT-11 -->
 
-During Steps 2-3, track work on the **native task list** via `TaskCreate` / `TaskUpdate`. Build the list from the *actual* work the Step-1 diff and Step-4 scan turn up — **one task per non-empty action group**, not a fixed pipeline of phases:
+During Steps 2-3, show progress on one of two surfaces, chosen once before Step 2 by reading the session's own tool list:
+
+- **`TaskCreate` and `TaskUpdate` are offered**, either listed as tools or named as deferred tools to load: track work on the **native task list**.
+- **They aren't offered**: post the same items as a markdown `- [ ]` checklist, and re-post it with the item checked each time a group finishes. Claude Code offers the task tools to a fixed list of model ids and withholds them from the rest unless `CLAUDE_CODE_ENABLE_TODO_TOOLS` is set, so a current model on a default install takes this branch.
+
+Read the tool list; never call `TaskList` to see whether it errors. In a session without the tools, that error lands right under the skill's load line and reads to the user as shipshape being broken. Take the branch without saying which one, and don't stall on the absence.
+
+Both branches build the same items from the *actual* work the Step-1 diff and Step-4 scan turn up — **one item per non-empty action group**, not a fixed pipeline of phases:
 
 - `Update plugins` — whenever any plugin stays installed. This is the one task with **no count** in its label: `claude plugin update` has no dry-run, so you can't know which plugins actually have an update until you run the pass. Don't guess a number that overstates the work (`Update plugins (29)` when 27 are no-ops) — the real tally of updated-vs-current lands in the final report afterward. It's a single task, not one per plugin.
 - `Uninstall N extras` — only if there are extras to remove.
 - `Install N missing` — only if the user confirmed missing installs.
 - `Prune N stale/orphan caches` — only once the scan finds delete-eligible dirs (no live lease).
 
-Don't create a task for an empty group — an instantly-completed `Reconcile: nothing to do` task is exactly the wall-of-no-ops this redesign removes. If that leaves **≤1 action group** — the common all-current run — skip the task list entirely; the composition line and final report already carry it (the task tool's own guidance is to skip it for trivial single-step work). Mark each task `in_progress` when its group starts and `completed` when it finishes. Step 2's updates run serialized (see Step 2), so the `Update plugins` task stays `in_progress` across the whole pass and flips once at the end — the list is a live status surface, not a per-item animation.
+Don't create an item for an empty group — an instantly-completed `Reconcile: nothing to do` item is exactly the wall-of-no-ops this redesign removes. If that leaves **≤1 action group** — the common all-current run — skip the progress surface entirely; the composition line and final report already carry it (the task tool's own guidance is to skip it for trivial single-step work). On the task list, mark each task `in_progress` when its group starts and `completed` when it finishes; on a checklist, post it once before the first group and again as each group finishes. Step 2's updates run serialized (see Step 2), so the `Update plugins` item stays open across the whole pass and closes once at the end — progress is a status surface, not a per-plugin animation.
 
 ## 3. Final report
 
