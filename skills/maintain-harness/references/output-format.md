@@ -40,7 +40,7 @@ Then a **plan table** — but only when there's a mix of actions worth previewin
 |--------------|----------|---------|-------------------|
 | acme-tools   | tidydiff | 1.1.0   | ⬆️ queued: update |
 | oss-registry | scmkit   | 1.2.0   | ⏭️ team-shared    |
-| acme-tools   | gadget   | —       | ➕ queued: install? |
+| acme-tools   | gadget   | n/a     | ➕ queued: install? |
 ```
 
 ## 2. Progress
@@ -66,7 +66,7 @@ Don't create an item for an empty group — an instantly-completed `Reconcile: n
 
 Render after Steps 2-3 finish. This is the authoritative result: an emoji-tagged status block, not prose paragraphs. It opens with the *same composition line* the run led with (so the reader who scrolled past the top still sees the enabled/disabled split here) and then reports each area — reconcile, updates, cache, data — as its own short line or table.
 
-List **every enabled plugin on its own row** in the updates table. A maintenance report exists to let the reader confirm each plugin's result — "did my plugin get handled?" — and a collapsed count (`tidydiff +5`, `13 others`) hides exactly the names they came to check, forcing a re-run of `claude plugin list`. Completeness wins over brevity here: one row per plugin, ordered by marketplace then plugin. The Version column shows the current version, a `from → to` transition for a plugin that moved, or `—` for a HEAD-tracked plugin with no version number; the Result column carries the emoji-tagged outcome. A large plugin set produces a long table — that's the intended trade.
+List **every enabled plugin on its own row** in the updates table. A maintenance report exists to let the reader confirm each plugin's result — "did my plugin get handled?" — and a collapsed count (`tidydiff +5`, `13 others`) hides exactly the names they came to check, forcing a re-run of `claude plugin list`. Completeness wins over brevity here: one row per plugin, ordered by marketplace then plugin. The Version column shows the current version, a `from → to` transition for a plugin that moved, or `n/a` for a HEAD-tracked plugin with no version number; the Result column carries the emoji-tagged outcome. A large plugin set produces a long table — that's the intended trade.
 
 <!-- covers: RECON-16 -->
 A plugin `plugin-unmanaged.sh` lists (Step 1) gets its row too, with its origin in the Marketplace column, so the reader can see it was left alone and why. A `synced` row reads `☁️ managed in claude.ai`; any other origin reads `⏭️ not a registered marketplace`:
@@ -97,9 +97,9 @@ An install whose output names a settings file that does not load (plugins.md Ste
 | acme-tools   | speccraft  | 0.4.0   | ✅ current   |
 | acme-tools   | tuneup     | 0.4.3   | ✅ current   |
 | acme-tools   | trailhead  | 0.9.0   | ✅ current   |
-| oss-registry | uikit      | —       | 🔄 refreshed |
-| oss-registry | browserkit | —       | 🔄 refreshed |
-| oss-registry | devkit     | —       | 🔄 refreshed |
+| oss-registry | uikit      | n/a     | 🔄 refreshed |
+| oss-registry | browserkit | n/a     | 🔄 refreshed |
+| oss-registry | devkit     | n/a     | 🔄 refreshed |
 
 🔒 Cache — 23 stale dirs (~166M) pinned by live sessions; 🧹 0 pruned (they free up as those sessions exit).
 ```
@@ -115,8 +115,8 @@ When plugins actually changed, the movers show their version transition in the s
 | acme-tools   | tidydiff   | 1.1.0           | ✅ current   |
 | acme-tools   | difflens   | 0.14.0 → 0.15.0 | ⬆️ updated   |
 | acme-tools   | trailhead  | 0.8.0 → 0.9.0   | ⬆️ updated   |
-| oss-registry | uikit      | —               | 🔄 refreshed |
-| oss-registry | devkit     | —               | 🔄 refreshed |
+| oss-registry | uikit      | n/a             | 🔄 refreshed |
+| oss-registry | devkit     | n/a             | 🔄 refreshed |
 ```
 
 <!-- covers: REPORT-10 -->
