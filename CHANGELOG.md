@@ -6,8 +6,11 @@
 
 - **A plugin installed into a settings file that doesn't load is reported as not enabled.** Claude Code 2.1.295 and later warns after an install when the settings file it wrote to doesn't load, and ignores that whole file, so the plugin isn't running. `/maintain-harness plugins` now marks it 🔧 with the file and what's wrong with it, and the closing steps start with fixing that file (plus `claude plugin enable` where the enable didn't land) ahead of `/reload-plugins`.
 - **`/maintain-harness plugins` shows its progress on models without the task tools.** Claude Code offers its task list to a fixed set of models, so on a current model the reconcile ran silent through its updates and prunes. It now posts a checklist there and re-posts it as each group finishes, and uses the task list wherever it's offered.
+- **On Windows, the cache prune keeps the versions your running sessions use.** Claude Code on Windows records a session's start time in a form git-bash's `ps` can't read, so shipshape read every lease as expired and could prune a version a live session had loaded. It now reads those start times through PowerShell, and treats a lease as in use wherever it can't read one. The scan also matches the install paths Claude Code records on Windows (`C:\…`) against the cache dirs it finds, and reads `jq` output without the carriage returns a Windows `jq` adds.
 
 ### Other
+
+- The test suites run on Windows (git-bash) in CI, alongside Linux and macOS.
 
 - When an upgrade pass repairs shipshape's own checkout, it runs the fixes, `just test`, and `just generate` before asking you to restart with `--plugin-dir`. With the Bash sandbox on, the restarted session can't write into the checkout.
 

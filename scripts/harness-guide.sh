@@ -34,6 +34,7 @@
 
 # covers: GUIDE-01, GUIDE-02, GUIDE-03, GUIDE-04, GUIDE-05, GUIDE-06, GUIDE-12
 set -euo pipefail
+. "${BASH_SOURCE[0]%/*}/platform.sh"
 
 SELF="${BASH_SOURCE[0]}"
 BASH="${BASH:-bash}"

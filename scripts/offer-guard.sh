@@ -14,6 +14,7 @@
 
 # covers: REPORT-08, REPORT-09
 set -euo pipefail
+. "${BASH_SOURCE[0]%/*}/platform.sh"
 
 PATTERNS="${BASH_SOURCE[0]%/*}/offer-phrases.txt"
 

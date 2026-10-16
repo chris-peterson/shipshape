@@ -27,6 +27,7 @@
 
 # covers: VERSION-42
 set -euo pipefail
+. "${BASH_SOURCE[0]%/*}/platform.sh"
 
 data="${1:-${CLAUDE_PLUGIN_DATA:-}}"
 if [ -z "$data" ]; then

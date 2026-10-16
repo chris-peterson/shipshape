@@ -1,0 +1,17 @@
+# Sourced by every script that reads jq output or compares paths, so git-bash on
+# Windows sees the same bytes macOS and Linux do. Bash builtins only: a caller
+# may run it with an empty PATH to exercise its own missing-jq branch.
+
+case "${OSTYPE:-}" in
+  msys*|cygwin*)
+    # A native jq.exe ends lines with CRLF, and $(...) keeps every \r but the
+    # last. Defined only over a real jq, so `command -v jq` still finds none.
+    if type -P jq >/dev/null; then jq() { command jq -b "$@"; }; fi
+    # Claude Code records Windows paths (C:\Users\...) where find reports
+    # /c/Users/..., so a path read from a manifest is converted before compare.
+    posix_paths() { cygpath -u -f -; }
+    ;;
+  *)
+    posix_paths() { local p; while IFS= read -r p; do printf '%s\n' "$p"; done; }
+    ;;
+esac

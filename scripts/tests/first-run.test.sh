@@ -14,6 +14,7 @@
 # that clears a banner and checks nothing.
 
 set -uo pipefail
+. "$(dirname "$0")/../platform.sh"
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 HOOK="$ROOT/hooks/check-claude-code-version.sh"

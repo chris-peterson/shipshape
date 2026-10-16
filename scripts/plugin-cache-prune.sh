@@ -38,6 +38,7 @@
 
 # covers: PRUNE-06, PRUNE-09, PRUNE-10, PRUNE-11, PRUNE-13, PRUNE-14, PRUNE-15, PRUNE-16
 set -euo pipefail
+. "${BASH_SOURCE[0]%/*}/platform.sh"
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 plugins="${CLAUDE_PLUGINS_DIR:-$HOME/.claude/plugins}"

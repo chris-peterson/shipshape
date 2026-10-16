@@ -78,6 +78,7 @@
 # covers: VERSION-25, VERSION-26, VERSION-32, VERSION-33, VERSION-40, VERSION-42,
 #         VERSION-43
 set -euo pipefail
+. "${BASH_SOURCE[0]%/*}/platform.sh"
 
 plugins="${CLAUDE_PLUGINS_DIR:-$HOME/.claude/plugins}"
 skills="${CLAUDE_SKILLS_DIR:-$HOME/.claude/skills}"

@@ -41,6 +41,7 @@
 # covers: PRUNE-01, PRUNE-02, PRUNE-03, PRUNE-04, PRUNE-05, PRUNE-12, PRUNE-16,
 #         PRUNE-17, PRUNE-18
 set -euo pipefail
+. "${BASH_SOURCE[0]%/*}/platform.sh"
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 plugins="${CLAUDE_PLUGINS_DIR:-$HOME/.claude/plugins}"
@@ -58,7 +59,7 @@ fi
 
 # Every installPath the manifest records, newline-delimited. A row without one
 # contributes nothing, which leaves its dirs classified by the key check below.
-current_paths=$(jq -r '[.plugins // {} | .[][] | .installPath // empty] | .[]' "$manifest")
+current_paths=$(jq -r '[.plugins // {} | .[][] | .installPath // empty] | .[]' "$manifest" | posix_paths)
 
 # `<plugin>@<marketplace>` keys, and the `<plugin>-<marketplace>` data slugs they
 # imply. The slug is hyphen-joined and plugin names contain hyphens, so the slug

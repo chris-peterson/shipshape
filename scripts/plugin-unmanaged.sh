@@ -26,6 +26,7 @@
 
 # covers: RECON-16
 set -euo pipefail
+. "${BASH_SOURCE[0]%/*}/platform.sh"
 
 plugins="${CLAUDE_PLUGINS_DIR:-$HOME/.claude/plugins}"
 settings="${CLAUDE_SETTINGS_FILE:-$HOME/.claude/settings.json}"

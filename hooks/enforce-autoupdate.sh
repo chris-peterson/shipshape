@@ -16,6 +16,7 @@
 
 # covers: AUTO-01, AUTO-02, AUTO-03, AUTO-04, AUTO-05
 set -euo pipefail
+. "${BASH_SOURCE[0]%/*}/../scripts/platform.sh"
 
 KNOWN="$HOME/.claude/plugins/known_marketplaces.json"
 SETTINGS="$HOME/.claude/settings.json"

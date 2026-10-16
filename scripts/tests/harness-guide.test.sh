@@ -11,6 +11,7 @@
 # input.
 
 set -uo pipefail
+. "$(dirname "$0")/../platform.sh"
 
 SCRIPT="$(cd "$(dirname "$0")/.." && pwd)/harness-guide.sh"
 
@@ -45,7 +46,7 @@ eq "$OUT" "$GUIDE" "--path prints the guide's path"
 run "$LANE" --section upgrade
 eq "$RC:$OUT" "0:" "--section prints nothing"
 run "$LANE" --status
-eq "$OUT" "{\"path\":\"$GUIDE\",\"present\":false,\"upgrade\":{\"filled\":false},\"plugins\":{\"filled\":false},\"stray\":false}" "--status reports it absent"
+eq "$OUT" "{\"path\":\"$(jq -rn --arg p "$GUIDE" '$p')\",\"present\":false,\"upgrade\":{\"filled\":false},\"plugins\":{\"filled\":false},\"stray\":false}" "--status reports it absent"
 eq "$(state)" "absent" "and nothing created it"
 
 echo "== --seed writes both headings, and both read as unfilled"

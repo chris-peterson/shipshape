@@ -29,14 +29,17 @@ lost data:
 
 - **Never prune on doubt.** `plugin-cache-in-use.sh` answers *in use* whenever
   liveness can't be disproven — a lease yielding no pid, an unparseable
-  `procStart`, a `date` dialect it can't read, `jq` missing entirely. The absent
+  `procStart`, a `date` dialect it can't read, a `ps` that can't report a start
+  time (git-bash's), `jq` missing entirely. The absent
   signal is surfaced on stderr, not swallowed, and never read as "safe to
   delete". **An unreadable input is not an absent one**, and the same holds for
   the lock: an age no `stat` dialect can read leaves the holder in place rather
   than counting as old enough to steal.
 - **A lease is a PID *and* a process start time.** The OS recycles PIDs, so
   `ps -p <pid>` succeeding proves nothing on its own; comparing start times is
-  what rejects the reuse and lets genuinely stale caches be pruned at all.
+  what rejects the reuse and lets genuinely stale caches be pruned at all. On
+  Windows the lease holds `procStartFt`, a FILETIME for the Windows pid, which
+  only PowerShell can read back.
 - **Uninstalls gate on the install manifest**, not on `claude plugin list` and
   the desired set. A key absent from the manifest while another row names the
   same plugin means a shared on-disk install — skip it.
@@ -97,6 +100,7 @@ scripts/plugin-unmanaged.sh         lists installed and desired keys whose origi
 scripts/plugin-cache-prune.sh       deletes the paths it is handed, and refuses everything else
 scripts/maintenance-lock.sh         the cooperative lock one /maintain-harness run holds across both halves
 scripts/plugin-data-dir.sh          resolves a --plugin-dir session back to the installed plugin's data dir
+scripts/platform.sh                 sourced by every script: jq -b and POSIX paths under git-bash
 scripts/guide-content.sh            a guide's content: comments and leading blanks stripped, read by harness-guide.sh
 scripts/harness-guide.sh            the user's guide: its state, one section's content, the seed, and the one-time migration
 scripts/tests/                      bash suites, one per script
@@ -121,6 +125,10 @@ what picks the level.
 
 - **Bash, `set -euo pipefail`, no third-party dependencies beyond `jq`** — and a
   missing `jq` is reported and exits without changes rather than degrading.
+- **Every script that runs `jq` or compares paths sources `scripts/platform.sh`**,
+  so git-bash reads what macOS and Linux do: a native `jq.exe` writes CRLF, and
+  a manifest records `C:\…` where `find` reports `/c/…`. CI runs the suites on
+  all three.
 - **The script decides facts; the skill decides judgment.** Lease liveness and
   lock ownership are deterministic and belong in `scripts/`; what to do about a
   non-empty data dir is a question for the user and belongs in the skill.

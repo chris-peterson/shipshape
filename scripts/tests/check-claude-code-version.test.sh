@@ -18,6 +18,7 @@
 # and a conservative no-op whenever a prerequisite is missing.
 
 set -uo pipefail
+. "$(dirname "$0")/../platform.sh"
 
 SCRIPT="$(cd "$(dirname "$0")/../.." && pwd)/hooks/check-claude-code-version.sh"
 BASH_BIN="$(command -v bash)"  # absolute, so the claude-missing case can blank PATH
@@ -42,6 +43,9 @@ lacks() {  # $1 label  $2 haystack  $3 needle
     *) echo "  ok: $1"; pass=$((pass + 1)) ;;
   esac
 }
+# git-bash rewrites a /tmp path into C:/... when handing it to a native jq.exe,
+# so a path --status reports is compared as jq itself returns it.
+via_jq() { jq -rn --arg p "$1" '$p'; }
 
 # Fresh fixture: a data dir for the marker and document, and a bin dir holding a
 # `claude` that reports $1 in the real command's "<version> (Claude Code)" shape.
@@ -187,7 +191,7 @@ check "--status exits 0"                     "$RC"       "0"
 check "--status reports the acknowledged"    "$(field '.acknowledged')" "2.1.0"
 check "--status reports the running version" "$(field '.current')"      "2.1.0"
 check "settled machine is not pending"       "$(field '.pending')"      "false"
-check "--status reports the guide path"      "$(field '.guide.path')"   "$GUIDE"
+check "--status reports the guide path"      "$(field '.guide.path')"   "$(via_jq "$GUIDE")"
 check "an absent guide reads as unfilled"    "$(field '.guide.filled')" "false"
 stub 2.1.1
 status
@@ -203,7 +207,7 @@ check "a written guide reads as filled"      "$(field '.guide.filled')" "true"
 check "no declaration reads as unconfigured" "$(field '.declaration.configured')" "false"
 check "an unconfigured run examines nothing" "$(field '.declaration.examined')"   "0"
 check "an unconfigured run skips nothing"    "$(field '.declaration.skipped')"    "0"
-check "--status reports the declaration path" "$(field '.declaration.path')" "$DATA/version-scan-targets.json"
+check "--status reports the declaration path" "$(field '.declaration.path')" "$(via_jq "$DATA/version-scan-targets.json")"
 
 declare_targets '{"version":1,"targets":{}}'
 status

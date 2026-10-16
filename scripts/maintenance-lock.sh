@@ -28,6 +28,7 @@
 
 # covers: RECON-01, RECON-03, RECON-15, HARNESS-06
 set -euo pipefail
+. "${BASH_SOURCE[0]%/*}/platform.sh"
 
 cmd="${1:-}"
 lock="${MAINT_LOCK:-$HOME/.claude/plugins/.harness-maintenance.lock}"

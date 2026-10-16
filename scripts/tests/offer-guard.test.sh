@@ -3,6 +3,7 @@
 # reads the decision it prints.
 
 set -uo pipefail
+. "$(dirname "$0")/../platform.sh"
 
 SCRIPT="$(cd "$(dirname "$0")/../.." && pwd)/scripts/offer-guard.sh"
 BASH_BIN="$(command -v bash)"

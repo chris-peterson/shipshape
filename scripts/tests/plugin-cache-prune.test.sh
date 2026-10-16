@@ -91,9 +91,9 @@ kept "cache/mp1/alpha/1.0.0" "  the refused path is untouched"
 
 # --- the lease is re-checked at delete time -----------------------------------
 fixture
-LSTART=$(ps -p $$ -o lstart= | sed 's/^ *//;s/ *$//')
+. "$(dirname "$0")/live-lease.sh"
 mkdir -p "$ROOT/cache/mp1/alpha/0.9.0/.in_use"
-printf '{"pid":%s,"procStart":"%s"}' "$$" "$LSTART" > "$ROOT/cache/mp1/alpha/0.9.0/.in_use/lease"
+live_lease > "$ROOT/cache/mp1/alpha/0.9.0/.in_use/lease"
 prune cache/mp1/alpha/0.9.0
 exited 0 "a live lease is a skip, not an error"
 has "skipped cache/mp1/alpha/0.9.0 (in use)" "the skip names the reason"

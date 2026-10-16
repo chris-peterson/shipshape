@@ -7,6 +7,7 @@
 # since the decision, and a hand-added repo no manifest names.
 
 set -uo pipefail
+. "$(dirname "$0")/../platform.sh"
 
 SCRIPT="$(cd "$(dirname "$0")/.." && pwd)/version-scan-targets.sh"
 
@@ -35,6 +36,8 @@ cat > "$CLAUDE_PLUGINS_DIR/installed_plugins.json" <<'JSON'
 JSON
 
 SRC_A="$ROOT/src/alpha"; mkdir -p "$SRC_A"
+# --set records the path as jq receives it, which git-bash rewrites to C:/....
+SRC_A_RECORDED=$(jq -rn --arg p "$SRC_A" '$p')
 SRC_X="$ROOT/src/extra"; mkdir -p "$SRC_X"
 
 # Two marketplaces whose installLocation takes each of the two shapes Claude
@@ -121,7 +124,7 @@ eq "$(field '.settled')" 'true' "settled once every question is answered"
 eq "$(field '[.targets[].key]')" '["alpha@mp1"]' "the examined set holds only the non-skip rows"
 eq "$(field '[.targets[].action]')" '["issue"]' "and carries each row's action"
 eq "$(field '.skip | sort')" '["beta@mp1","gamma@mp2"]' "skips are reported"
-eq "$(drift | jq -r '.targets[0].src')" "$SRC_A" "the recorded source path comes back"
+eq "$(drift | jq -r '.targets[0].src')" "$SRC_A_RECORDED" "the recorded source path comes back"
 
 echo "== every action round-trips"
 for a in summarize issue edit; do
@@ -170,7 +173,7 @@ bash "$SCRIPT" --set alpha@mp1 issue >/dev/null 2>&1
 eq "$?" '2' "an action without a source path is refused"
 bash "$SCRIPT" --set beta@mp1 skip "$SRC_A" >/dev/null 2>&1
 eq "$?" '2' "skip refuses a source path"
-eq "$(drift | jq -r '.targets[] | select(.key=="alpha@mp1") | .src')" "$SRC_A" "a refused --set leaves the prior decision intact"
+eq "$(drift | jq -r '.targets[] | select(.key=="alpha@mp1") | .src')" "$SRC_A_RECORDED" "a refused --set leaves the prior decision intact"
 
 echo "== an unreadable declaration is not an empty one"
 cp "$DECL" "$ROOT/decl.bak"

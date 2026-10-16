@@ -49,6 +49,7 @@
 # to walk from when someone runs it.
 
 set -euo pipefail
+. "${BASH_SOURCE[0]%/*}/../scripts/platform.sh"
 
 CHANGELOG="https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md"
 SELF="${BASH_SOURCE[0]}"

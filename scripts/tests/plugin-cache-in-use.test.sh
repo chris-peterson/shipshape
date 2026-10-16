@@ -26,20 +26,30 @@ mklease() {  # $1 = json body -> prints the dir path
   local d; d=$(mktemp -d); mkdir "$d/.in_use"; printf '%s' "$1" > "$d/.in_use/lease"; echo "$d"
 }
 
-# This process's start time, as `ps` prints it (local zone) — a real live PID.
-LSTART=$(ps -p $$ -o lstart= | sed 's/^ *//;s/ *$//')
+. "$(dirname "$0")/live-lease.sh"
+KEY=procStart; [ "$LEASE_DIALECT" = windows ] && KEY=procStartFt
 
 d=$(mktemp -d);                                              run 1 "no .in_use dir"                              bash "$SCRIPT" "$d"; rm -rf "$d"
-d=$(mklease "{\"pid\":$$,\"procStart\":\"$LSTART\"}");        run 0 "live pid + matching procStart (local zone)"  bash "$SCRIPT" "$d"; rm -rf "$d"
-d=$(mklease "{\"pid\":$$,\"procStart\":\"Mon Jan 01 00:00:00 2020\"}"); run 1 "live pid + recycled (wrong procStart)" bash "$SCRIPT" "$d"; rm -rf "$d"
-d=$(mklease "{\"pid\":999999,\"procStart\":\"$LSTART\"}");    run 1 "dead pid"                                     bash "$SCRIPT" "$d"; rm -rf "$d"
-d=$(mklease "{\"pid\":$$}");                                  run 0 "live pid + missing procStart (conservative)" bash "$SCRIPT" "$d"; rm -rf "$d"
-d=$(mklease "{\"pid\":$$,\"procStart\":\"not-a-timestamp\"}"); run 0 "live pid + unparseable procStart (conservative)" bash "$SCRIPT" "$d"; rm -rf "$d"
+d=$(mklease "$(live_lease)");                                run 0 "live pid + matching $KEY"                    bash "$SCRIPT" "$d"; rm -rf "$d"
+d=$(mklease "$(recycled_lease)");                            run 1 "live pid + recycled (wrong $KEY)"            bash "$SCRIPT" "$d"; rm -rf "$d"
+d=$(mklease "{\"pid\":999999,\"$KEY\":\"$LIVE_START\"}");    run 1 "dead pid"                                     bash "$SCRIPT" "$d"; rm -rf "$d"
+d=$(mklease "{\"pid\":$LIVE_PID}");                          run 0 "live pid + missing start (conservative)"     bash "$SCRIPT" "$d"; rm -rf "$d"
+d=$(mklease "{\"pid\":$LIVE_PID,\"$KEY\":\"not-a-timestamp\"}"); run 0 "live pid + unparseable $KEY (conservative)" bash "$SCRIPT" "$d"; rm -rf "$d"
+
+# git-bash's ps can't report a start time, so a procStart lease there can't be
+# told from a dead one.
+if [ "$LEASE_DIALECT" = windows ]; then
+  d=$(mklease "{\"pid\":$$,\"procStart\":\"Mon Jan 01 00:00:00 2020\"}")
+  run 0 "a procStart lease where ps reports no start (conservative)" bash "$SCRIPT" "$d"; rm -rf "$d"
+elif ! command -v powershell.exe >/dev/null 2>&1; then
+  d=$(mklease "{\"pid\":$$,\"procStartFt\":\"134000000000000000\"}")
+  run 0 "a procStartFt lease with no PowerShell to read it (conservative)" bash "$SCRIPT" "$d"; rm -rf "$d"
+fi
 
 # An unreadable lease is not an absent lease. A torn write from a session that
 # died mid-startup yields no pid, and reading that as "no lease here" prunes the
 # dir it was in the middle of claiming.
-d=$(mklease "{\"pid\":$$,\"procSta");                     run 0 "truncated lease (torn write) -> in use"      bash "$SCRIPT" "$d"; rm -rf "$d"
+d=$(mklease "{\"pid\":$LIVE_PID,\"procSta");             run 0 "truncated lease (torn write) -> in use"      bash "$SCRIPT" "$d"; rm -rf "$d"
 d=$(mklease "");                                          run 0 "empty lease file -> in use"                  bash "$SCRIPT" "$d"
 ERR=$(bash "$SCRIPT" "$d" 2>&1 >/dev/null); rm -rf "$d"
 case "$ERR" in
@@ -47,7 +57,7 @@ case "$ERR" in
   *) echo "  FAIL: the unreadable lease is surfaced on stderr (got '$ERR')"; fail=$((fail + 1)) ;;
 esac
 d=$(mklease "not json at all");                           run 0 "non-JSON lease -> in use"                    bash "$SCRIPT" "$d"; rm -rf "$d"
-d=$(mklease "{\"procStart\":\"$LSTART\"}");               run 0 "lease with no pid field -> in use"           bash "$SCRIPT" "$d"; rm -rf "$d"
+d=$(mklease "{\"$KEY\":\"$LIVE_START\"}");               run 0 "lease with no pid field -> in use"           bash "$SCRIPT" "$d"; rm -rf "$d"
 
 # jq-missing must fail conservative (in use), not silently prune. An empty PATH
 # makes jq unresolvable (dropping one dir isn't enough — jq is often in several);
@@ -55,7 +65,7 @@ d=$(mklease "{\"procStart\":\"$LSTART\"}");               run 0 "lease with no p
 # before any external tool is needed.
 BASH_BIN=$(command -v bash)
 empty=$(mktemp -d)
-d=$(mklease "{\"pid\":$$,\"procStart\":\"$LSTART\"}")
+d=$(mklease "$(live_lease)")
 run 0 "jq missing -> conservative in use" env PATH="$empty" "$BASH_BIN" "$SCRIPT" "$d"
 rm -rf "$d" "$empty"
 

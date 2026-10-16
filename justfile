@@ -20,8 +20,10 @@ default:
 [group('start here')]
 test:
     #!/usr/bin/env bash
-    set -euo pipefail
-    for t in scripts/tests/*.test.sh; do echo "== $t =="; bash "$t"; done
+    set -uo pipefail
+    failed=()
+    for t in scripts/tests/*.test.sh; do echo "== $t =="; bash "$t" || failed+=("$t"); done
+    if [ ${#failed[@]} -gt 0 ]; then printf 'failed: %s\n' "${failed[@]}" >&2; exit 1; fi
 
 # preview the docsify docs site locally
 [group('start here')]

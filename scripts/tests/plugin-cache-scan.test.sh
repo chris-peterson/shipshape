@@ -56,18 +56,22 @@ mkdata helper-synced               # data dir of a non-marketplace origin
 echo state > "$ROOT/data/oldstate-mp3/history.json"
 
 # A live lease on 0.8.0: this process's real PID and start time.
-LSTART=$(ps -p $$ -o lstart= | sed 's/^ *//;s/ *$//')
+. "$(dirname "$0")/live-lease.sh"
 mkdir -p "$ROOT/cache/mp1/alpha/0.8.0/.in_use"
-printf '{"pid":%s,"procStart":"%s"}' "$$" "$LSTART" > "$ROOT/cache/mp1/alpha/0.8.0/.in_use/lease"
+live_lease > "$ROOT/cache/mp1/alpha/0.8.0/.in_use/lease"
 
 # mp1/mp2/mp3 are marketplaces this install knows about; `synced` is not.
 cat > "$ROOT/known_marketplaces.json" <<'JSON'
 {"mp1": {}, "mp2": {}, "mp3": {}}
 JSON
 
+# Claude Code on Windows records installPath as C:\..., where find reports /c/....
+ALPHA_PATH="$ROOT/cache/mp1/alpha/1.0.0"
+command -v cygpath >/dev/null && ALPHA_PATH=$(cygpath -w "$ALPHA_PATH" | sed 's/\\/\\\\/g')
+
 cat > "$ROOT/installed_plugins.json" <<JSON
 {"plugins":{
-  "alpha@mp1":         [{"scope":"user","version":"1.0.0","installPath":"$ROOT/cache/mp1/alpha/1.0.0"}],
+  "alpha@mp1":         [{"scope":"user","version":"1.0.0","installPath":"$ALPHA_PATH"}],
   "robot-sheriff@mp1": [{"scope":"user","version":"2.0.0","installPath":"$ROOT/cache/mp1/robot-sheriff/2.0.0"}],
   "shared@mp1":        [{"scope":"user","version":"1.0.0","installPath":"$ROOT/cache/mp2/shared/1.0.0"}]
 }}

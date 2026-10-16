@@ -190,7 +190,9 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
 
 - [PRUNE-01] When reconciliation completes, shipshape shall scan the cache and
   data directories and classify each entry against the install paths the install
-  manifest records.
+  manifest records, read in the path form the directory walk reports. Claude
+  Code on Windows records `C:\…` paths where git-bash's `find` reports `/c/…`,
+  so an unconverted path would read every current install as stale.
 - [PRUNE-02] shipshape shall classify a cache dir whose `<plugin>@<marketplace>`
   is no longer installed as an orphan cache.
 - [PRUNE-03] shipshape shall classify a cache dir whose version does not match
@@ -205,7 +207,8 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   `plugin-cache-in-use.sh` (exit 0 = in use, exit 1 = delete-eligible) and act
   on that verdict without auditing it.
 - [PRUNE-08] shipshape shall treat a lease it cannot read as in use: one that
-  yields no `pid`, and one whose `procStart` is missing or unparseable. An
+  yields no `pid`, one whose `procStart` or `procStartFt` is missing or
+  unparseable, and one whose process start time the platform can't report. An
   unreadable lease is not an absent lease.
 - [PRUNE-09] When a cache dir is empty, or an orphan/stale cache with no live
   lease, shipshape shall delete it without prompting.
@@ -248,6 +251,11 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   `plugin-cache-prune.sh` accepts cache and data paths only (PRUNE-14), so the
   entry is surfaced for the user to clear rather than reached by widening that
   guard.
+- [PRUNE-19] Where a lease records `procStartFt`, shipshape shall judge it live
+  when the Windows process with the lease's pid has that creation time, within
+  2 seconds. Claude Code on Windows writes the creation time as a FILETIME in
+  place of `procStart`, keyed by the Windows pid, which `ps` under git-bash can
+  neither look up nor time.
 
 ### AUTO — Auto-update enforcement
 

@@ -8,6 +8,7 @@
 # once everything is already auto-updating.
 
 set -uo pipefail
+. "$(dirname "$0")/../platform.sh"
 
 SCRIPT="$(cd "$(dirname "$0")/../.." && pwd)/hooks/enforce-autoupdate.sh"
 BASH_BIN="$(command -v bash)"  # absolute, so the jq-missing case can blank PATH
