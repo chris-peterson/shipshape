@@ -454,7 +454,9 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   claude.ai account carry no install-manifest row, so a pass over the manifest
   alone reads them as absent rather than as unexamined and reports full coverage
   having never seen them. A synced entry the user maintains shall be declarable
-  under a bare key, since no manifest key can address it.
+  under a bare key, since no manifest key can address it, and a synced skill
+  with any decision on record, `skip` included, shall leave the reported lane,
+  so the question is asked once rather than at every upgrade.
 - [VERSION-41] Where the session's working directory is shipshape's own
   checkout, the built-in guide shall repair shipshape against what changed
   before it examines any other target, and where the repair is material it shall

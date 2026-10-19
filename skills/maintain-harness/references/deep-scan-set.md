@@ -83,9 +83,14 @@ build tool does, since no manifest key can address it:
 CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash ${CLAUDE_PLUGIN_ROOT}/scripts/version-scan-targets.sh --set <name> edit <path>
 ```
 
-Ask once, when a synced entry has no decision on record and the lane is
-non-empty, then record the answer so the next upgrade doesn't ask again. A
-synced entry nobody maintains needs no row and no mention.
+`synced.skills` lists only the skills with no decision on record. Ask once while
+it is non-empty, and record each answer as it comes: a skill the user maintains
+as above, one nobody maintains as `skip`. A recorded skill leaves the list, so
+the next upgrade doesn't ask again, and a skipped one earns no mention.
+
+```bash
+CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash ${CLAUDE_PLUGIN_ROOT}/scripts/version-scan-targets.sh --set <name> skip
+```
 
 Editing a synced skill in place is never the fix: the folder is a cache of the
 account, so a change there reaches neither the account nor a source tree and the

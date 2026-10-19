@@ -216,6 +216,10 @@ eq "$(bash "$SCRIPT" --drift | jq '.synced.plugins')" '2' \
    "synced plugin rows are counted without reading their fields"
 eq "$(bash "$SCRIPT" --drift | jq '.settled')" 'true' \
    "and the lane does not make the reconciliation unsettled"
+bash "$SCRIPT" --set pdf skip >/dev/null
+eq "$(bash "$SCRIPT" --drift | jq -c '.synced.skills')" '["xlsx"]' \
+   "a synced skill with a decision on record leaves the lane"
+bash "$SCRIPT" --forget pdf >/dev/null
 
 echo 'not json' > "$CLAUDE_SKILLS_DIR/synced/bucket1/manifest.json"
 eq "$(bash "$SCRIPT" --drift | jq -c '.synced.skills')" '[]' \

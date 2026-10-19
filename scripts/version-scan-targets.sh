@@ -65,7 +65,9 @@
 # bucket: a synced skills manifest names its skills, so those are named, while a
 # synced plugin bucket's rows carry fields this script does not read, so those
 # are counted. A bucket file that exists but does not parse is listed in
-# `synced.unreadable`, never counted as empty.
+# `synced.unreadable`, never counted as empty. A synced skill whose name is a
+# declared key, `skip` included, is decided and leaves `synced.skills`, so the
+# list holds only what is still worth asking about.
 #
 # Exit:   0 = answered
 #         1 = jq missing, no install manifest, or CLAUDE_PLUGIN_DATA unset
@@ -281,7 +283,8 @@ case "${1:---drift}" in
       | .targets as $rows
       | .targets = [$rows[] | select($ok[.src])]
       | .unreadable = [$rows[] | select($ok[.src] | not) | {key, src}]
-      | .synced = $synced
+      | ([$rows[].key] + .skip) as $decided
+      | .synced = ($synced | .skills -= $decided)
       | .settled = ((.new | length) == 0 and (.gone | length) == 0
                     and (.unreadable | length) == 0)
     '

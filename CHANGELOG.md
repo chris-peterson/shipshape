@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **An upgrade asks about your claude.ai-synced skills once.** Answering that you maintain none of them now records each as `skip`, and a recorded skill stays out of the question, so the next upgrade doesn't ask again.
+
 ## 1.2.0
 
 ### Fixed
