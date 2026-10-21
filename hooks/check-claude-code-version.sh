@@ -65,8 +65,9 @@ case "${1:-}" in
   *)         printf 'usage: %s [--ack [version] | --status]\n' "$SELF" >&2; exit 2 ;;
 esac
 
-# A hook reports and stands down: erroring every session start is noise, and the
-# same convention covers a missing jq in enforce-autoupdate.sh. The other modes
+# A hook reports and stands down: erroring every session start is noise. The
+# banner for a jq that can't be had is enforce-autoupdate.sh's to show, since
+# both hooks run at every session start. The other modes
 # have a caller waiting on an answer, so a missing prerequisite is theirs to
 # see — nothing was recorded and nothing can be reported.
 # covers: VERSION-13, VERSION-14
@@ -83,8 +84,11 @@ fi
 # The emitted JSON carries a banner and a handoff naming both versions, so it is
 # built by jq rather than printf — there is no escaping to get right by hand.
 if ! command -v jq >/dev/null 2>&1; then
-  printf 'shipshape: jq is not on PATH; version notice skipped.\n' >&2
-  bail
+  if ! fetched="$("$BASH" "${SELF%/*}/../scripts/fetch-jq.sh")"; then
+    printf 'shipshape: jq is not on PATH and could not be downloaded; version notice skipped.\n' >&2
+    bail
+  fi
+  PATH="${fetched%/*}:$PATH"
 fi
 
 # covers: VERSION-42

@@ -4,7 +4,7 @@ Tracks coverage of the requirements in [SPEC.md](./SPEC.md) against the single
 in-repo implementation. Status vocabulary: **Covered** · **Partial** ·
 **Missing** · **Contradicts**.
 
-**Coverage: 119/119 requirements Covered (100%)**
+**Coverage: 125/125 requirements Covered (100%)**
 **Evidence pointers:** file
 
 Location holds the file. To find the spot inside it, grep for the requirement
@@ -91,6 +91,17 @@ means an edit can't leave the two disagreeing.
 | AUTO-04    | Covered | hooks/enforce-autoupdate.sh |
 | AUTO-05    | Covered | hooks/enforce-autoupdate.sh |
 | AUTO-06    | Covered | skills/maintain-harness/references/plugins.md |
+
+## JSON — JSON processing
+
+| ID          | Status  | Location |
+|-------------|---------|----------|
+| JSON-01    | Covered | hooks/enforce-autoupdate.sh |
+| JSON-02    | Covered | scripts/fetch-jq.sh |
+| JSON-03    | Covered | scripts/fetch-jq.sh |
+| JSON-04    | Covered | scripts/fetch-jq.sh |
+| JSON-05    | Covered | scripts/fetch-jq.sh |
+| JSON-06    | Covered | scripts/platform.sh |
 
 ## VERSION — Claude Code version changes
 
