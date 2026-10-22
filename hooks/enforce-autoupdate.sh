@@ -14,7 +14,7 @@
 # session. Existing extraKnownMarketplaces entries and all other settings keys
 # are preserved.
 
-# covers: AUTO-01, AUTO-02, AUTO-03, AUTO-04, AUTO-05
+# covers: AUTO-01, AUTO-02, AUTO-03, AUTO-04
 set -euo pipefail
 . "${BASH_SOURCE[0]%/*}/../scripts/platform.sh"
 
@@ -26,20 +26,15 @@ SETTINGS="$HOME/.claude/settings.json"
 
 # Without jq this hook can't write, and Claude Code doesn't auto-update a
 # third-party marketplace on its own, so shipshape would never receive the
-# release that fixes it. fetch-jq.sh downloads one; when that fails too, the
+# release that fixes it. ensure_jq downloads one; when that fails too, the
 # user is told on the one channel they see, since plain stdout here reaches only
 # Claude. The reason is escaped by hand: there is no jq to build the JSON.
-# covers: AUTO-05, JSON-01
-if ! command -v jq >/dev/null 2>&1; then
-  if ! fetched="$("$BASH" "${BASH_SOURCE[0]%/*}/../scripts/fetch-jq.sh" 2>&1)"; then
-    reason="${fetched##*$'\n'}"
-    reason="${reason#fetch-jq: }"
-    reason="${reason//\\/\\\\}"
-    reason="${reason//\"/\\\"}"
-    printf '{"systemMessage": "shipshape: install jq, or /plugin → Marketplaces → Enable auto-update  # marketplace auto-update is off: %s"}\n' "$reason"
-    exit 0
-  fi
-  PATH="${fetched%/*}:$PATH"
+# covers: AUTO-05
+if ! ensure_jq; then
+  reason="${jq_unavailable//\\/\\\\}"
+  reason="${reason//\"/\\\"}"
+  printf '{"systemMessage": "shipshape: install jq, or /plugin → Marketplaces → Enable auto-update  # marketplace auto-update is off: %s"}\n' "$reason"
+  exit 0
 fi
 
 # Start from existing settings, or an empty object if none exists yet.
@@ -48,6 +43,7 @@ current='{}'
 known="$(cat "$KNOWN")"
 
 # Marketplaces not yet auto-updating (drives both the decision and the report).
+# covers: JSON-01
 pending="$(jq -rn --argjson known "$known" --argjson settings "$current" '
   ($settings.extraKnownMarketplaces // {}) as $ex
   | $known | keys[]

@@ -10,6 +10,7 @@
 # leaves it out.
 
 set -uo pipefail
+. "$(dirname "$0")/wrap-tools.sh"
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 BASH_BIN="$(type -P bash)"
@@ -25,11 +26,7 @@ trap 'rm -rf "$FIXTURES"' EXIT
 TOOLS="$FIXTURES/tools" DATA="$FIXTURES/data" HOME_DIR="$FIXTURES/home"
 mkdir -p "$TOOLS" "$DATA" "$HOME_DIR/.claude/plugins"
 # Everything the hook and the download need except jq.
-for t in cat mktemp mv sed uname curl sha256sum shasum mkdir chmod rm; do
-  p=$(type -P "$t") || continue
-  printf '#!/bin/sh\nexec "%s" "$@"\n' "$p" > "$TOOLS/$t"
-  chmod +x "$TOOLS/$t"
-done
+wrap_tools "$TOOLS" cat mktemp mv sed uname curl sha256sum shasum mkdir chmod rm
 printf '{"mp1":{"source":"s1"}}\n' > "$HOME_DIR/.claude/plugins/known_marketplaces.json"
 
 hook() { env HOME="$HOME_DIR" PATH="$TOOLS" CLAUDE_PLUGIN_DATA="$DATA" "$BASH_BIN" "$ROOT/hooks/enforce-autoupdate.sh" 2>&1; }

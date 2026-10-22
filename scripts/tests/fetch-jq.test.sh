@@ -8,7 +8,7 @@
 # SHIPSHAPE_JQ_SHA256 where it wants the check to pass.
 
 set -uo pipefail
-. "$(dirname "$0")/../platform.sh"
+. "$(dirname "$0")/wrap-tools.sh"
 
 SCRIPT="$(cd "$(dirname "$0")/../.." && pwd)/scripts/fetch-jq.sh"
 PLATFORM="$(cd "$(dirname "$0")/.." && pwd)/platform.sh"
@@ -46,11 +46,7 @@ setup() {
   TOOLS=$(mktemp -d "$FIXTURES/tools.XXXXXX")
   SERVE=$(mktemp -d "$FIXTURES/serve.XXXXXX")
   DATA=$(mktemp -d "$FIXTURES/data.XXXXXX")
-  local t
-  for t in curl "$HASHER" mkdir mktemp rm chmod mv cat; do
-    printf '#!/bin/sh\nexec "%s" "$@"\n' "$(command -v "$t")" > "$TOOLS/$t"
-    chmod +x "$TOOLS/$t"
-  done
+  wrap_tools "$TOOLS" curl "$HASHER" mkdir mktemp rm chmod mv cat
   printf '#!/bin/sh\ncase "$1" in -s) echo "%s" ;; -m) echo "%s" ;; esac\n' "$1" "$2" > "$TOOLS/uname"
   chmod +x "$TOOLS/uname"
 }
@@ -68,20 +64,18 @@ STUB_JQ='#!/bin/sh
 echo jq-1.8.2
 '
 
-# --- jq already on PATH: printed, nothing downloaded. ---
+# --- jq already on PATH: nothing downloaded. ---
 setup Linux x86_64
 printf '#!/bin/sh\n' > "$TOOLS/jq"; chmod +x "$TOOLS/jq"
 fetch
 check    "a jq on PATH exits 0"                    "$RC"  "0"
-check    "a jq on PATH is the one printed"         "$OUT" "$TOOLS/jq"
 check    "a jq on PATH downloads nothing"          "$([ -e "$DATA/bin" ] || echo absent)" "absent"
 
-# --- Download succeeds and matches the pin: installed and printed. ---
+# --- Download succeeds and matches the pin: installed. ---
 setup Linux x86_64
 serve jq-linux-amd64 "$STUB_JQ"
 fetch SHIPSHAPE_JQ_SHA256="$(hash_of "$SERVE/jq-linux-amd64")"
 check    "a pinned download exits 0"               "$RC"  "0"
-check    "a pinned download prints its path"       "$OUT" "$DATA/bin/jq"
 check    "the installed jq is executable"          "$([ -x "$DATA/bin/jq" ] && echo yes)" "yes"
 check    "no temp file is left behind"             "$(leftovers)" "0"
 
@@ -98,7 +92,29 @@ setup MINGW64_NT-10.0 x86_64
 serve jq-windows-amd64.exe "$STUB_JQ"
 fetch SHIPSHAPE_JQ_SHA256="$(hash_of "$SERVE/jq-windows-amd64.exe")"
 check    "a Windows download exits 0"              "$RC"  "0"
-check    "a Windows download installs jq.exe"      "$OUT" "$DATA/bin/jq.exe"
+check    "a Windows download installs jq.exe"      "$([ -x "$DATA/bin/jq.exe" ] && echo yes)" "yes"
+
+# --- A data dir Claude Code names in Windows form still passes the hash check
+# and lands on PATH. sha256sum and shasum escape a backslash in a file name by
+# prefixing the hash with one; git-bash has no other way to make that name. ---
+setup Linux x86_64
+serve jq-linux-amd64 "$STUB_JQ"
+case "${OSTYPE:-}" in
+  msys*|cygwin*)
+    WINDATA=$(cygpath -w "$DATA")
+    wrap_tools "$TOOLS" cygpath
+    OUT=$(env PATH="$TOOLS" CLAUDE_PLUGIN_DATA="$WINDATA" SHIPSHAPE_JQ_URL="$(file_url "$SERVE")" \
+          SHIPSHAPE_JQ_SHA256="$(hash_of "$SERVE/jq-linux-amd64")" "$BASH_BIN" "$SCRIPT" 2>&1); RC=$?
+    check "a Windows-form data dir passes the hash check" "$RC" "0"
+    check "platform.sh puts a Windows-form data dir on PATH" \
+          "$(env PATH="$TOOLS" CLAUDE_PLUGIN_DATA="$WINDATA" "$BASH_BIN" -c '. "$1"; type -P jq >/dev/null && echo found' _ "$PLATFORM")" "found"
+    ;;
+  *)
+    DATA=$(mktemp -d "$FIXTURES/data\\dir.XXXXXX")
+    fetch SHIPSHAPE_JQ_SHA256="$(hash_of "$SERVE/jq-linux-amd64")"
+    check "a backslash in the data dir passes the hash check" "$RC" "0"
+    ;;
+esac
 
 # --- The real pin rejects a binary it doesn't name. ---
 setup Darwin arm64

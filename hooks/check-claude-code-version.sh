@@ -83,12 +83,9 @@ fi
 
 # The emitted JSON carries a banner and a handoff naming both versions, so it is
 # built by jq rather than printf — there is no escaping to get right by hand.
-if ! command -v jq >/dev/null 2>&1; then
-  if ! fetched="$("$BASH" "${SELF%/*}/../scripts/fetch-jq.sh")"; then
-    printf 'shipshape: jq is not on PATH and could not be downloaded; version notice skipped.\n' >&2
-    bail
-  fi
-  PATH="${fetched%/*}:$PATH"
+if ! ensure_jq; then
+  printf 'shipshape: jq is not on PATH and could not be downloaded (%s); version notice skipped.\n' "$jq_unavailable" >&2
+  bail
 fi
 
 # covers: VERSION-42

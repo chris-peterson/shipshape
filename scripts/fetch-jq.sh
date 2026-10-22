@@ -3,11 +3,6 @@
 # for this platform into $CLAUDE_PLUGIN_DATA/bin, where platform.sh puts it on
 # PATH for every script that sources it.
 #
-# Without jq the auto-update hook can't enable marketplace auto-update, and
-# Claude Code leaves third-party marketplaces off by default, so a missing jq
-# stranded shipshape on whatever version was first installed, along with every
-# release that would have said why.
-#
 # The binary is trusted by the SHA-256 pinned here, not by the sha256sum.txt
 # published beside it: a checksum fetched from the same place as the file proves
 # it arrived intact, not that it is the file shipshape reviewed. Bumping
@@ -15,7 +10,7 @@
 #
 # Usage:  fetch-jq.sh
 #
-# Exit:   0 = jq is available; its path is printed
+# Exit:   0 = jq is available
 #         1 = no jq, and none could be installed; the reason is on stderr
 #
 # Env:    CLAUDE_PLUGIN_DATA   where bin/ is created
@@ -31,10 +26,7 @@ BASE="${SHIPSHAPE_JQ_URL:-https://github.com/jqlang/jq/releases/download/jq-$JQ_
 
 fail() { printf 'fetch-jq: %s\n' "$1" >&2; exit 1; }
 
-if type -P jq >/dev/null; then
-  type -P jq
-  exit 0
-fi
+type -P jq >/dev/null && exit 0
 
 [ -n "${CLAUDE_PLUGIN_DATA:-}" ] || fail "CLAUDE_PLUGIN_DATA is unset; nowhere to put jq"
 
@@ -66,9 +58,9 @@ if [ "$os" = windows ]; then asset="$asset.exe"; name=jq.exe; fi
 
 command -v curl >/dev/null 2>&1 || fail "curl is not on PATH; cannot download jq"
 if command -v sha256sum >/dev/null 2>&1; then
-  sha256() { sha256sum "$1"; }
+  sha256() { sha256sum < "$1"; }
 elif command -v shasum >/dev/null 2>&1; then
-  sha256() { shasum -a 256 "$1"; }
+  sha256() { shasum -a 256 < "$1"; }
 else
   fail "neither sha256sum nor shasum is on PATH; cannot check a downloaded jq"
 fi
@@ -92,4 +84,3 @@ chmod +x "$tmp"
 "$tmp" --version >/dev/null 2>&1 || fail "the downloaded $asset does not run here; not installed"
 
 mv "$tmp" "$bin/$name"
-printf '%s\n' "$bin/$name"

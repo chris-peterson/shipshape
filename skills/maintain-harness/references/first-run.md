@@ -107,7 +107,7 @@ user's own list of directories they work in beyond a project, so it is where
 such a repo usually already is:
 
 ```bash
-jq -r '(.permissions.additionalDirectories // [])[]' ~/.claude/settings.json
+CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash "${CLAUDE_PLUGIN_ROOT}/scripts/jq.sh" -r '(.permissions.additionalDirectories // [])[]' ~/.claude/settings.json
 ```
 
 Filter it before offering anything: the same list carries scratch paths and

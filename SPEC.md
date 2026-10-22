@@ -280,18 +280,20 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
 ### JSON — JSON processing
 
 - [JSON-01] shipshape shall read and write JSON with `jq`, never through direct
-  string manipulation. Claude Code's native install brings no JSON tool of its own, so
+  string manipulation, except the AUTO-05 banner, which is shown only when no
+  `jq` can be had. Claude Code's native install brings no JSON tool of its own, so
   shipshape provides `jq` where the system has none (JSON-02).
 - [JSON-02] If `jq` is not on PATH when a hook needs it, then shipshape shall
   download jq's release binary for the platform into
-  `${CLAUDE_PLUGIN_DATA}/bin` and use it.
+  `${CLAUDE_PLUGIN_DATA}/bin`.
 - [JSON-03] shipshape shall install a downloaded jq only when its SHA-256 matches
   the hash pinned in shipshape for that platform and the binary runs.
 - [JSON-04] Where `jq` is on PATH, shipshape shall use it and download nothing.
 - [JSON-05] If no binary is pinned for the platform, or the download or either
   check fails, then shipshape shall report the reason and install nothing.
-- [JSON-06] Where the system has no `jq`, every script that sources `platform.sh`
-  shall use the one in `${CLAUDE_PLUGIN_DATA}/bin`.
+- [JSON-06] Where the system has no `jq`, every script that sources `platform.sh`,
+  and every `jq` read the skill runs through `scripts/jq.sh`, shall use the one in
+  `${CLAUDE_PLUGIN_DATA}/bin`.
 
 ### VERSION — Claude Code version changes
 
