@@ -280,7 +280,8 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
 ### JSON — JSON processing
 
 - [JSON-01] shipshape shall read and write JSON with `jq`, never through direct
-  string manipulation. Claude Code's native install brings no JSON tool of its own, so
+  string manipulation, except the AUTO-05 banner, which is shown only when no
+  `jq` can be had. Claude Code's native install brings no JSON tool of its own, so
   shipshape provides `jq` where the system has none (JSON-02).
 - [JSON-02] If `jq` is not on PATH when a hook needs it, then shipshape shall
   download jq's release binary for the platform into

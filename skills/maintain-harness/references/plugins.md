@@ -73,7 +73,7 @@ The user cares about **what changed and what they must do next** — not how you
 `claude plugin` has **no concurrency control**: install/update/uninstall all mutate the same shared state — the install manifest, the per-marketplace git clones, the per-version caches — with no locking. Two reconciles, or a reconcile overlapping another session's plugin operations, can interleave and leave that state in a mix neither intended (an uninstall in one session racing an update in another). The router took the cooperative maintenance lock before either half ran; acquire it again here, which refreshes it for this half:
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/maintenance-lock.sh" acquire
+CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash "${CLAUDE_PLUGIN_ROOT}/scripts/maintenance-lock.sh" acquire
 ```
 
 - **Exit 0** — lock acquired (or already yours; it's re-entrant within a session). Proceed.
@@ -97,7 +97,7 @@ cat ~/.claude/settings.json | jq '.enabledPlugins'
 Then set aside what isn't shipshape's to reconcile:
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-unmanaged.sh"
+CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-unmanaged.sh"
 ```
 
 It prints one row per key whose origin is not a registered marketplace, from either side: `<key>|installed|<scope>|<enabled|disabled>` or `<key>|desired|-|<true|false>`. No rows is the common case. Remove every listed key from both sets before diffing, so it is never an extra to uninstall nor a missing install, and never pass one to `claude plugin update`. Each listed install still gets its row in the final report (output-format.md). **A non-zero exit stops the half**: it means the registry, the plugin list, or the settings file couldn't be read, and reconciling without knowing which plugins are managed is the guess this step exists to prevent. Report the script's stderr line and release the lock.
@@ -186,7 +186,7 @@ The reconcile outcomes feed the **final report** (surface 3 in output-format.md)
 One call walks both directories and classifies everything in them:
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-cache-scan.sh"
+CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-cache-scan.sh"
 ```
 
 It reports by exception — a row per entry that is **not** part of a current install, then a `#totals` line:
@@ -263,7 +263,7 @@ When a genuine orphan is present, table only those:
 Hand the prune script every `prunable` path the scan printed, as arguments:
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-cache-prune.sh" cache/mp/plugin/1.0.0 cache/mp/plugin/1.1.0 cache/mp/gone-plugin
+CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-cache-prune.sh" cache/mp/plugin/1.0.0 cache/mp/plugin/1.1.0 cache/mp/gone-plugin
 ```
 
 It prints a line per path and a `pruned=… skipped=… freed=…` total, and clears any plugin dir its own deletes left empty.
@@ -273,7 +273,7 @@ It prints a line per path and a `pruned=… skipped=… freed=…` total, and cl
 **A `nonempty` orphan data dir is the one thing to ask about first.** It may hold accumulated user state — settings, history, context. Quote its size and a sample of file names, and pass the flag only on a yes:
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-cache-prune.sh" --data-confirmed data/old-plugin-old-mp
+CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-cache-prune.sh" --data-confirmed data/old-plugin-old-mp
 ```
 
 Without the flag the script skips it and says why, so a forgotten ask degrades to "nothing happened" rather than to a deleted dir.
@@ -288,7 +288,7 @@ Exit 2 means a path was refused as malformed. That's a bug in what you passed ra
 **First, release the maintenance lock from Step 0** — the mutating work is done, so hold it no longer than necessary (the reload is a human action outside this run):
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/maintenance-lock.sh" release
+CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash "${CLAUDE_PLUGIN_ROOT}/scripts/maintenance-lock.sh" release
 ```
 
 Release on every exit path, including the early ones — if you bailed out mid-reconcile after acquiring the lock, release it before you stop. (A missed release isn't fatal: the lock goes stale and the next run steals it, but an explicit release frees a waiting session immediately.)
@@ -333,7 +333,7 @@ Carry it out in the order written, once the lock is released. A step that names 
 
 ```bash
 claude plugin list                                    # inventory
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-unmanaged.sh"   # keys from an unregistered origin (`@synced`), left out of the reconcile
+CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-unmanaged.sh"   # keys from an unregistered origin (`@synced`), left out of the reconcile
 claude plugin marketplace update                       # refresh all marketplaces once (do before updates)
 claude plugin update <plugin>@<marketplace>           # update (run serialized, not in parallel)
 claude plugin install <plugin>@<marketplace>          # install; a "does not load" line after its success means not enabled (Step 3)

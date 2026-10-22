@@ -66,9 +66,9 @@ if [ "$os" = windows ]; then asset="$asset.exe"; name=jq.exe; fi
 
 command -v curl >/dev/null 2>&1 || fail "curl is not on PATH; cannot download jq"
 if command -v sha256sum >/dev/null 2>&1; then
-  sha256() { sha256sum "$1"; }
+  sha256() { sha256sum < "$1"; }
 elif command -v shasum >/dev/null 2>&1; then
-  sha256() { shasum -a 256 "$1"; }
+  sha256() { shasum -a 256 < "$1"; }
 else
   fail "neither sha256sum nor shasum is on PATH; cannot check a downloaded jq"
 fi

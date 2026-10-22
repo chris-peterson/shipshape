@@ -29,7 +29,7 @@ SETTINGS="$HOME/.claude/settings.json"
 # release that fixes it. fetch-jq.sh downloads one; when that fails too, the
 # user is told on the one channel they see, since plain stdout here reaches only
 # Claude. The reason is escaped by hand: there is no jq to build the JSON.
-# covers: AUTO-05, JSON-01
+# covers: AUTO-05
 if ! command -v jq >/dev/null 2>&1; then
   if ! fetched="$("$BASH" "${BASH_SOURCE[0]%/*}/../scripts/fetch-jq.sh" 2>&1)"; then
     reason="${fetched##*$'\n'}"
@@ -39,7 +39,7 @@ if ! command -v jq >/dev/null 2>&1; then
     printf '{"systemMessage": "shipshape: install jq, or /plugin → Marketplaces → Enable auto-update  # marketplace auto-update is off: %s"}\n' "$reason"
     exit 0
   fi
-  PATH="${fetched%/*}:$PATH"
+  . "${BASH_SOURCE[0]%/*}/../scripts/platform.sh"
 fi
 
 # Start from existing settings, or an empty object if none exists yet.
@@ -48,6 +48,7 @@ current='{}'
 known="$(cat "$KNOWN")"
 
 # Marketplaces not yet auto-updating (drives both the decision and the report).
+# covers: JSON-01
 pending="$(jq -rn --argjson known "$known" --argjson settings "$current" '
   ($settings.extraKnownMarketplaces // {}) as $ex
   | $known | keys[]

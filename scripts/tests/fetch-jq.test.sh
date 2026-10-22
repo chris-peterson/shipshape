@@ -100,6 +100,29 @@ fetch SHIPSHAPE_JQ_SHA256="$(hash_of "$SERVE/jq-windows-amd64.exe")"
 check    "a Windows download exits 0"              "$RC"  "0"
 check    "a Windows download installs jq.exe"      "$OUT" "$DATA/bin/jq.exe"
 
+# --- A data dir Claude Code names in Windows form still passes the hash check
+# and lands on PATH. sha256sum and shasum escape a backslash in a file name by
+# prefixing the hash with one; git-bash has no other way to make that name. ---
+setup Linux x86_64
+serve jq-linux-amd64 "$STUB_JQ"
+case "${OSTYPE:-}" in
+  msys*|cygwin*)
+    WINDATA=$(cygpath -w "$DATA")
+    printf '#!/bin/sh\nexec "%s" "$@"\n' "$(command -v cygpath)" > "$TOOLS/cygpath"
+    chmod +x "$TOOLS/cygpath"
+    OUT=$(env PATH="$TOOLS" CLAUDE_PLUGIN_DATA="$WINDATA" SHIPSHAPE_JQ_URL="$(file_url "$SERVE")" \
+          SHIPSHAPE_JQ_SHA256="$(hash_of "$SERVE/jq-linux-amd64")" "$BASH_BIN" "$SCRIPT" 2>&1); RC=$?
+    check "a Windows-form data dir passes the hash check" "$RC" "0"
+    check "platform.sh puts a Windows-form data dir on PATH" \
+          "$(env PATH="$TOOLS" CLAUDE_PLUGIN_DATA="$WINDATA" "$BASH_BIN" -c '. "$1"; type -P jq >/dev/null && echo found' _ "$PLATFORM")" "found"
+    ;;
+  *)
+    DATA=$(mktemp -d "$FIXTURES/data\\dir.XXXXXX")
+    fetch SHIPSHAPE_JQ_SHA256="$(hash_of "$SERVE/jq-linux-amd64")"
+    check "a backslash in the data dir passes the hash check" "$RC" "0"
+    ;;
+esac
+
 # --- The real pin rejects a binary it doesn't name. ---
 setup Darwin arm64
 serve jq-macos-arm64 "$STUB_JQ"
