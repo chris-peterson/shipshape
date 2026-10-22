@@ -37,7 +37,7 @@ manifest and caches, the acknowledged version, the guide, the user's repos).
 Take the lock before either half:
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/maintenance-lock.sh" acquire
+CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash "${CLAUDE_PLUGIN_ROOT}/scripts/maintenance-lock.sh" acquire
 ```
 
 Exit 3 means another live session holds it, and its stderr names that session:
@@ -50,7 +50,7 @@ early stop: the plugins half releases it in its Step 6, and a `claude-code` run
 releases it after its report.
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/maintenance-lock.sh" release
+CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash "${CLAUDE_PLUGIN_ROOT}/scripts/maintenance-lock.sh" release
 ```
 
 ## Pick the half

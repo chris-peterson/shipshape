@@ -40,6 +40,14 @@ claude plugin marketplace add chris-peterson/claude-marketplace
 claude plugin install shipshape@chris-peterson
 ```
 
+Then turn on auto-update for the marketplace: run `/plugin`, open the
+**Marketplaces** tab, select `chris-peterson`, and choose **Enable
+auto-update**. Claude Code leaves it off for marketplaces outside Anthropic's
+own, and auto-update is how shipshape receives its own fixes. Its session-start
+hook turns auto-update on for every marketplace you have, but it needs `jq`.
+Where jq isn't installed, shipshape downloads it, and if that fails too, a
+banner says so.
+
 ## Skills
 
 One skill, [`/shipshape:maintain-harness`](/skills/maintain-harness), covers both.

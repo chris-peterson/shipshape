@@ -269,10 +269,30 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   entries and all other settings keys.
 - [AUTO-04] If no marketplaces are registered, then the auto-update hook shall
   exit without changes.
-- [AUTO-05] If `jq` is not on PATH, then the auto-update hook shall report that
-  jq is required and exit without changes.
+- [AUTO-05] If `jq` is neither on PATH nor provided by JSON-02, then the
+  auto-update hook shall show the user a banner naming the reason, installing
+  jq, and the `/plugin` Marketplaces toggle, and exit without changes. Claude
+  Code leaves a third-party marketplace's auto-update off by default, so without
+  the banner the user stays on the installed shipshape with no sign of why.
 - [AUTO-06] The maintenance run shall report each marketplace's auto-update
   status without writing it.
+
+### JSON — JSON processing
+
+- [JSON-01] shipshape shall read and write JSON with `jq`, never through direct
+  string manipulation, except the AUTO-05 banner, which is shown only when no
+  `jq` can be had. Claude Code's native install brings no JSON tool of its own, so
+  shipshape provides `jq` where the system has none (JSON-02).
+- [JSON-02] If `jq` is not on PATH when a hook needs it, then shipshape shall
+  download jq's release binary for the platform into
+  `${CLAUDE_PLUGIN_DATA}/bin` and use it.
+- [JSON-03] shipshape shall install a downloaded jq only when its SHA-256 matches
+  the hash pinned in shipshape for that platform and the binary runs.
+- [JSON-04] Where `jq` is on PATH, shipshape shall use it and download nothing.
+- [JSON-05] If no binary is pinned for the platform, or the download or either
+  check fails, then shipshape shall report the reason and install nothing.
+- [JSON-06] Where the system has no `jq`, every script that sources `platform.sh`
+  shall use the one in `${CLAUDE_PLUGIN_DATA}/bin`.
 
 ### VERSION — Claude Code version changes
 
@@ -318,7 +338,8 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
 - [VERSION-12] The version hook shall read the running version from `claude
   --version`'s stdout alone, so output on stderr is never parsed as a version.
 - [VERSION-13] If the running version cannot be determined, or `CLAUDE_PLUGIN_DATA`
-  is unset, or `jq` is not on PATH, then the version hook shall report the reason
+  is unset, or `jq` is neither on PATH nor provided by JSON-02, then the version
+  hook shall report the reason
   on stderr and leave the marker unchanged.
 - [VERSION-14] If a mode other than the announcement cannot answer, then the
   version hook shall exit non-zero rather than report a result it didn't produce.

@@ -26,3 +26,18 @@ jobs:
       - uses: actions/checkout@v6
       - uses: extractions/setup-just@v4
       - run: just test
+
+  # The auto-update hook downloading the real jq, on each platform fetch-jq.sh
+  # pins a binary for.
+  autoupdate-without-jq:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, macos-26-intel, ubuntu-latest, ubuntu-24.04-arm, windows-latest, windows-11-arm]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+      - run: bash scripts/tests/autoupdate-without-jq.sh
