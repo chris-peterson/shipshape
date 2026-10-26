@@ -93,7 +93,6 @@ skills/maintain-harness/references/   claude-code.md (what's new, acknowledge), 
 hooks/enforce-autoupdate.sh         SessionStart hook that enables marketplace auto-update
 hooks/check-claude-code-version.sh        SessionStart hook that announces a Claude Code version change; also the claude-code half's --status and --ack
 scripts/offer-guard.sh              Stop hook maintain-harness declares in frontmatter: blocks a reply that offers more instead of doing it
-scripts/offer-phrases.txt           the phrases offer-guard.sh blocks, one extended regex per line
 scripts/plugin-cache-in-use.sh      lease liveness — exit 0 in use, exit 1 delete-eligible
 scripts/plugin-cache-scan.sh        classifies cache and data entries against the install manifest
 scripts/plugin-unmanaged.sh         lists installed and desired keys whose origin isn't a registered marketplace

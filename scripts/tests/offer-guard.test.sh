@@ -42,6 +42,12 @@ for msg in \
   "Checked 86 entries: 10 touch your artifacts, 52 harness-internal, 24 not applicable." \
   "The other 12 repos had no findings." \
   "The hook blocks \`let me know if\` in replies." \
+  "The hook blocked \"let me know if\" in my last reply." \
+  "The hook blocked “let me know if” in my last reply." \
+  "Checked 37 entries: 3 touch your artifacts; the other 34 are harness-internal." \
+  "The remaining 34 entries are harness-internal fixes." \
+  "I'm happy to report every check passed." \
+  "Docs are generated on request by the projection job." \
   "Settings keys moved in 2.1.282."
 do
   check "allows: $msg" "$(decide "$msg")" "allow"
