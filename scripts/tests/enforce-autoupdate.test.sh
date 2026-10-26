@@ -9,6 +9,7 @@
 
 set -uo pipefail
 . "$(dirname "$0")/../platform.sh"
+. "$(dirname "$0")/wrap-tools.sh"
 
 SCRIPT="$(cd "$(dirname "$0")/../.." && pwd)/hooks/enforce-autoupdate.sh"
 BASH_BIN="$(command -v bash)"  # absolute, so the jq-missing case can blank PATH
@@ -68,10 +69,26 @@ before=$(cat "$SETTINGS")
 run 0 "all-enabled run exits without writing"   env HOME="$HOME_DIR" bash "$SCRIPT"
 check "settings.json byte-identical (no churn)" "$(cat "$SETTINGS")" "$before"
 
-# --- jq absent → surfaced, conservative no-op, nothing written. ---
+# --- jq absent and can't be fetched → shown to the user, nothing written. ---
 setup '{"mp1":{"source":"s1"}}' ""
-run 0 "missing jq is a conservative no-op"      env HOME="$HOME_DIR" PATH=/nonexistent "$BASH_BIN" "$SCRIPT"
+out=$(env -u CLAUDE_PLUGIN_DATA HOME="$HOME_DIR" PATH=/nonexistent "$BASH_BIN" "$SCRIPT" 2>/dev/null)
+check "missing jq is a conservative no-op"      "$?" "0"
 check "settings.json not created without jq"    "$([ -f "$SETTINGS" ] || echo absent)" "absent"
+banner=$(printf '%s' "$out" | jq -r '.systemMessage' 2>/dev/null)
+case "$banner" in
+  *"/plugin"*"CLAUDE_PLUGIN_DATA is unset"*) check "missing jq is a banner naming the toggle and the reason" ok ok ;;
+  *) check "missing jq is a banner naming the toggle and the reason" "$out" "a systemMessage" ;;
+esac
+
+# --- A jq fetch-jq.sh left in the data dir stands in for a system one. ---
+setup '{"mp1":{"source":"s1"}}' ""
+TOOLS=$(mktemp -d /tmp/ea-tools.XXXXXX)
+wrap_tools "$TOOLS" cat mktemp mv sed
+DATA=$(mktemp -d /tmp/ea-data.XXXXXX)
+mkdir -p "$DATA/bin"
+wrap_tools "$DATA/bin" jq
+run 0 "a fetched jq enables the marketplace"    env HOME="$HOME_DIR" PATH="$TOOLS" CLAUDE_PLUGIN_DATA="$DATA" "$BASH_BIN" "$SCRIPT"
+check "mp1 enabled with the fetched jq"         "$(get '.extraKnownMarketplaces.mp1.autoUpdate')" "true"
 
 echo
 echo "enforce-autoupdate: pass=$pass fail=$fail"

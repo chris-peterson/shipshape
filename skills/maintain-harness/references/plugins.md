@@ -73,7 +73,7 @@ The user cares about **what changed and what they must do next** — not how you
 `claude plugin` has **no concurrency control**: install/update/uninstall all mutate the same shared state — the install manifest, the per-marketplace git clones, the per-version caches — with no locking. Two reconciles, or a reconcile overlapping another session's plugin operations, can interleave and leave that state in a mix neither intended (an uninstall in one session racing an update in another). The router took the cooperative maintenance lock before either half ran; acquire it again here, which refreshes it for this half:
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/maintenance-lock.sh" acquire
+CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash "${CLAUDE_PLUGIN_ROOT}/scripts/maintenance-lock.sh" acquire
 ```
 
 - **Exit 0** — lock acquired (or already yours; it's re-entrant within a session). Proceed.
@@ -91,13 +91,13 @@ claude plugin list
 ```
 
 ```bash
-cat ~/.claude/settings.json | jq '.enabledPlugins'
+CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash "${CLAUDE_PLUGIN_ROOT}/scripts/jq.sh" '.enabledPlugins' ~/.claude/settings.json
 ```
 
 Then set aside what isn't shipshape's to reconcile:
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-unmanaged.sh"
+CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-unmanaged.sh"
 ```
 
 It prints one row per key whose origin is not a registered marketplace, from either side: `<key>|installed|<scope>|<enabled|disabled>` or `<key>|desired|-|<true|false>`. No rows is the common case. Remove every listed key from both sets before diffing, so it is never an extra to uninstall nor a missing install, and never pass one to `claude plugin update`. Each listed install still gets its row in the final report (output-format.md). **A non-zero exit stops the half**: it means the registry, the plugin list, or the settings file couldn't be read, and reconciling without knowing which plugins are managed is the guess this step exists to prevent. Report the script's stderr line and release the lock.
@@ -107,7 +107,7 @@ Build two sets of `<plugin>@<marketplace>` keys: **installed** (with scope) and 
 Also read the install manifest — Step 3 gates uninstalls on it (see "a plugin shared by two marketplaces"):
 
 ```bash
-jq '.plugins | keys' ~/.claude/plugins/installed_plugins.json
+CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash "${CLAUDE_PLUGIN_ROOT}/scripts/jq.sh" '.plugins | keys' ~/.claude/plugins/installed_plugins.json
 ```
 
 The manifest keys by the same `<plugin>@<marketplace>` form. A `claude plugin list` row whose key is absent here shares another marketplace's single on-disk install.
@@ -115,7 +115,7 @@ The manifest keys by the same `<plugin>@<marketplace>` form. A `claude plugin li
 While you have the marketplace state, note **auto-update** coverage for the final report. The registered marketplaces are the keys of `~/.claude/plugins/known_marketplaces.json`; a marketplace is auto-updating when `extraKnownMarketplaces.<name>.autoUpdate` is `true` in `~/.claude/settings.json`. Read the two together, the way the hook does, so a marketplace that has no settings entry at all still gets a row:
 
 ```bash
-jq -rn --slurpfile k ~/.claude/plugins/known_marketplaces.json --slurpfile s ~/.claude/settings.json '
+CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash "${CLAUDE_PLUGIN_ROOT}/scripts/jq.sh" -rn --slurpfile k ~/.claude/plugins/known_marketplaces.json --slurpfile s ~/.claude/settings.json '
   (($s[0].extraKnownMarketplaces // {}) as $ex
    | $k[0] | keys[] | "\(.): \(($ex[.].autoUpdate // false))")'
 ```
@@ -173,7 +173,7 @@ Track the pass on the progress surface (section 2 in output-format.md): the `Upd
     The install record exists, but the enable has no effect, so the plugin isn't running. Report it 🔧 **needs your fix**, not ➕ installed, quoting the path and the parenthesized reason from that line. Then check whether the enable landed in the named file:
 
     ```bash
-    jq -e --arg k '<plugin>@<marketplace>' '.enabledPlugins[$k] == true' '<file>'
+    CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash "${CLAUDE_PLUGIN_ROOT}/scripts/jq.sh" -e --arg k '<plugin>@<marketplace>' '.enabledPlugins[$k] == true' '<file>'
     ```
 
     A file with an invalid value took the write, so fixing it is the whole step. A file that isn't a JSON object took nothing, so where the check fails the closing adds `claude plugin enable <plugin>@<marketplace>` after the fix (output-format.md). That step is only for a plugin the desired set enables (`true` in `enabledPlugins`). A plugin the user keeps disabled (`false`) gets the file fix alone, so the run never turns on what they turned off. When the named file is `~/.claude/settings.json`, it's the file Step 1 read the desired set from, so Claude Code is ignoring every plugin enabled there, not only this one: say so once, on the row.
@@ -186,7 +186,7 @@ The reconcile outcomes feed the **final report** (surface 3 in output-format.md)
 One call walks both directories and classifies everything in them:
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-cache-scan.sh"
+CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-cache-scan.sh"
 ```
 
 It reports by exception — a row per entry that is **not** part of a current install, then a `#totals` line:
@@ -263,7 +263,7 @@ When a genuine orphan is present, table only those:
 Hand the prune script every `prunable` path the scan printed, as arguments:
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-cache-prune.sh" cache/mp/plugin/1.0.0 cache/mp/plugin/1.1.0 cache/mp/gone-plugin
+CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-cache-prune.sh" cache/mp/plugin/1.0.0 cache/mp/plugin/1.1.0 cache/mp/gone-plugin
 ```
 
 It prints a line per path and a `pruned=… skipped=… freed=…` total, and clears any plugin dir its own deletes left empty.
@@ -273,7 +273,7 @@ It prints a line per path and a `pruned=… skipped=… freed=…` total, and cl
 **A `nonempty` orphan data dir is the one thing to ask about first.** It may hold accumulated user state — settings, history, context. Quote its size and a sample of file names, and pass the flag only on a yes:
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-cache-prune.sh" --data-confirmed data/old-plugin-old-mp
+CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-cache-prune.sh" --data-confirmed data/old-plugin-old-mp
 ```
 
 Without the flag the script skips it and says why, so a forgotten ask degrades to "nothing happened" rather than to a deleted dir.
@@ -288,7 +288,7 @@ Exit 2 means a path was refused as malformed. That's a bug in what you passed ra
 **First, release the maintenance lock from Step 0** — the mutating work is done, so hold it no longer than necessary (the reload is a human action outside this run):
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/maintenance-lock.sh" release
+CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash "${CLAUDE_PLUGIN_ROOT}/scripts/maintenance-lock.sh" release
 ```
 
 Release on every exit path, including the early ones — if you bailed out mid-reconcile after acquiring the lock, release it before you stop. (A missed release isn't fatal: the lock goes stale and the next run steals it, but an explicit release frees a waiting session immediately.)
@@ -333,7 +333,7 @@ Carry it out in the order written, once the lock is released. A step that names 
 
 ```bash
 claude plugin list                                    # inventory
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-unmanaged.sh"   # keys from an unregistered origin (`@synced`), left out of the reconcile
+CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-unmanaged.sh"   # keys from an unregistered origin (`@synced`), left out of the reconcile
 claude plugin marketplace update                       # refresh all marketplaces once (do before updates)
 claude plugin update <plugin>@<marketplace>           # update (run serialized, not in parallel)
 claude plugin install <plugin>@<marketplace>          # install; a "does not load" line after its success means not enabled (Step 3)

@@ -100,7 +100,9 @@ scripts/plugin-unmanaged.sh         lists installed and desired keys whose origi
 scripts/plugin-cache-prune.sh       deletes the paths it is handed, and refuses everything else
 scripts/maintenance-lock.sh         the cooperative lock one /maintain-harness run holds across both halves
 scripts/plugin-data-dir.sh          resolves a --plugin-dir session back to the installed plugin's data dir
-scripts/platform.sh                 sourced by every script: jq -b and POSIX paths under git-bash
+scripts/platform.sh                 sourced by every script: a fetched jq on PATH, ensure_jq for hooks, jq -b and POSIX paths under git-bash
+scripts/fetch-jq.sh                 downloads a pinned, checksummed jq into the plugin data dir when the system has none
+scripts/jq.sh                       jq for the skill's own reads, so a Bash tool call finds a fetched jq too
 scripts/guide-content.sh            a guide's content: comments and leading blanks stripped, read by harness-guide.sh
 scripts/harness-guide.sh            the user's guide: its state, one section's content, the seed, and the one-time migration
 scripts/tests/                      bash suites, one per script
@@ -123,8 +125,11 @@ what picks the level.
 
 ## Conventions
 
-- **Bash, `set -euo pipefail`, no third-party dependencies beyond `jq`** — and a
-  missing `jq` is reported and exits without changes rather than degrading.
+- **Bash, `set -euo pipefail`, no third-party dependencies beyond `jq`.** Where
+  the system has none, `fetch-jq.sh` downloads jq's release binary into the
+  plugin data dir, checked against a SHA-256 pinned in the script. When that
+  fails too, the script reports it and exits without changes rather than
+  degrading.
 - **Every script that runs `jq` or compares paths sources `scripts/platform.sh`**,
   so git-bash reads what macOS and Linux do: a native `jq.exe` writes CRLF, and
   a manifest records `C:\…` where `find` reports `/c/…`. CI runs the suites on

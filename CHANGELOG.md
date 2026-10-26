@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- **shipshape keeps itself and your plugins updated on a machine without `jq`.** Claude Code leaves auto-update off for marketplaces outside Anthropic's own, and shipshape's session-start hook needs `jq` to turn it on. Without `jq`, shipshape stayed on the version you first installed, along with your other plugins. It now downloads `jq` 1.8.2 into its data directory, checked against a pinned SHA-256. If that fails, a banner tells you to install `jq` or turn auto-update on in `/plugin` → **Marketplaces**.
 - **An upgrade asks about your claude.ai-synced skills once.** Answering that you maintain none of them now records each as `skip`, and a recorded skill stays out of the question, so the next upgrade doesn't ask again.
 
 ## 1.2.0
