@@ -577,8 +577,10 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   shall block every reply in that session that offers more work instead of doing
   it, and name the phrase it matched, so Claude rewrites the reply.
 - [REPORT-09] Where a rewrite still matches, shipshape shall let the reply
-  through and name the phrase to the user rather than block again, and a phrase
-  quoted inside a code span or fence shall not count as an offer.
+  through and name the phrase to the user rather than block again. A phrase
+  quoted inside a code span, a code fence, or double quotes shall not count as an
+  offer, and neither shall a tally of entries that names no count past what the
+  reply showed.
 - [REPORT-10] shipshape shall end a run's reply with the steps the user takes,
   each given as the exact command in the order it must run, with no rationale
   attached and nothing after them. A step that is a file to fix rather than a

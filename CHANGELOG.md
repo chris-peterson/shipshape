@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **`/maintain-harness` no longer rejects honest replies as offers.** Its reply check blocked a tally of changelog entries that had all been walked ("the other 34 are harness-internal"), any reply quoting a blocked phrase in double quotes, and ordinary sentences containing "happy to" or "on request". Those now pass; a reply that offers more work instead of doing it is still blocked.
+
 ## 1.2.1
 
 ### Fixed
