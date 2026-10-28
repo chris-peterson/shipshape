@@ -108,7 +108,7 @@ cat > "$HOME/.claude.json" <<JSON
     "$ROOT/checkouts/you/beta":    {},
     "$ROOT/checkouts/unrelated":   {} } }
 JSON
-bash "$SCRIPT" --set gamma@mp2 skip >/dev/null 2>&1
+bash "$SCRIPT" --set gamma@mp2 ignore >/dev/null 2>&1
 eq "$(bash "$SCRIPT" --resolve 2>/dev/null | jq -r '[.[].key] | sort | join(",")')" 'alpha@mp1,beta@mp1' \
    "the outstanding plugin sorting last is resolved too"
 bash "$SCRIPT" --forget gamma@mp2 >/dev/null 2>&1
@@ -117,13 +117,13 @@ export HOME="$HOME_ORIG"
 echo "== recording decisions"
 bash "$SCRIPT" --set alpha@mp1 issue "$SRC_A" >/dev/null 2>&1
 eq "$?" '0' "an action with a real directory is accepted"
-bash "$SCRIPT" --set beta@mp1 skip >/dev/null 2>&1
-bash "$SCRIPT" --set gamma@mp2 skip >/dev/null 2>&1
+bash "$SCRIPT" --set beta@mp1 ignore >/dev/null 2>&1
+bash "$SCRIPT" --set gamma@mp2 ignore >/dev/null 2>&1
 eq "$(field '[.new[].key]')" '[]' "nothing new once every plugin is decided"
 eq "$(field '.settled')" 'true' "settled once every question is answered"
-eq "$(field '[.targets[].key]')" '["alpha@mp1"]' "the examined set holds only the non-skip rows"
+eq "$(field '[.targets[].key]')" '["alpha@mp1"]' "the examined set holds only the non-ignore rows"
 eq "$(field '[.targets[].action]')" '["issue"]' "and carries each row's action"
-eq "$(field '.skip | sort')" '["beta@mp1","gamma@mp2"]' "skips are reported"
+eq "$(field '.ignore | sort')" '["beta@mp1","gamma@mp2"]' "ignores are reported"
 eq "$(drift | jq -r '.targets[0].src')" "$SRC_A_RECORDED" "the recorded source path comes back"
 
 echo "== every action round-trips"
@@ -171,8 +171,11 @@ bash "$SCRIPT" --set alpha@mp1 maybe >/dev/null 2>&1
 eq "$?" '2' "an unknown action is refused"
 bash "$SCRIPT" --set alpha@mp1 issue >/dev/null 2>&1
 eq "$?" '2' "an action without a source path is refused"
-bash "$SCRIPT" --set beta@mp1 skip "$SRC_A" >/dev/null 2>&1
-eq "$?" '2' "skip refuses a source path"
+bash "$SCRIPT" --set beta@mp1 ignore "$SRC_A" >/dev/null 2>&1
+eq "$?" '2' "ignore refuses a source path"
+OUT=$(bash "$SCRIPT" --set beta@mp1 skip 2>&1); rc=$?
+eq "$rc" '2' "the old skip action is refused"
+case "$OUT" in *"use --set beta@mp1 ignore"*) ok "and names ignore" ;; *) bad "and names ignore (got '$OUT')" ;; esac
 eq "$(drift | jq -r '.targets[] | select(.key=="alpha@mp1") | .src')" "$SRC_A_RECORDED" "a refused --set leaves the prior decision intact"
 
 echo "== an unreadable declaration is not an empty one"
@@ -189,13 +192,17 @@ cat > "$DECL" <<JSON
 { "version": 1,
   "targets": {
     "alpha@mp1": { "action": "edit", "src": "$SRC_A" },
-    "delta@mp3": { "action": "skip" } } }
+    "delta@mp3": { "action": "ignore" },
+    "eps@mp3":   { "action": "skip" } } }
 JSON
 eq "$(drift | jq -r '.targets[] | select(.key=="alpha@mp1") | .action')" 'edit' "a hand-set action comes back unchanged"
-eq "$(field '.skip')" '["delta@mp3"]' "and so does a hand-set skip"
+eq "$(field '.ignore')" '["delta@mp3","eps@mp3"]' "and so does a hand-set ignore, with an older skip read as one"
+eq "$(jq -r '.targets["eps@mp3"].action' "$DECL")" 'skip' "--drift leaves an older skip on disk"
 bash "$SCRIPT" --set alpha@mp1 issue "$SRC_A" >/dev/null 2>&1
-eq "$(jq -r '.targets["delta@mp3"].action' "$DECL")" 'skip' "a write carries the other rows over"
+eq "$(jq -r '.targets["delta@mp3"].action' "$DECL")" 'ignore' "a write carries the other rows over"
+eq "$(jq -r '.targets["eps@mp3"].action' "$DECL")" 'ignore' "and migrates an older skip to ignore"
 eq "$(jq -r '.version' "$DECL")" '1' "and leaves the schema version alone"
+bash "$SCRIPT" --forget eps@mp3 >/dev/null 2>&1
 
 echo "== the account-sync lane"
 export CLAUDE_SKILLS_DIR="$ROOT/skills"
@@ -216,7 +223,7 @@ eq "$(bash "$SCRIPT" --drift | jq '.synced.plugins')" '2' \
    "synced plugin rows are counted without reading their fields"
 eq "$(bash "$SCRIPT" --drift | jq '.settled')" 'true' \
    "and the lane does not make the reconciliation unsettled"
-bash "$SCRIPT" --set pdf skip >/dev/null
+bash "$SCRIPT" --set pdf ignore >/dev/null
 eq "$(bash "$SCRIPT" --drift | jq -c '.synced.skills')" '["xlsx"]' \
    "a synced skill with a decision on record leaves the lane"
 bash "$SCRIPT" --forget pdf >/dev/null
@@ -261,8 +268,8 @@ eq "$(printf '%s' "$OUT" | jq -r '.targets[0].action')" 'issue' \
    "carrying the action that lane recorded"
 eq "$(printf '%s' "$OUT" | jq -r '[.new[].key] | join(",")')" 'delta@mp3' \
    "and asks only about what that declaration leaves out"
-CLAUDE_PLUGIN_DATA="$LANES/alpha-inline" bash "$SCRIPT" --set delta@mp3 skip >/dev/null 2>&1
-eq "$(jq -r '.targets["delta@mp3"].action' "$LANES/alpha-mp1/version-scan-targets.json")" 'skip' \
+CLAUDE_PLUGIN_DATA="$LANES/alpha-inline" bash "$SCRIPT" --set delta@mp3 ignore >/dev/null 2>&1
+eq "$(jq -r '.targets["delta@mp3"].action' "$LANES/alpha-mp1/version-scan-targets.json")" 'ignore' \
    "and records new decisions into it"
 eq "$([ -f "$LANES/alpha-inline/version-scan-targets.json" ] && echo wrote || echo clean)" 'clean' \
    "leaving the inline lane empty"

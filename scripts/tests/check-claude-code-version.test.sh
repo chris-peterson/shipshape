@@ -206,18 +206,23 @@ check "a written guide reads as filled"      "$(field '.guide.filled')" "true"
 # --- not the signal — a finished configuration usually leaves it empty.
 check "no declaration reads as unconfigured" "$(field '.declaration.configured')" "false"
 check "an unconfigured run examines nothing" "$(field '.declaration.examined')"   "0"
-check "an unconfigured run skips nothing"    "$(field '.declaration.skipped')"    "0"
+check "an unconfigured run ignores nothing"  "$(field '.declaration.ignored')"    "0"
 check "--status reports the declaration path" "$(field '.declaration.path')" "$(via_jq "$DATA/version-scan-targets.json")"
 
 declare_targets '{"version":1,"targets":{}}'
 status
 check "an empty declaration is a first run"  "$(field '.declaration.configured')" "false"
 
-declare_targets '{"version":1,"targets":{"a@m":{"action":"issue","src":"/tmp"},"b@m":{"action":"edit","src":"/tmp"},"c@m":{"action":"skip"}}}'
+declare_targets '{"version":1,"targets":{"a@m":{"action":"issue","src":"/tmp"},"b@m":{"action":"edit","src":"/tmp"},"c@m":{"action":"ignore"}}}'
 status
 check "recorded targets read as configured"  "$(field '.declaration.configured')" "true"
-check "the examined count omits skips"       "$(field '.declaration.examined')"   "2"
-check "the skipped count is its own"         "$(field '.declaration.skipped')"    "1"
+check "the examined count omits ignores"     "$(field '.declaration.examined')"   "2"
+check "the ignored count is its own"         "$(field '.declaration.ignored')"    "1"
+
+declare_targets '{"version":1,"targets":{"a@m":{"action":"issue","src":"/tmp"},"c@m":{"action":"skip"}}}'
+status
+check "an older skip counts as ignored"      "$(field '.declaration.ignored')"    "1"
+check "and not as examined"                  "$(field '.declaration.examined')"   "1"
 
 # An unreadable declaration is not an absent one: reported as unconfigured it
 # would start a first run that asks again for every recorded decision.

@@ -14,7 +14,7 @@
 #   { "version": 1,
 #     "targets": {
 #       "anchor@your-custom-marketplace": { "action": "issue", "src": "/…/anchor" },
-#       "frontend-design@claude-plugins-official": { "action": "skip" },
+#       "frontend-design@claude-plugins-official": { "action": "ignore" },
 #       "my-rules": { "action": "edit", "src": "/…/my-rules" } } }
 #
 # A key holding `@` is an installed plugin, matched against the install
@@ -29,7 +29,7 @@
 # That distinction has to live here rather than in the user's prose, because the
 # run has to know it per target:
 #
-#   skip       not examined, and not reported
+#   ignore     not examined, and not reported
 #   summarize  examined; findings summarized in the report (the default)
 #   issue      examined; findings offered for filing
 #   edit       examined; fixes landed as direct edits for the user to review
@@ -47,7 +47,7 @@
 #     "gone": [<key>…],                     decided, no longer installed
 #     "unreadable": [{key,src}…],           examined, src is not a directory
 #     "targets": [{key,action,src}…],       the examined set, ready to use
-#     "skip": [<key>…],                     decided `skip`
+#     "ignore": [<key>…],                   decided `ignore`
 #     "synced": {skills,plugins,unreadable}, the account-sync lane (see below)
 #     "settled": <true|false> }             nothing to ask about
 #
@@ -66,7 +66,7 @@
 # synced plugin bucket's rows carry fields this script does not read, so those
 # are counted. A bucket file that exists but does not parse is listed in
 # `synced.unreadable`, never counted as empty. A synced skill whose name is a
-# declared key, `skip` included, is decided and leaves `synced.skills`, so the
+# declared key, `ignore` included, is decided and leaves `synced.skills`, so the
 # list holds only what is still worth asking about.
 #
 # Exit:   0 = answered
@@ -77,8 +77,8 @@
 #         CLAUDE_PLUGINS_DIR  override ~/.claude/plugins (tests)
 #         CLAUDE_SKILLS_DIR   override ~/.claude/skills (tests)
 
-# covers: VERSION-25, VERSION-26, VERSION-32, VERSION-33, VERSION-40, VERSION-42,
-#         VERSION-43
+# covers: VERSION-25, VERSION-26, VERSION-32, VERSION-33, VERSION-34, VERSION-40,
+#         VERSION-42, VERSION-43
 set -euo pipefail
 . "${BASH_SOURCE[0]%/*}/platform.sh"
 
@@ -119,7 +119,9 @@ read_decl() {
     echo "version-scan-targets: $decl is not readable as a declaration; leaving it untouched" >&2
     return 1
   fi
-  cat "$decl"
+  # Older declarations record `ignore` as `skip`; reading them as `ignore`
+  # migrates them on the next write.
+  jq '.targets |= map_values(if .action == "skip" then .action = "ignore" else . end)' "$decl"
 }
 
 write_decl() {
@@ -259,11 +261,11 @@ case "${1:---drift}" in
       | [($installed - ($t | keys))[] | {key: ., source: ($sources[.] // "")}] as $new
       | [$t | to_entries[] | select(.key | contains("@")) | .key] as $plugin_keys
       | [$t | to_entries[]
-          | select(.value.action != "skip")
+          | select(.value.action != "ignore")
           | {key: .key, action: .value.action, src: (.value.src // "")}] as $examined
-      | [$t | to_entries[] | select(.value.action == "skip") | .key] as $skip
+      | [$t | to_entries[] | select(.value.action == "ignore") | .key] as $ignore
       | {new: $new, gone: ($plugin_keys - $installed), targets: $examined,
-         skip: $skip}
+         ignore: $ignore}
     ')
 
     # Whether a recorded src is still a directory is the one fact jq cannot
@@ -283,7 +285,7 @@ case "${1:---drift}" in
       | .targets as $rows
       | .targets = [$rows[] | select($ok[.src])]
       | .unreadable = [$rows[] | select($ok[.src] | not) | {key, src}]
-      | ([$rows[].key] + .skip) as $decided
+      | ([$rows[].key] + .ignore) as $decided
       | .synced = ($synced | .skills -= $decided)
       | .settled = ((.new | length) == 0 and (.gone | length) == 0
                     and (.unreadable | length) == 0)
@@ -293,7 +295,7 @@ case "${1:---drift}" in
   --set)
     key="${2:-}"; action="${3:-}"; src="${4:-}"
     if [ -z "$key" ] || [ -z "$action" ]; then
-      echo "version-scan-targets: --set needs <key> and skip|summarize|issue|edit" >&2
+      echo "version-scan-targets: --set needs <key> and ignore|summarize|issue|edit" >&2
       exit 2
     fi
     case "$action" in
@@ -309,15 +311,19 @@ case "${1:---drift}" in
         src=$(cd "$src" && pwd)
         entry=$(jq -n --arg a "$action" --arg s "$src" '{action:$a, src:$s}')
         ;;
-      skip)
+      ignore)
         if [ -n "$src" ]; then
-          echo "version-scan-targets: --set $key skip takes no source path; a target nobody examines has no use for one" >&2
+          echo "version-scan-targets: --set $key ignore takes no source path; a target nobody examines has no use for one" >&2
           exit 2
         fi
-        entry='{"action":"skip"}'
+        entry='{"action":"ignore"}'
+        ;;
+      skip)
+        echo "version-scan-targets: \`skip\` is now \`ignore\`; use --set $key ignore" >&2
+        exit 2
         ;;
       *)
-        echo "version-scan-targets: unknown action '$action'; use skip, summarize, issue or edit" >&2
+        echo "version-scan-targets: unknown action '$action'; use ignore, summarize, issue or edit" >&2
         exit 2
         ;;
     esac

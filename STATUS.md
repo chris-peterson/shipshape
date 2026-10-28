@@ -141,7 +141,7 @@ means an edit can't leave the two disagreeing.
 | VERSION-31 | Covered | skills/maintain-harness/references/claude-code.md |
 | VERSION-32 | Covered | skills/maintain-harness/references/claude-code.md; skills/maintain-harness/references/default-guide.md |
 | VERSION-33 | Covered | skills/maintain-harness/references/default-guide.md |
-| VERSION-34 | Covered | scripts/version-scan-targets.sh; skills/maintain-harness/references/deep-scan-set.md |
+| VERSION-34 | Covered | scripts/version-scan-targets.sh; skills/maintain-harness/references/deep-scan-set.md; skills/maintain-harness/references/first-run.md |
 | VERSION-35 | Covered | scripts/version-scan-targets.sh; skills/maintain-harness/references/default-guide.md |
 | VERSION-36 | Covered | skills/maintain-harness/references/claude-code.md; skills/maintain-harness/references/first-run.md |
 | VERSION-37 | Covered | skills/maintain-harness/references/first-run.md |

@@ -192,14 +192,15 @@ if [ "$mode" = status ]; then
   # already made. It answers null, and says why on stderr.
   # covers: VERSION-39
   decl_path="$CLAUDE_PLUGIN_DATA/version-scan-targets.json"
-  declaration='{"configured": null, "examined": null, "skipped": null}'
+  declaration='{"configured": null, "examined": null, "ignored": null}'
   if [ ! -f "$decl_path" ]; then
-    declaration='{"configured": false, "examined": 0, "skipped": 0}'
+    declaration='{"configured": false, "examined": 0, "ignored": 0}'
   elif jq -e 'type == "object" and (.targets | type == "object")' "$decl_path" >/dev/null 2>&1; then
+    # `skip` is what older declarations record for `ignore`.
     declaration="$(jq -c '(.targets | to_entries) as $t
       | {configured: ($t | length > 0),
-         examined: ([$t[] | select(.value.action != "skip")] | length),
-         skipped:  ([$t[] | select(.value.action == "skip")] | length)}' "$decl_path")"
+         examined: ([$t[] | select(.value.action | IN("ignore", "skip") | not)] | length),
+         ignored:  ([$t[] | select(.value.action | IN("ignore", "skip"))] | length)}' "$decl_path")"
   else
     printf 'shipshape: %s is not readable as a declaration; reporting its state as unknown.\n' "$decl_path" >&2
   fi
