@@ -37,7 +37,8 @@ flowchart TD
     Update --> Reconcile{Reconcile diffs}
     Reconcile -->|extras| Uninstall["Uninstall extras (skip project-scope + shared installs)"]
     Reconcile -->|missing| Install["Offer to install missing"]
-    Uninstall --> Scan
+    Uninstall --> Deps["Uninstall unused dependencies"]
+    Deps --> Scan
     Install --> Scan
     Scan["Scan caches + data dirs"] --> Report["Report orphans + stale versions"]
     Report --> Confirm{Delete?}
@@ -152,7 +153,7 @@ Updates are fast and network-bound, and with the marketplaces already refreshed 
 Track the pass on the progress surface (section 2 in output-format.md): the `Update plugins` item opens before the first update and closes after the last. Don't emit a line per plugin; the results land in the final report (Step 3).
 
 ## Step 3: Reconcile differences
-<!-- covers: RECON-10, RECON-11, RECON-11a, RECON-14, RECON-17, GUARD-01, GUARD-02 -->
+<!-- covers: RECON-10, RECON-11, RECON-11a, RECON-14, RECON-17, RECON-18, GUARD-01, GUARD-02 -->
 
 - **Extras** (installed, not desired):
   - **Shared on-disk install** (see the guardrail above — the extra's key is absent from `installed_plugins.json` while another row for the same plugin name is present) → **do not uninstall.** Removing this marketplace key deletes the plugin's only install record, taking the enabled copy with it. Surface it as a warning with the manifest-vs-list evidence and let the user resolve it deliberately (re-point `enabledPlugins`, or uninstall and reinstall from the desired marketplace). Report as "skipped (shared install)".
@@ -160,6 +161,15 @@ Track the pass on the progress surface (section 2 in output-format.md): the `Upd
 
     `--keep-data` is not optional. Uninstalling from a plugin's last remaining scope deletes its `${CLAUDE_PLUGIN_DATA}` directory, so without the flag Step 3 destroys accumulated user state before Step 5 gets to ask about it. Keeping the dir hands it to Step 4, which classifies it as an orphan, and to Step 5, which asks before removing anything non-empty. A data dir the user agrees to lose is one they were shown first.
   - **Project-scope** → **do not uninstall.** These are checked into a repo's `.claude/settings.json` and shared with the team, so they aren't yours to remove. Skip with a warning ("team-shared via repo settings; remove from the repo's `.claude/settings.json` instead") and report as "skipped (team-shared)". User-scope plugins are the personal ones, safe to reconcile.
+- **Unused dependencies** (auto-installed for another plugin that no installed plugin needs now). Claude Code writes a dependency into `enabledPlugins` when it installs one, so the diff counts it as desired after the plugin that needed it is gone. Once the extras are uninstalled, list them:
+
+  ```bash
+  CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-orphan-deps.sh"
+  ```
+
+  It prints `<key>|<version>` per unused dependency, and nothing in the common case. Uninstall each one as a user-scope extra: `claude plugin uninstall <plugin>@<marketplace> -y --keep-data`, then confirm the key is gone from `installed_plugins.json`. **Never run `claude plugin prune` for this.** It deletes each dependency's data dir and has no flag to keep it, so Step 5 would never get to ask.
+
+  Exit 1 means the list can't be trusted: a Claude Code without `prune`, an unreadable registry or manifest, or `prune --dry-run` output the script doesn't recognize. Report its stderr line, leave every dependency installed, and continue the run.
 - **Missing** (desired, not installed):
   - Offer to install: `claude plugin install <plugin>@<marketplace>`
   - Ask before installing — the desired set may be aspirational or out-of-date.
@@ -338,10 +348,11 @@ claude plugin marketplace update                       # refresh all marketplace
 claude plugin update <plugin>@<marketplace>           # update (run serialized, not in parallel)
 claude plugin install <plugin>@<marketplace>          # install; a "does not load" line after its success means not enabled (Step 3)
 claude plugin uninstall <plugin>@<marketplace> -y --keep-data   # uninstall, keeping the data dir for Step 5 to ask about
+CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-orphan-deps.sh"   # unused auto-installed dependencies, from `prune --dry-run` (Step 3)
 claude plugin --help                                  # full subcommand list (includes prune, enable, disable)
 ```
 
-`claude plugin prune` removes auto-installed dependencies that are no longer needed but does **not** touch caches or data dirs — that's still this skill's job.
+`claude plugin prune` removes unused auto-installed dependencies along with their data dirs, and leaves their caches. Step 3 uninstalls the same plugins with `--keep-data` instead.
 
 ## Paths
 

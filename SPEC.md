@@ -175,6 +175,15 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   plugin list, or the settings file cannot be read, then shipshape shall stop
   the reconcile and report which, since an unreadable registry would mark every
   plugin unmanaged and an unreadable list or settings file would hide one.
+- [RECON-18] When the install manifest marks a plugin `"auto": true` and
+  `claude plugin prune --dry-run` reports that no installed plugin still needs
+  it, shipshape shall uninstall it with `--keep-data` and verify against the
+  install manifest that its key is gone. Claude Code writes an auto-installed
+  dependency into `enabledPlugins`, so the diff reads it as desired after the
+  plugin that needed it is gone. shipshape shall not run `claude plugin prune`,
+  which deletes the data dir with no option to keep it (RECON-11a). If that list
+  cannot be read, or names a plugin the manifest does not mark auto-installed,
+  then shipshape shall uninstall none of them and report why.
 
 ### GUARD — Guardrails
 

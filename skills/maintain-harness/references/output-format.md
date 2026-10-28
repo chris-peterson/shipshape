@@ -56,7 +56,7 @@ Read the tool list; never call `TaskList` to see whether it errors. In a session
 Both branches build the same items from the *actual* work the Step-1 diff and Step-4 scan turn up — **one item per non-empty action group**, not a fixed pipeline of phases:
 
 - `Update plugins` — whenever any plugin stays installed. This is the one task with **no count** in its label: `claude plugin update` has no dry-run, so you can't know which plugins actually have an update until you run the pass. Don't guess a number that overstates the work (`Update plugins (29)` when 27 are no-ops) — the real tally of updated-vs-current lands in the final report afterward. It's a single task, not one per plugin.
-- `Uninstall N extras` — only if there are extras to remove.
+- `Uninstall N extras` — only if there are extras or unused dependencies to remove.
 - `Install N missing` — only if the user confirmed missing installs.
 - `Prune N stale/orphan caches` — only once the scan finds delete-eligible dirs (no live lease).
 
@@ -73,6 +73,13 @@ A plugin `plugin-unmanaged.sh` lists (Step 1) gets its row too, with its origin 
 
 ```text
 | synced       | helper     | 2.0.0   | ☁️ managed in claude.ai |
+```
+
+<!-- covers: RECON-18 -->
+An unused dependency the reconcile uninstalled (plugins.md Step 3) reads `🗑️ uninstalled (unused dependency)`, so the reader can tell it from an extra they removed from `enabledPlugins` themselves:
+
+```text
+| acme-tools   | helperlib  | 1.0.0   | 🗑️ uninstalled (unused dependency) |
 ```
 
 <!-- covers: RECON-17 -->

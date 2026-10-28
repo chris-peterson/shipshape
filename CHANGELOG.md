@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **`/maintain-harness plugins` removes dependencies nothing needs any more.** A plugin Claude Code installs because another plugin depends on it stays enabled after that plugin is uninstalled, so the reconcile kept it, and kept updating it. It now uninstalls those dependencies and keeps their data dirs, asking before it deletes one that holds files. `claude plugin prune` removes the same plugins but deletes their data dirs without asking, so shipshape doesn't use it.
+
 ## 1.2.2
 
 ### Fixed
