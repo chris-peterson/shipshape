@@ -245,15 +245,15 @@ the repos you've said are yours to patch.
 
 Which repos those are is the one thing shipshape can't work out from disk: a
 plugin you maintain and a plugin you merely use look identical there. So the
-first `/maintain-harness claude-code` asks, one plugin author at a time, and records your
-answer:
+first `/maintain-harness claude-code` asks, one plugin author at a time, whether
+you maintain any of their plugins. A plugin you don't maintain is ignored: it's
+never examined, and the report says nothing about it. For each one you do, it
+finds your checkout and asks what to do with a finding:
 
 | Your answer | What a finding in that repo becomes |
 |---|---|
-| just tell me | a line in the report, and nothing is written |
-| file it | a drafted issue, offered to `/anchor:issue` with the rest |
-| fix it in place | an edit in that repo's working tree, for you to review |
-| not mine | nothing: it's left to its own maintainer, and counted |
+| fix it in the source | an edit in that repo's working tree, for you to review |
+| file an issue | a drafted issue, offered to `/anchor:issue` with the rest |
 
 Later runs reconcile that against what you have installed and ask only about
 the difference, so a plugin you've already answered for never comes up again.

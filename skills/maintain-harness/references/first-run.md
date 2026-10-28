@@ -1,6 +1,6 @@
 # First run: configure, preview, then report
 
-<!-- covers: VERSION-36, VERSION-37, VERSION-38 -->
+<!-- covers: VERSION-34, VERSION-36, VERSION-37, VERSION-38 -->
 
 The built-in guide runs against the repos the user maintains and the
 actions they chose. On a first run neither exists, so a changelog summary
@@ -35,12 +35,16 @@ cut down to its host and owner. One question per owner, and the question is
 always the same one:
 
 ```text
-Do you own or maintain any of these plugins?
+Do you maintain any of these plugins?
 acme-lint, acme-deploy, acme-docs
-  ▸ All of them
-    None of them
+  ▸ None of them
+    All of them
     Let me choose
 ```
+
+Record every plugin they don't maintain as `ignore` as soon as they answer.
+That's most plugins on most machines, which is why "None of them" leads. It
+gets no follow-up question.
 
 **Name the plugins and ask the one thing.** The grouping is shipshape's
 bookkeeping, not the user's: don't explain that they share a source repo, don't
@@ -83,21 +87,21 @@ correction, and a corrected path is recorded as given — never argued with.
 A plugin `--resolve` cannot place is asked about directly, for that plugin,
 rather than by asking for a root.
 
-The other follow-up, in plain words:
+Then, for the plugins they maintain, the one other question:
 
 ```text
 When I find something in one of these, what should I do?
-  ▸ Fix it and show me
-    Write it up so I can file it
-    Just tell me about it
+  ▸ Fix it in the source
+    File an issue
 ```
 
-Record each answer as it arrives. A run that resolves the set without writing it
-asks again next upgrade.
+The first records `edit`, the second `issue`. Record each answer as it arrives.
+A run that resolves the set without writing it asks again next upgrade.
 
 **Keep the words plain.** The user is meeting this for the first time: no
-"bare key", no "sub-group", no counting things as "singletons". Say what the choice does to them — *fix it and show me*, *just
-tell me about it*.
+"bare key", no "sub-group", no counting things as "singletons", and no action
+names, which read as answers about updating the plugin. Say what the choice
+does to them: *fix it in the source*, *file an issue*.
 
 **Then offer the repos they already work in.** A repo that isn't a plugin can
 still be written against the CLI and its schemas — the place their rules and
@@ -130,7 +134,7 @@ On an upgrade, shipshape will:
   · check your ~/.claude rules, skills, hooks and settings
   · read <n> repos and write up what it finds so you can file it
   · read <n> repos and fix what it finds, leaving the edits for you to review
-  · leave <n> plugins to their own maintainers
+  · ignore <n> plugins you don't maintain
 ```
 
 Derive every line from the declaration: the counts and the wording follow what

@@ -444,9 +444,14 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   cache of the user's claude.ai account, so a fix landed there reaches neither
   the account nor a source tree and is reported as a fix that held.
 - [VERSION-34] Each declared target shall carry the user's recorded action
-  for a finding in it — summarized, drafted for filing, or fixed in place — and
-  shipshape shall act on that rather than deciding per run. `summarize` shall be
-  the action that presumes nothing and the one a target defaults to.
+  for a finding in it — fixed in the source, drafted for filing, summarized, or
+  ignored — and shipshape shall act on that rather than deciding per run.
+  shipshape shall ask it as two questions: whether the user maintains the
+  plugin, recording `ignore` for a no, and for a yes whether to fix a finding in
+  the source or file an issue. A single menu of actions next to a plugin's name
+  reads as a question about updating that plugin. shipshape shall read a target
+  recorded as `skip` as `ignore` and write it back as `ignore`, so a declaration
+  recorded before the rename keeps its decisions.
 - [VERSION-35] The built-in guide shall read the changelog from its raw URL,
   which needs no CLI and no credential. It shall read the first-party reference
   implementations an entry implicates through `gh`, which reaches arbitrary repo
@@ -486,7 +491,7 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   alone reads them as absent rather than as unexamined and reports full coverage
   having never seen them. A synced entry the user maintains shall be declarable
   under a bare key, since no manifest key can address it, and a synced skill
-  with any decision on record, `skip` included, shall leave the reported lane,
+  with any decision on record, `ignore` included, shall leave the reported lane,
   so the question is asked once rather than at every upgrade.
 - [VERSION-41] Where the session's working directory is shipshape's own
   checkout, the built-in guide shall repair shipshape against what changed

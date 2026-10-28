@@ -120,10 +120,10 @@ rather than a judgment to make per run:
 
 | `action` | What to do with a finding |
 |---|---|
-| `summarize` | one line in the report: the file, the line, and what a fix would cost. Nothing is written. The default, because it presumes nothing. |
+| `summarize` | one line in the report: the file, the line, and what a fix would cost. Nothing is written. Set only when the user asks to hear about findings without acting on them. |
 | `issue` | draft it for filing — title, a why-first body written for someone who has never seen that part of the repo, the exact files and lines, a size estimate — then offer the set to `/anchor:issue`. |
 | `edit` | land the fix as a direct edit in that repo for the user to review. No branch, no commit — leaving it in the working tree is what lets them read it before it goes anywhere. |
-| `skip` | not examined at all, and not mentioned. |
+| `ignore` | not examined at all, and not mentioned. |
 
 An `edit` target still reports what was changed. A fix nobody was told about is
 indistinguishable from a fix that never happened.
@@ -144,7 +144,7 @@ One pass, in this order, and nothing per tool call:
 **Report only what the run was configured to act on.** The declared set is the
 answer to what shipshape is for; a count of the plugins outside it is a fact
 about somebody else's software, and putting it at the end of the report asks the
-user to hold a number they have nothing to do with. Skipped targets earn no
+user to hold a number they have nothing to do with. Ignored targets earn no
 line, no count, and no closing tally.
 
 Then take the findings one at a time and ask **file it or fix it now**, one

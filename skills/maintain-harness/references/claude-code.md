@@ -33,7 +33,7 @@ guide and `--ack` commands below.
   "changelog": "https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md#21235",
   "guide": { "path": "…/harness-maintenance-guide.md", "filled": true },
   "declaration": { "path": "…/version-scan-targets.json", "configured": true,
-                   "examined": 12, "skipped": 15 }
+                   "examined": 12, "ignored": 15 }
 }
 ```
 
@@ -46,9 +46,9 @@ comments, which is what it ships as.
 that does: an empty guide is the ordinary end state of a *finished*
 configuration, so `guide.filled` says nothing about whether one has happened.
 `examined` is the count the acknowledge question quotes the run's scope from.
-`skipped` is there to tell a finished configuration from an empty one, not to be
-passed on to the user — what shipshape leaves to other maintainers is not part
-of the scope it is asking about. A null `configured` means the declaration
+`ignored` is there to tell a finished configuration from an empty one, not to be
+passed on to the user — the plugins they don't maintain are not part of the
+scope it is asking about. A null `configured` means the declaration
 is on disk but unreadable — never a first run; surface the stderr line and stop,
 since reconfiguring would ask again for every decision already recorded.
 

@@ -69,13 +69,13 @@ check "and it is not settled" "$(drift | jq -r '.settled')" 'false'
 # The skill routes to onboarding on "nothing configured", which has to be
 # distinguishable from "configured, and one plugin showed up since". Both leave
 # `settled` false, so `settled` alone cannot be the signal — an empty targets
-# AND skip pair is what says no decision was ever recorded.
+# AND ignore pair is what says no decision was ever recorded.
 echo "== nothing-configured is distinguishable from ordinary drift"
-check "no decision of either kind is on record" "$(drift | jq -c '[.targets, .skip]')" '[[],[]]'
-bash "$TARGETS" --set alpha@mp1 skip >/dev/null 2>&1
-check "one answer makes it no longer a first run" "$(drift | jq -c '[(.targets|length) + (.skip|length) > 0, .settled]')" '[true,false]'
+check "no decision of either kind is on record" "$(drift | jq -c '[.targets, .ignore]')" '[[],[]]'
+bash "$TARGETS" --set alpha@mp1 ignore >/dev/null 2>&1
+check "one answer makes it no longer a first run" "$(drift | jq -c '[(.targets|length) + (.ignore|length) > 0, .settled]')" '[true,false]'
 bash "$TARGETS" --forget alpha@mp1 >/dev/null 2>&1
-check "and forgetting it returns to nothing configured" "$(drift | jq -c '[.targets, .skip]')" '[[],[]]'
+check "and forgetting it returns to nothing configured" "$(drift | jq -c '[.targets, .ignore]')" '[[],[]]'
 
 echo "== the upgrade: Claude Code moves while the marker stays put"
 echo '2.1.240' > "$MARKER"
@@ -93,7 +93,7 @@ check "and the declaration still has questions" "$(drift | jq -r '.settled')" 'f
 check "while the upgrade is still pending" "$(status | jq -r '.pending')" 'true'
 
 echo "== neither artifact being empty finishes the other"
-bash "$TARGETS" --set alpha@mp1 skip >/dev/null 2>&1
+bash "$TARGETS" --set alpha@mp1 ignore >/dev/null 2>&1
 bash "$TARGETS" --set beta@mp2 summarize "$FIXTURES" >/dev/null 2>&1
 check "answering every target settles the declaration" "$(drift | jq -r '.settled')" 'true'
 check "but the guide is still unwritten" "$(status | jq -r '.guide.filled')" 'false'

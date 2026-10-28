@@ -23,11 +23,11 @@ CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash ${CLAUDE_PLUGIN_ROOT}/scripts/vers
 
 | Bucket | What it means | What to do |
 |---|---|---|
-| `new` | installed, no decision on record | ask: maintained, or theirs? Anything but `skip` needs the local checkout's path |
+| `new` | installed, no decision on record | ask: do you maintain it? No is `ignore`. Yes needs the local checkout's path and fix-or-file |
 | `gone` | decided, no longer installed | offer `--forget <key>` |
 | `unreadable` | examined, but the recorded path is not a directory | ask for the new path; never examine nothing and report a pass |
 | `targets` | the examined set, each row carrying its `action` | hand these to the fan-out, grouped by `src` |
-| `skip` | left to its own maintainer | don't examine, and don't report |
+| `ignore` | not maintained by the user | don't examine, and don't report |
 | `synced` | the account-sync lane, which no install manifest names | see below |
 
 `settled: true` means every bucket that asks a question is empty — use
@@ -36,22 +36,29 @@ CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash ${CLAUDE_PLUGIN_ROOT}/scripts/vers
 
 ```bash
 CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash ${CLAUDE_PLUGIN_ROOT}/scripts/version-scan-targets.sh --set <key> <action> <path>
-CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash ${CLAUDE_PLUGIN_ROOT}/scripts/version-scan-targets.sh --set <key> skip
+CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash ${CLAUDE_PLUGIN_ROOT}/scripts/version-scan-targets.sh --set <key> ignore
 CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash ${CLAUDE_PLUGIN_ROOT}/scripts/version-scan-targets.sh --forget <key>
 ```
+
+Ask it as two questions, never as a menu of the actions below: **do you
+maintain it?**, and for a yes, **fix it in the source, or file an issue?** A
+single list of actions next to a plugin's name reads as a question about
+updating the plugin, which is the plugins half's business.
 
 The action is the user's standing answer to *what happens to a finding here*,
 which is why it is recorded per target rather than decided per run:
 
 | `action` | Ask it as | Finding becomes |
 |---|---|---|
-| `summarize` | "just tell me" | a line in the report. **Recommend this for a new target** — it presumes nothing. |
-| `issue` | "file it" | a draft offered to `/anchor:issue` with the set |
-| `edit` | "fix it in place" | a direct edit in that repo, left in the working tree to review |
-| `skip` | "not mine" | nothing; the target is never examined |
+| `edit` | "fix it in the source" | a direct edit in that repo, left in the working tree to review |
+| `issue` | "file an issue" | a draft offered to `/anchor:issue` with the set |
+| `summarize` | not asked; set it when the user says they only want to hear about findings | a line in the report |
+| `ignore` | "I don't maintain it" | nothing; the target is never examined |
 
-`skip` takes no path, and passing one is refused: a target nobody examines has
-no use for a checkout, and storing one invites a later run to read it.
+`ignore` takes no path, and passing one is refused: a target nobody examines has
+no use for a checkout, and storing one invites a later run to read it. Older
+declarations record it as `skip`; the script reads those as `ignore` and
+refuses a new `skip`.
 
 Recording each answer as it arrives is what keeps the question to once per
 plugin. A run that resolves the set and doesn't write it asks again next upgrade,
@@ -85,11 +92,11 @@ CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash ${CLAUDE_PLUGIN_ROOT}/scripts/vers
 
 `synced.skills` lists only the skills with no decision on record. Ask once while
 it is non-empty, and record each answer as it comes: a skill the user maintains
-as above, one nobody maintains as `skip`. A recorded skill leaves the list, so
-the next upgrade doesn't ask again, and a skipped one earns no mention.
+as above, one they don't maintain as `ignore`. A recorded skill leaves the list,
+so the next upgrade doesn't ask again, and an ignored one earns no mention.
 
 ```bash
-CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash ${CLAUDE_PLUGIN_ROOT}/scripts/version-scan-targets.sh --set <name> skip
+CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash ${CLAUDE_PLUGIN_ROOT}/scripts/version-scan-targets.sh --set <name> ignore
 ```
 
 Editing a synced skill in place is never the fix: the folder is a cache of the
