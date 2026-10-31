@@ -277,7 +277,7 @@ pass it through:
 
 ```text
 Checked 37 entries: 3 touch your artifacts, 34 harness-internal.
-12 targets, 148 verdicts — 2 findings drafted for filing, 1 fixed in ai-sdlc.
+12 targets, 148 verdicts — 2 findings drafted for filing, 1 fixed in place.
 shipshape: acknowledged Claude Code 2.1.235.
 ```
 

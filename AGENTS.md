@@ -107,7 +107,7 @@ scripts/guide-content.sh            a guide's content: comments and leading blan
 scripts/harness-guide.sh            the user's guide: its state, one section's content, the seed, and the one-time migration
 scripts/tests/                      bash suites, one per script
 SPEC.md / STATUS.md                 requirements and their coverage
-docs/                               docsify site (_sidebar.md, README.md, favicon are source)
+docs/                               docsify site (_sidebar.md, README.md are source)
 ```
 
 `.claude-plugin/plugin.json`, `hooks/hooks.json`, `plugin.yml`'s `suite.describe`

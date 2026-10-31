@@ -17,5 +17,6 @@
     "harness"
   ],
   "homepage": "https://chris-peterson.github.io/shipshape/#/",
+  "icon": ".claude-plugin/icon.svg",
   "documentationUrl": "https://chris-peterson.github.io/shipshape/#/"
 }
