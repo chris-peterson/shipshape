@@ -53,6 +53,73 @@ releases it after its report.
 CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash "${CLAUDE_PLUGIN_ROOT}/scripts/maintenance-lock.sh" release
 ```
 
+## Track what the run changes
+<!-- covers: REPORT-12, REPORT-13 -->
+
+The run ends by listing every path it changed, so the user knows when they're
+done. Their other sessions work in the same checkouts, so `git status` can't say
+which changes are this run's. Snapshot a repo before the run's first write to it:
+
+```bash
+CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash "${CLAUDE_PLUGIN_ROOT}/scripts/run-changes.sh" start <repo>...
+```
+
+- **Acknowledging an upgrade:** every target `src` that `version-scan-targets.sh
+  --drift` lists, before the built-in guide's repair step, then each repo a step
+  of the user's guide writes to that isn't one of them, before that step.
+- **A step of the guide's plugins section:** each repo it writes to, before the
+  step.
+
+A repeated `start` keeps a repo's first snapshot, so there's no need to track
+which repos are already in. A dir that isn't a git work tree gets a row saying
+its changes weren't tracked.
+
+## Close the run
+<!-- covers: REPORT-10, REPORT-12 -->
+
+A run closes once, after its last half: under `all`, after the plugins half's
+report. Close with the changes, then the steps the user takes, and nothing after
+them.
+
+```bash
+CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash "${CLAUDE_PLUGIN_ROOT}/scripts/run-changes.sh" report
+```
+
+It prints `<repo>|<path>|<state>|<before>` per changed path and a `#totals` line.
+Render one table that also carries what the run changed outside a repo: the
+issues it filed, the version it recorded, the guide if it was edited, and the
+caches it pruned. A plugin the run updated, installed, or uninstalled already has
+its row in the Updates table, so here it gets one count row.
+
+```text
+**Changed this run**
+| Where | Path | State |
+|---|---|---|
+| ~/src/acme-widgets | `src/foo.md` | uncommitted (modified) |
+| ~/src/acme-widgets | `src/bar.md` | uncommitted (modified), already had other changes |
+| ~/src/acme-tools | `hooks/x.sh` | committed abc1234 |
+| [acme/widgets#12](<issue-url>) | <issue title> | filed |
+| shipshape | `<CLAUDE_PLUGIN_DATA>/acknowledged-version` | recorded 1.2.3 |
+| plugin cache | 15 stale version dirs | pruned (59M) |
+| plugins | 2 updated, 1 uninstalled | see Updates |
+```
+
+| `state` | Row |
+|---|---|
+| `modified`, `added`, `deleted`, `renamed`, `untracked` | `uncommitted (<state>)` |
+| `committed <sha>` | `committed <sha>` |
+| `restored` | `restored to HEAD` |
+| `not-a-repo` | `not tracked: not a git work tree` |
+
+`before` of `dirty` appends "already had other changes": the user reviews that
+file knowing part of its diff is someone else's. Where `report` exits 1, say the
+list couldn't be produced and quote its stderr line, rather than rebuilding it
+from memory. When nothing changed anywhere, the section is one line:
+`Changed this run: nothing.`
+
+Then the steps, per the half that closed: output-format.md's closing for the
+plugins half, or `Nothing left to run.` when there are none.
+
 ## Pick the half
 <!-- covers: HARNESS-01, HARNESS-02, HARNESS-03 -->
 

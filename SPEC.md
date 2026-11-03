@@ -606,6 +606,18 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   task tool to see whether it errors, and shall not say which it took. Claude
   Code offers the task tools to a fixed list of model ids, so a current model on
   a default install has none.
+- [REPORT-12] shipshape shall close a run, ahead of the steps the user takes,
+  with every change the run made: each path it changed in a repo with that
+  path's state (uncommitted, committed, restored), each issue it filed as a link,
+  and what it recorded or pruned outside a repo. A run that changed nothing shall
+  say so in one line, and where the steps are empty, the closing shall say there
+  is nothing left to run.
+- [REPORT-13] shipshape shall list a repo path as changed by the run only when
+  it differs from a snapshot of that repo taken before the run's first write to
+  it, so changes another session left in the same checkout stay out of the list.
+  A path that already had uncommitted changes at the snapshot shall be marked as
+  such, and a dir that isn't a git work tree shall get a row saying its changes
+  weren't tracked.
 
 ## Future Requirements
 

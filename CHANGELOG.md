@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+
+- **`/maintain-harness` ends with everything the run changed.** The closing lists each file it changed in your repos (uncommitted or committed), each issue it filed, the version it recorded, and the caches it pruned, followed by the steps left for you, or "Nothing left to run." Only the run's own changes are listed: it snapshots each repo before writing to it, so work your other sessions left in the same checkout stays out, and a file that already had changes is marked.
+
 ### Changed
 
 - **The first upgrade asks a clearer question about your plugins.** It asks whether you maintain each author's plugins. The ones you don't are ignored: never examined and never reported. For each one you do, it asks whether to fix what it finds in your checkout or file an issue. The old `skip` answer, which read like "don't update this plugin", is now `ignore`, and decisions you've already recorded carry over.

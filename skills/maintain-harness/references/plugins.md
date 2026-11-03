@@ -335,7 +335,7 @@ CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash "${CLAUDE_PLUGIN_ROOT}/scripts/har
 CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash "${CLAUDE_PLUGIN_ROOT}/scripts/harness-guide.sh" --section plugins
 ```
 
-Carry it out in the order written, once the lock is released. A step that names the installers the plugins ship takes its list from `harness-guide.sh --installers`; any other step that asks Claude to find things reads the install manifest's `installPath`s for the current versions, not the `${CLAUDE_PLUGIN_ROOT}` this session loaded.
+Carry it out in the order written, once the lock is released. A step that writes to a repo snapshots it first with `run-changes.sh start`, per SKILL.md's **Track what the run changes**. A step that names the installers the plugins ship takes its list from `harness-guide.sh --installers`; any other step that asks Claude to find things reads the install manifest's `installPath`s for the current versions, not the `${CLAUDE_PLUGIN_ROOT}` this session loaded.
 
 **A command only the user can type is listed, not attempted.** `/reload-plugins` is built in, and a command with `disable-model-invocation: true` refuses the Skill tool. Collect those in the section's order and close the report with them as one numbered list of exact commands (see the closing in output-format.md). Where the section names `/reload-plugins`, it replaces Step 6's reload ask rather than joining it, so the reload appears once and in the position the guide put it.
 

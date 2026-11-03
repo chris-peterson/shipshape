@@ -99,6 +99,7 @@ scripts/plugin-unmanaged.sh         lists installed and desired keys whose origi
 scripts/plugin-orphan-deps.sh       lists auto-installed dependencies nothing needs, from `claude plugin prune --dry-run`
 scripts/plugin-cache-prune.sh       deletes the paths it is handed, and refuses everything else
 scripts/maintenance-lock.sh         the cooperative lock one /maintain-harness run holds across both halves
+scripts/run-changes.sh              snapshots the repos a run writes to, and reports the paths it changed
 scripts/plugin-data-dir.sh          resolves a --plugin-dir session back to the installed plugin's data dir
 scripts/platform.sh                 sourced by every script: a fetched jq on PATH, ensure_jq for hooks, jq -b and POSIX paths under git-bash
 scripts/fetch-jq.sh                 downloads a pinned, checksummed jq into the plugin data dir when the system has none

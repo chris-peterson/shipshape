@@ -198,7 +198,9 @@ repair shipshape itself where the session is in its checkout, check their own
 by that target's recorded action. The procedure is
 [default-guide.md](default-guide.md) — read it before
 starting, since the action decides whether a finding is summarized, drafted
-for filing, or fixed in place.
+for filing, or fixed in place. Before its first write, pass every target's `src`
+from its step 4 listing to `run-changes.sh start`, per SKILL.md's **Track what
+the run changes**.
 
 **3. Read the user's own guide.** Its upgrade section *adds* to the built-in
 guide rather than replacing it. Comments are already stripped; empty output means they have
@@ -215,7 +217,8 @@ list or its own changelog read; the declaration and step 2 are the current
 answer, and saying so once beats running the errand twice.
 
 **4. Carry the guide out**, in the order written, before recording anything. It's the
-user's own instruction to you. Recording ends the errand, so every step has to
+user's own instruction to you. A step that writes to a repo outside the declared
+targets snapshots it first with `run-changes.sh start`. Recording ends the errand, so every step has to
 land a result that stands without you: a step that produces findings is carried
 out by establishing them in the code it names, not by writing down what the
 changelog implies, and one that fans out over independent targets is worth
@@ -289,3 +292,7 @@ run's business.
 A non-zero exit means nothing was recorded and the version is still pending —
 surface the script's stderr rather than reporting a dismissal that didn't
 happen.
+
+A `claude-code` run then closes, per SKILL.md's **Close the run**, with its changes:
+the paths it wrote in each repo, the issues it filed, and the recorded version.
+Under `all`, the plugins half follows and the run closes after it, once.

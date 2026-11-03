@@ -127,8 +127,10 @@ When plugins actually changed, the movers show their version transition in the s
 ```
 
 <!-- covers: REPORT-10 -->
-Close with **what the user does**, and end the reply there. Anything after the
-steps buries them, so the closing is the last thing in the reply.
+Close with **what the run changed**, then **what the user does**, and end the
+reply there. The changes table is SKILL.md's **Close the run**, and it goes
+after Step 7, which can write too. Anything after the steps buries them, so the closing is the last
+thing in the reply.
 
 Each step is the exact command, with no reason attached. The user acts on the
 list and reads past any explanation, so a step that needs a sentence to justify
