@@ -10,6 +10,10 @@
 
 - **The first upgrade asks a clearer question about your plugins.** It asks whether you maintain each author's plugins. The ones you don't are ignored: never examined and never reported. For each one you do, it asks whether to fix what it finds in your checkout or file an issue. The old `skip` answer, which read like "don't update this plugin", is now `ignore`, and decisions you've already recorded carry over.
 
+### Other
+
+- shipshape's icon shows in marketplace catalogs and the plugin directory.
+
 ## 1.2.3
 
 ### Fixed
