@@ -15,7 +15,6 @@ A shared emoji vocabulary ties the surfaces together — the same marker means t
 | ⬆️ | updated to a newer version |
 | 🔄 | refreshed from source (HEAD-tracked, no version number) |
 | ➕ | installed · 🗑️ uninstalled |
-| 💤 | installed but **disabled** (a deliberate state, left as-is) |
 | ⏭️ | skipped (team-shared, shared on-disk install, or an origin that isn't a registered marketplace) |
 | ☁️ | managed in claude.ai (a `<name>@synced` plugin, left to its account) |
 | 🔒 | stale cache pinned by a live session (not pruned) · 🧹 pruned |
@@ -30,10 +29,10 @@ Render after Step 1, before any update/install/uninstall runs.
 Lead with a one-line **composition** so the enabled-vs-disabled split is declared up front, not revealed at the end. A disabled plugin is a deliberate state, not drift — the run leaves it alone, and the user should see that scope from the start:
 
 ```text
-📦 30 installed · ✅ 17 enabled · 💤 13 disabled (1 team-shared) · reconciling the 17 enabled
+📦 30 installed · ✅ 17 enabled · 13 disabled (1 team-shared) · reconciling the 17 enabled
 ```
 
-Then a **plan table** — but only when there's a mix of actions worth previewing (installs, uninstalls, skips). When the only planned action is "update every enabled plugin" (the common case), the composition line already says so — don't follow it with 17 identical `queued: update` rows. One row per plugin you'll act on, ordered by marketplace then plugin; the Status column carries the *planned* action:
+Then a **plan table** — but only when there's a mix of actions worth previewing (installs, uninstalls, skips). When the only planned action is "update every plugin" (the common case), the composition line already says so — don't follow it with 17 identical `queued: update` rows. One row per plugin you'll act on, ordered by marketplace then plugin; the Status column carries the *planned* action:
 
 ```text
 | Marketplace  | Plugin   | Version | Status            |
@@ -66,7 +65,7 @@ Don't create an item for an empty group — an instantly-completed `Reconcile: n
 
 Render after Steps 2-3 finish. This is the authoritative result: an emoji-tagged status block, not prose paragraphs. It opens with the *same composition line* the run led with (so the reader who scrolled past the top still sees the enabled/disabled split here) and then reports each area — reconcile, updates, cache, data — as its own short line or table.
 
-List **every enabled plugin on its own row** in the updates table. A maintenance report exists to let the reader confirm each plugin's result — "did my plugin get handled?" — and a collapsed count (`tidydiff +5`, `13 others`) hides exactly the names they came to check, forcing a re-run of `claude plugin list`. Completeness wins over brevity here: one row per plugin, ordered by marketplace then plugin. The Version column shows the current version, a `from → to` transition for a plugin that moved, or `n/a` for a HEAD-tracked plugin with no version number; the Result column carries the emoji-tagged outcome. A large plugin set produces a long table — that's the intended trade.
+List **every plugin Step 2 updated on its own row** in the updates table, disabled ones included. A maintenance report exists to let the reader confirm each plugin's result — "did my plugin get handled?" — and a collapsed count (`tidydiff +5`, `13 others`) hides exactly the names they came to check, forcing a re-run of `claude plugin list`. Completeness wins over brevity here: one row per plugin, ordered by marketplace then plugin. A disabled plugin's Result carries `, disabled` after its outcome (`✅ current, disabled`, `⬆️ updated, disabled`), so the reader can tell it was handled and that it still isn't loaded. The Version column shows the current version, a `from → to` transition for a plugin that moved, or `n/a` for a HEAD-tracked plugin with no version number; the Result column carries the emoji-tagged outcome. A large plugin set produces a long table — that's the intended trade.
 
 <!-- covers: RECON-16 -->
 A plugin `plugin-unmanaged.sh` lists (Step 1) gets its row too, with its origin in the Marketplace column, so the reader can see it was left alone and why. A `synced` row reads `☁️ managed in claude.ai`; any other origin reads `⏭️ not a registered marketplace`:
@@ -92,21 +91,21 @@ An install whose output names a settings file that does not load (plugins.md Ste
 ```text
 ### Plugin maintenance
 
-📦 22 installed · ✅ 9 enabled · 💤 13 disabled (1 team-shared)
+📦 9 installed · ✅ 7 enabled · 2 disabled
 🔁 Reconcile — nothing to install or uninstall; every plugin matches its desired state.
 
-**Updates** (9 enabled)
-| Marketplace  | Plugin     | Version | Result       |
-|--------------|------------|---------|--------------|
-| acme-tools   | tidydiff   | 1.1.0   | ✅ current   |
-| acme-tools   | notekeep   | 0.3.0   | ✅ current   |
-| acme-tools   | difflens   | 0.15.0  | ✅ current   |
-| acme-tools   | speccraft  | 0.4.0   | ✅ current   |
-| acme-tools   | tuneup     | 0.4.3   | ✅ current   |
-| acme-tools   | trailhead  | 0.9.0   | ✅ current   |
-| oss-registry | uikit      | n/a     | 🔄 refreshed |
-| oss-registry | browserkit | n/a     | 🔄 refreshed |
-| oss-registry | devkit     | n/a     | 🔄 refreshed |
+**Updates**
+| Marketplace  | Plugin     | Version | Result                |
+|--------------|------------|---------|-----------------------|
+| acme-tools   | tidydiff   | 1.1.0   | ✅ current            |
+| acme-tools   | notekeep   | 0.3.0   | ✅ current, disabled  |
+| acme-tools   | difflens   | 0.15.0  | ✅ current            |
+| acme-tools   | speccraft  | 0.4.0   | ✅ current            |
+| acme-tools   | tuneup     | 0.4.3   | ✅ current, disabled  |
+| acme-tools   | trailhead  | 0.9.0   | ✅ current            |
+| oss-registry | uikit      | n/a     | 🔄 refreshed          |
+| oss-registry | browserkit | n/a     | 🔄 refreshed          |
+| oss-registry | devkit     | n/a     | 🔄 refreshed          |
 
 🔒 Cache — 23 stale dirs (~166M) pinned by live sessions; 🧹 0 pruned (they free up as those sessions exit).
 ```
@@ -116,7 +115,7 @@ An install whose output names a settings file that does not load (plugins.md Ste
 When plugins actually changed, the movers show their version transition in the same table — no separate treatment, no collapsing the unchanged into a count. The table reads as the plan, refreshed:
 
 ```text
-**Updates** (5 enabled)
+**Updates**
 | Marketplace  | Plugin     | Version         | Result       |
 |--------------|------------|-----------------|--------------|
 | acme-tools   | tidydiff   | 1.1.0           | ✅ current   |

@@ -122,8 +122,8 @@ in `~/.claude/settings.json` (`enabledPlugins`), then:
    it carries out the plugins section of
    [your guide](/?id=your-harness-maintenance-guide).
 
-It lists **every enabled plugin**, and each gets a row with its version and result,
-so you can confirm each plugin's result at a glance rather than re-running
+It lists **every plugin it updated**, each on a row with its version and result
+(disabled ones marked `, disabled`), so you can confirm each plugin's result at a glance rather than re-running
 `claude plugin list`. Only caches are reported by exception (stale-version dirs
 are routine noise).
 

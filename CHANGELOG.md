@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- **The plugin report spells out a disabled plugin's state.** Every plugin the run updates gets its own row, disabled ones included, and a disabled one reads `✅ current, disabled` (or `⬆️ updated, disabled`) in place of the 💤 marker.
+
 ## 1.3.0
 
 ### Added

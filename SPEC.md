@@ -579,8 +579,9 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
 - [REPORT-02] shipshape shall lead both the opening summary and the closing
   report with the same composition line (installed / enabled / disabled).
 - [REPORT-03] shipshape shall tag statuses with the shared emoji vocabulary.
-- [REPORT-04] shipshape shall list every enabled plugin on its own row in the
-  updates report rather than collapsing unchanged ones into a count.
+- [REPORT-04] shipshape shall list every plugin it updated on its own row in the
+  updates report rather than collapsing unchanged ones into a count, marking a
+  disabled plugin's result `, disabled`.
 - [REPORT-05] shipshape shall report stale-version caches by exception as a
   single count-and-size line, reserving table rows for genuine orphans.
 - [REPORT-06] shipshape shall report outcomes only — no per-tool-call preambles,
