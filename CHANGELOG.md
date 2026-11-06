@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- **The plugin report lists a dependency an update installed.** Since Claude Code 2.1.319, `claude plugin update` installs a dependency that a plugin's new version adds. The report gives that plugin its own `➕ installed (dependency)` row, a plugin the update pass removed gets a `➖ removed by an update` row, and a run that did either asks you to reload.
+
 ## 1.3.1
 
 ### Changed

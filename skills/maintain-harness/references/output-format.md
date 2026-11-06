@@ -14,7 +14,7 @@ A shared emoji vocabulary ties the surfaces together — the same marker means t
 | ✅ | already current (no change) |
 | ⬆️ | updated to a newer version |
 | 🔄 | refreshed from source (HEAD-tracked, no version number) |
-| ➕ | installed · 🗑️ uninstalled |
+| ➕ | installed · 🗑️ uninstalled · ➖ removed by an update |
 | ⏭️ | skipped (team-shared, shared on-disk install, or an origin that isn't a registered marketplace) |
 | ☁️ | managed in claude.ai (a `<name>@synced` plugin, left to its account) |
 | 🔒 | stale cache pinned by a live session (not pruned) · 🧹 pruned |
@@ -79,6 +79,14 @@ An unused dependency the reconcile uninstalled (plugins.md Step 3) reads `🗑�
 
 ```text
 | acme-tools   | helperlib  | 1.0.0   | 🗑️ uninstalled (unused dependency) |
+```
+
+<!-- covers: RECON-19 -->
+A plugin an update installed as a new dependency (plugins.md Step 2) reads `➕ installed (dependency)`, so the reader sees a plugin they never asked for and where it came from. One the update pass removed reads `➖ removed by an update`:
+
+```text
+| acme-tools   | helperlib  | 1.0.0   | ➕ installed (dependency) |
+| acme-tools   | oldlib     | 0.9.0   | ➖ removed by an update |
 ```
 
 <!-- covers: RECON-17 -->

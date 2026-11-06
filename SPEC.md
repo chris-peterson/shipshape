@@ -184,6 +184,13 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   which deletes the data dir with no option to keep it (RECON-11a). If that list
   cannot be read, or names a plugin the manifest does not mark auto-installed,
   then shipshape shall uninstall none of them and report why.
+- [RECON-19] When the update pass completes, shipshape shall re-read the install
+  manifest and report every key absent from the installed set it diffed as
+  installed by an update, and every key of that set the manifest no longer
+  holds as removed by an update. `claude plugin update` installs a dependency
+  that the new plugin version adds, so that plugin is on disk and enabled
+  without appearing in the diff, and a key the pass removed would go unreported
+  the same way.
 
 ### GUARD — Guardrails
 

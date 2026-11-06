@@ -49,6 +49,7 @@ means an edit can't leave the two disagreeing.
 | RECON-16   | Covered | skills/maintain-harness/references/plugins.md; skills/maintain-harness/references/output-format.md; scripts/plugin-unmanaged.sh |
 | RECON-17   | Covered | skills/maintain-harness/references/plugins.md; skills/maintain-harness/references/output-format.md |
 | RECON-18   | Covered | skills/maintain-harness/references/plugins.md; skills/maintain-harness/references/output-format.md; scripts/plugin-orphan-deps.sh |
+| RECON-19   | Covered | skills/maintain-harness/references/plugins.md; skills/maintain-harness/references/output-format.md |
 
 ## GUARD — Guardrails
 

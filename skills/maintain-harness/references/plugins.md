@@ -126,7 +126,7 @@ Enumerating `extraKnownMarketplaces` alone would report the wrong set and fail o
 shipshape's `SessionStart` hook enforces this — it enables any marketplace missing the flag, effective next launch — so the skill only **reports** status here; it doesn't write. Surface any marketplace still showing `false` so the user knows the hook will pick it up.
 
 ## Step 2: Update plugins
-<!-- covers: RECON-07, RECON-08, RECON-09, RECON-14 -->
+<!-- covers: RECON-07, RECON-08, RECON-09, RECON-14, RECON-19 -->
 
 **Do not blanket-parallelize updates.** `claude plugin update` refreshes the plugin's marketplace by re-cloning it; run several updates for plugins from the *same* marketplace at once (the common case) and the clones collide (`destination path already exists and is not an empty directory`), so some updates fail with `Plugin not found` and are silently skipped in the parallel output. The marketplace isn't damaged — a sequential retry succeeds immediately — but the failure hides in the noise.
 
@@ -149,6 +149,14 @@ No flag reaches it. `-y` and `--accept-command <sha256>` both hit the same guard
 Updates are fast and network-bound, and with the marketplaces already refreshed each one is cheap; the clone-collision cost far outweighs the parallelism. (If speed ever matters on a large set, the only safe parallelism is across *distinct* marketplaces — never two updates of the same marketplace at once.)
 
 **Surface and retry failures — never lose one in the output.** If an update reports `Plugin not found` or another transient error, retry it once serially and reflect the real outcome in the final report. An update that stays failed is a row the user needs to see, not a silent gap.
+
+**An update can install a plugin.** Where a new version adds a dependency, `claude plugin update` installs it and writes it into `enabledPlugins`, so it lands on disk without ever being in Step 1's sets. Once the last update finishes, re-read the manifest keys and compare them with the installed set Step 1 built:
+
+```bash
+CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash "${CLAUDE_PLUGIN_ROOT}/scripts/jq.sh" '.plugins | keys' ~/.claude/plugins/installed_plugins.json
+```
+
+Each new key gets its own row in the final report as installed by an update, and each key Step 1 listed that the manifest no longer holds gets one as removed by an update (output-format.md). Either counts as a change for the reload step. A dependency the new version no longer needs but leaves installed is Step 3's unused-dependency pass.
 
 Track the pass on the progress surface (section 2 in output-format.md): the `Update plugins` item opens before the first update and closes after the last. Don't emit a line per plugin; the results land in the final report (Step 3).
 
