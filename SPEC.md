@@ -18,11 +18,16 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
 
 - **Harness** — everything wrapped around the model that decides how well it works
   for a user: the Claude Code install, the plugins enabled in it, and the rules,
-  skills, and hooks they wrote. [Thoughtworks' Technology
-  Radar](https://www.thoughtworks.com/radar) (Vol. 34, theme *Putting coding
-  agents on a leash*) scopes the term to the *controls* in that set — Agent
-  Skills and the marketplaces distributing them on the feedforward side, quality
-  gates on the feedback side. shipshape's scope is the staleness those controls
+  skills, and hooks they wrote. Thoughtworks' Technology Radar Vol. 34 (theme
+  *Putting coding agents on a leash*) scopes the term to the *controls* in that
+  set — Agent Skills and the marketplaces distributing them on the feedforward
+  side, quality gates on the feedback side. [Vol.
+  35](https://www.thoughtworks.com/radar) (theme *Harness engineering at scale*)
+  calls the harness "a living asset that requires ongoing ownership and
+  maintenance", and its [feedback
+  flywheel](https://www.thoughtworks.com/radar/techniques/feedback-flywheel)
+  entry recommends "continuously checking which artifacts are still used and up
+  to date". shipshape's scope is that maintenance: the staleness the controls
   accumulate, not the controls themselves.
 - **Desired set** — the plugins declared under `enabledPlugins` in
   `~/.claude/settings.json` (a map of `<plugin>@<marketplace>` → bool). The set

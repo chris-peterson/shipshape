@@ -25,13 +25,19 @@ tells you what changed, and keeps what it can current.
 | Your installed plugins | `/maintain-harness plugins` matches them to the `enabledPlugins` you declared, updates them, and cleans up the caches and data dirs that updates and uninstalls leave behind |
 
 > [!TIP]
-> [Thoughtworks' Technology Radar](https://www.thoughtworks.com/radar) (Vol. 34,
-> theme *Putting coding agents on a leash*) defines a **coding agent harness** as
-> "controls that guide agents' behavior before code is generated and provide
-> feedback afterwards to enable self-correction". The feedforward half is
-> Agent Skills and the plugin marketplaces that distribute them. Those controls
-> are only as good as their current version, which is the part shipshape keeps
-> in order.
+> Thoughtworks' Technology Radar Vol. 34 (theme *Putting coding agents on a
+> leash*) defined a **coding agent harness** as "controls that guide agents'
+> behavior before code is generated and provide feedback afterwards to enable
+> self-correction". [Vol. 35](https://www.thoughtworks.com/radar) makes
+> *Harness engineering at scale* a theme, because "the harness is a living asset
+> that requires ongoing ownership and maintenance". Its
+> [feedback flywheel](https://www.thoughtworks.com/radar/techniques/feedback-flywheel)
+> entry recommends "continuously checking which artifacts are still used and up
+> to date", and its
+> [agent plugin marketplace](https://www.thoughtworks.com/radar/techniques/agent-plugin-marketplace)
+> entry is how teams publish and update those artifacts instead of copying them
+> between repos. shipshape does that maintenance: it keeps your harness current
+> with Claude Code and with your marketplaces.
 
 ## Install
 
@@ -50,18 +56,19 @@ banner says so.
 
 ## Skills
 
-One skill, [`/shipshape:maintain-harness`](/skills/maintain-harness), covers both.
-Its argument picks what runs:
+One skill, [`/shipshape:maintain-harness`](/skills/maintain-harness), covers all of
+it. Its argument picks what runs:
 
 | Run | What it does |
 |---|---|
 | `/maintain-harness`, `/maintain-harness all` | Handles a pending Claude Code upgrade, then reconciles your plugins. With no upgrade pending, it says so in one line and goes straight to plugins. |
-| `/maintain-harness claude-code` | [The upgrade alone](/?id=maintain-harness-claude-code): what's new, your instructions, acknowledge |
+| `/maintain-harness claude-code`, `/maintain-harness cc` | [The upgrade alone](/?id=maintain-harness-claude-code): what's new, your instructions, acknowledge |
 | `/maintain-harness plugins` | [The plugins alone](/?id=your-plugins-maintain-harness-plugins): reconcile, update, and prune |
 | `/maintain-harness guide` | [Your guide](/?id=your-harness-maintenance-guide): show it, change it, or set it up |
 
-Both hooks run at session start and need nothing from you: the wiring is on the
-[hooks](/hooks) page.
+Two hooks run at session start and need nothing from you: the wiring is on the
+[hooks](/hooks) page. While `/maintain-harness` runs, a Stop hook blocks a reply
+that offers more work instead of doing it.
 
 ## Configuration
 
@@ -99,19 +106,24 @@ It reconciles **installed** plugins against the **desired** set you've declared
 in `~/.claude/settings.json` (`enabledPlugins`), then:
 
 1. **Lock**: take a cooperative maintenance lock, since `claude plugin` has no
-   concurrency control of its own. The lock covers the whole `/maintain-harness`
-   run, so if another session is already maintaining its harness, the run stops
-   and names it rather than interleaving.
+   concurrency control of its own. The lock covers the upgrade half and every
+   plugin change, so if another session is already maintaining its harness, the
+   run stops and names it rather than interleaving. It's released before your
+   guide's plugins steps run.
 2. **Inventory**: list what's installed (`claude plugin list`) and read your
    desired set. A plugin you turned on in claude.ai (`<name>@synced`) is
    governed there, so it's set aside here and reported as managed in claude.ai
-   rather than reconciled.
+   rather than reconciled. A plugin from any other origin that isn't a
+   registered marketplace is set aside the same way.
 3. **Update**: `claude plugin update` every plugin in both sets, one at a
    time. Updating in parallel makes plugins from the same marketplace collide
-   over its clone, and the failures hide in the output.
-4. **Reconcile**: uninstall user-scope extras, offer to install what's
-   missing, and skip plugins it shouldn't remove (team-shared project-scope
-   ones, and a plugin whose two marketplace rows share one on-disk install).
+   over its clone, and the failures hide in the output. An update can install a
+   dependency the plugin's new version adds, or remove a plugin; each gets its
+   own row, `➕ installed (dependency)` or `➖ removed by an update`.
+4. **Reconcile**: uninstall user-scope extras and dependencies nothing needs
+   any more, offer to install what's missing, and skip plugins it shouldn't
+   remove (team-shared project-scope ones, and a plugin whose two marketplace
+   rows share one on-disk install).
 5. **Scan & prune**: find orphan and stale-version caches and orphan data
    dirs, auto-delete the safe ones, and ask before removing anything that may
    hold user state.
@@ -127,9 +139,15 @@ It lists **every plugin it updated**, each on a row with its version and result
 `claude plugin list`. Only caches are reported by exception (stale-version dirs
 are routine noise).
 
+Every run closes with what it changed: each file it wrote in your repos
+(uncommitted or committed), each issue it filed, the version it recorded, and
+the caches it pruned. Then come the commands left for you to type, or "Nothing
+left to run."
+
 ### Cache and data dirs, on your schedule instead of theirs
 
-Claude Code cleans up after an uninstall, but not at the moments you'd want. It
+Claude Code cleans up after uninstalls and updates, but not at the moments you'd
+want. On an uninstall, it
 deletes the plugin's **data** directory as part of the uninstall, without
 asking, and that's where accumulated state lives. It leaves the superseded
 **version cache** in place, marked orphaned, for a background sweep to remove
@@ -228,8 +246,10 @@ The upgrade half picks what to do from what you asked for:
 | what's new | What landed between the version you acknowledged and the one you're running: what you'd act on first, then every other entry |
 | acknowledge, dismiss, "handled" | Summarizes what changed, runs the built-in check and your own guide, records the version, and the banner is gone |
 
-Everything but the guide opens with that summary, so you see what a version
-holds before you clear it. Acknowledging is the only thing that runs the upgrade
+The first run asks its setup questions first (see
+[the built-in check](/?id=the-built-in-check)). After that, everything but the
+guide opens with that summary, so you see what a version holds before you clear
+it. Acknowledging is the only thing that runs the upgrade
 errand, and the only thing that clears the banner. Asking what's new leaves it
 up. It's a skill rather than a shell line you could copy from here on purpose:
 shipshape's own version is in the path to the hook it calls, so anything literal

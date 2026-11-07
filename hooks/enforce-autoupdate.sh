@@ -7,7 +7,7 @@
 # (https://code.claude.com/docs/en/discover-plugins). Claude Code loads
 # settings BEFORE SessionStart hooks run, so a change here takes effect on the
 # NEXT launch; from then on each marketplace refreshes and updates its plugins
-# automatically at startup.
+# automatically, after a random delay of up to ten minutes into each session.
 #
 # The write is idempotent: it happens only when a marketplace is missing the
 # flag, so steady state is a no-op and settings.json isn't churned every
