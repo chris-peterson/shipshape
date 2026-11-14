@@ -7,6 +7,10 @@
 - **The plugin report says when a plugin's Claude Code version range held it back.** Since Claude Code 2.1.323, a plugin can state the Claude Code versions it works on, and Claude Code won't install, update, or load it outside that range. Such a plugin used to read as `✅ current` or enabled. It now gets a `⏸️` row naming the range: held at its version, updated short of the newest, not installed, or not loaded. Where Claude Code says to run `claude update`, the closing steps list it.
 - **Plugin manager output the report doesn't recognize is shown to you, not read as success.** An update or install that prints a warning, refusal, or anything else the reconcile doesn't know reads `⚠️` with the line quoted. That includes the warning Claude Code 2.1.323 prints in place of success when a plugin's install command writes to stderr, which the reconcile now checks against the install manifest.
 
+### Other
+
+- The docs site and the marketplace description now match what `/maintain-harness` does, including the `guide` argument and a banner that repeats until you acknowledge the version.
+
 ## 1.3.2
 
 ### Changed
