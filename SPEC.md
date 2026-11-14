@@ -196,6 +196,20 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   that the new plugin version adds, so that plugin is on disk and enabled
   without appearing in the diff, and a key the pass removed would go unreported
   the same way.
+- [RECON-20] Where a plugin states a Claude Code version range
+  (`engines["claude-code"]`) that the running Claude Code is outside, shipshape
+  shall report the version range that held it back, with the range and the
+  running version: an update that left the plugin where it was as held, one that
+  stopped at an older version that fits as updated and held, an install it
+  refused as not installed, and an installed plugin Claude Code no longer loads
+  as not loaded. Claude Code 2.1.323 and later neither installs, updates, nor
+  loads such a plugin, so each case otherwise reads as current, updated, or
+  enabled while the newest version never arrives or the plugin isn't running.
+- [RECON-21] If an update or install prints an outcome shipshape doesn't
+  recognize, then shipshape shall report the plugin as needing the user's
+  judgment, quoting the line, rather than as current, updated, or installed. The
+  plugin manager's wording changes between Claude Code releases, and a shipshape
+  older than the release reads a new outcome as nothing to report.
 
 ### GUARD — Guardrails
 

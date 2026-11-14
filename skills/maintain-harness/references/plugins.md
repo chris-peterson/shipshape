@@ -83,7 +83,7 @@ CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash "${CLAUDE_PLUGIN_ROOT}/scripts/mai
 Release it in Step 6, on every exit path. The lock self-clears if this run crashes (a lock older than the stale threshold is treated as abandoned and stolen by the next run), so a missed release degrades to a stale-lock steal, not a permanent block.
 
 ## Step 1: Inventory
-<!-- covers: RECON-05, RECON-06, RECON-16, AUTO-06 -->
+<!-- covers: RECON-05, RECON-06, RECON-16, RECON-20, AUTO-06 -->
 
 These are read-only reads of disk state — safe to run in parallel (the concurrency hazard is only among *mutating* `claude plugin` operations, handled in Step 2):
 
@@ -104,6 +104,8 @@ CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash "${CLAUDE_PLUGIN_ROOT}/scripts/plu
 It prints one row per key whose origin is not a registered marketplace, from either side: `<key>|installed|<scope>|<enabled|disabled>` or `<key>|desired|-|<true|false>`. No rows is the common case. Remove every listed key from both sets before diffing, so it is never an extra to uninstall nor a missing install, and never pass one to `claude plugin update`. Each listed install still gets its row in the final report (output-format.md). **A non-zero exit stops the half**: it means the registry, the plugin list, or the settings file couldn't be read, and reconciling without knowing which plugins are managed is the guess this step exists to prevent. Report the script's stderr line and release the lock.
 
 Build two sets of `<plugin>@<marketplace>` keys: **installed** (with scope) and **desired**. Note the enabled/disabled split while you're here — it feeds the composition line. Once you've diffed them (Step 3's classification), render the **inventory summary + plan table** (surface 1 in output-format.md) — the composition line (installed / enabled / disabled) the user sees before anything changes.
+
+Enabled is not the same as running. A plugin whose Claude Code version range the running Claude Code is outside stays installed and enabled but isn't loaded, and `claude plugin list` says so on its row: `not loaded: needs Claude Code <range>, this is <running>`. Note each one: its Updates row reads ⏸️ **not loaded** with the range in place of ✅ current, unless the update pass moves it to a version that fits (output-format.md).
 
 Also read the install manifest — Step 3 gates uninstalls on it (see "a plugin shared by two marketplaces"):
 
@@ -126,7 +128,7 @@ Enumerating `extraKnownMarketplaces` alone would report the wrong set and fail o
 shipshape's `SessionStart` hook enforces this — it enables any marketplace missing the flag, effective next launch — so the skill only **reports** status here; it doesn't write. Surface any marketplace still showing `false` so the user knows the hook will pick it up.
 
 ## Step 2: Update plugins
-<!-- covers: RECON-07, RECON-08, RECON-09, RECON-14, RECON-19 -->
+<!-- covers: RECON-07, RECON-08, RECON-09, RECON-14, RECON-19, RECON-20 -->
 
 **Do not blanket-parallelize updates.** `claude plugin update` refreshes the plugin's marketplace by re-cloning it; run several updates for plugins from the *same* marketplace at once (the common case) and the clones collide (`destination path already exists and is not an empty directory`), so some updates fail with `Plugin not found` and are silently skipped in the parallel output. The marketplace isn't damaged — a sequential retry succeeds immediately — but the failure hides in the noise.
 
@@ -148,6 +150,20 @@ No flag reaches it. `-y` and `--accept-command <sha256>` both hit the same guard
 
 Updates are fast and network-bound, and with the marketplaces already refreshed each one is cheap; the clone-collision cost far outweighs the parallelism. (If speed ever matters on a large set, the only safe parallelism is across *distinct* marketplaces — never two updates of the same marketplace at once.)
 
+**A plugin's Claude Code version range can hold it back.** A plugin can state the Claude Code versions it works on (`engines["claude-code"]` in its `plugin.json`), and Claude Code 2.1.323 and later never moves a plugin outside that range: an update picks the newest version that fits. Neither case fails, so read each update's whole message rather than its exit:
+
+```text
+Skipped — <plugin> stays at <version>. Version <newer> needs Claude Code <range>, this is <running>. Run `claude update`.
+<the usual update line> It's the newest that works on your version: <newer> needs Claude Code <range>, this is <running>.
+```
+
+The first left the plugin where it was: report it ⏸️ **held**, naming the version it was held from and the range. The second updated it, but not to the newest version: report it ⬆️ updated and ⏸️ held below `<newer>`. Either message can end in `A newer version of the plugin may fit.` instead of `Run \`claude update\`.`; only the `claude update` ending adds that step to the closing (output-format.md). Neither is transient, so don't retry it.
+
+<!-- covers: RECON-21 -->
+A plugin installed from a local directory prints `<plugin> is read from its folder, <path>: nothing to update.` ahead of its success line. It is ✅ current: edits in that folder load at the next session start or reload, so no update applies.
+
+**An outcome you don't recognize is not a success.** The plugin manager's wording moves between Claude Code releases, and this file only knows the ones it names. Where an update or install prints anything besides the success line and the outcomes this file names, a warning, a refusal, a line in a shape you haven't seen, report that plugin ⚠️ with the line quoted, rather than as current, updated, or installed. A shipshape older than the Claude Code it runs on can only stay accurate by passing unrecognized output through to the user.
+
 **Surface and retry failures — never lose one in the output.** If an update reports `Plugin not found` or another transient error, retry it once serially and reflect the real outcome in the final report. An update that stays failed is a row the user needs to see, not a silent gap.
 
 **An update can install a plugin.** Where a new version adds a dependency, `claude plugin update` installs it and writes it into `enabledPlugins`, so it lands on disk without ever being in Step 1's sets. Once the last update finishes, re-read the manifest keys and compare them with the installed set Step 1 built:
@@ -161,7 +177,7 @@ Each new key gets its own row in the final report as installed by an update, and
 Track the pass on the progress surface (section 2 in output-format.md): the `Update plugins` item opens before the first update and closes after the last. Don't emit a line per plugin; the results land in the final report (Step 3).
 
 ## Step 3: Reconcile differences
-<!-- covers: RECON-10, RECON-11, RECON-11a, RECON-14, RECON-17, RECON-18, GUARD-01, GUARD-02 -->
+<!-- covers: RECON-10, RECON-11, RECON-11a, RECON-14, RECON-17, RECON-18, RECON-20, RECON-21, GUARD-01, GUARD-02 -->
 
 - **Extras** (installed, not desired):
   - **Shared on-disk install** (see the guardrail above — the extra's key is absent from `installed_plugins.json` while another row for the same plugin name is present) → **do not uninstall.** Removing this marketplace key deletes the plugin's only install record, taking the enabled copy with it. Surface it as a warning with the manifest-vs-list evidence and let the user resolve it deliberately (re-point `enabledPlugins`, or uninstall and reinstall from the desired marketplace). Report as "skipped (shared install)".
@@ -182,6 +198,8 @@ Track the pass on the progress surface (section 2 in output-format.md): the `Upd
   - Offer to install: `claude plugin install <plugin>@<marketplace>`
   - Ask before installing — the desired set may be aspirational or out-of-date.
   - If the install fails on a marketplace-declared command (see Step 2), report it ⌨️ **needs your terminal** with the same line for the user's own shell. Their yes to the offer can't stand in for the acceptance Claude Code requires at the prompt.
+  - If the install is refused for the plugin's Claude Code range (`"<plugin>" was not installed: it needs Claude Code <range>, this is <running>.`), nothing was installed: report it ⏸️ **not installed**, with the range, and add `claude update` to the closing where the message ends in `Run \`claude update\``.
+  - **An install whose own command wrote to stderr reads as a warning, not a success** (Claude Code 2.1.323 and later). The plugin may well be installed, so check the manifest for its key before deciding: present is ➕ installed with the warning quoted on the row, absent is the ⚠️ outcome Step 2 describes.
   - **Read the install's whole output, not its exit or its first line.** When the settings file the install writes its enable into is one Claude Code won't load, the install (Claude Code 2.1.295 and later) still exits 0 and prints `✔ Successfully installed plugin: …` on stdout, then a second line naming the file:
 
     ```text
@@ -354,7 +372,7 @@ claude plugin list                                    # inventory
 CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-unmanaged.sh"   # keys from an unregistered origin (`@synced`), left out of the reconcile
 claude plugin marketplace update                       # refresh all marketplaces once (do before updates)
 claude plugin update <plugin>@<marketplace>           # update (run serialized, not in parallel)
-claude plugin install <plugin>@<marketplace>          # install; a "does not load" line after its success means not enabled (Step 3)
+claude plugin install <plugin>@<marketplace>          # install; read the whole output: a "does not load" line, a version-range refusal, or a warning (Step 3)
 claude plugin uninstall <plugin>@<marketplace> -y --keep-data   # uninstall, keeping the data dir for Step 5 to ask about
 CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-orphan-deps.sh"   # unused auto-installed dependencies, from `prune --dry-run` (Step 3)
 claude plugin --help                                  # full subcommand list (includes prune, enable, disable)

@@ -21,6 +21,7 @@ A shared emoji vocabulary ties the surfaces together — the same marker means t
 | ⚠️ | needs your judgment (orphan data dir, shared-install anomaly) |
 | ⌨️ | needs your terminal (a marketplace-declared command only you can accept) |
 | 🔧 | needs your fix (installed, but the settings file holding its enable does not load) |
+| ⏸️ | held by the plugin's Claude Code version range (not updated, updated short of the newest, not installed, or not loaded) |
 
 ## 1. Inventory summary + plan table
 
@@ -96,6 +97,23 @@ An install whose output names a settings file that does not load (plugins.md Ste
 | acme-tools   | gadget     | 1.0.0   | 🔧 not enabled: ~/.claude/settings.json does not load (its "cleanupPeriodDays" is not valid) |
 ```
 
+<!-- covers: RECON-20 -->
+A plugin its Claude Code version range held back (plugins.md Steps 1-3) reads ⏸️ with the range Claude Code gave, so the reader can tell a plugin that is current from one that can't move or isn't running:
+
+```text
+| acme-tools   | tidydiff   | 1.1.0           | ⏸️ held: 1.2.0 needs Claude Code >=9.9.0 |
+| acme-tools   | difflens   | 0.14.0 → 0.15.0 | ⬆️ updated, ⏸️ held below 0.16.0 (needs Claude Code >=9.9.0) |
+| acme-tools   | gadget     | 1.0.0           | ⏸️ not installed: needs Claude Code >=9.9.0 |
+| acme-tools   | notekeep   | 0.3.0           | ⏸️ not loaded: needs Claude Code >=9.9.0 |
+```
+
+<!-- covers: RECON-21 -->
+An update or install whose output plugins.md doesn't name reads ⚠️ with the line Claude Code printed, never ✅:
+
+```text
+| acme-tools   | trailhead  | 0.9.0   | ⚠️ "<the line Claude Code printed>" |
+```
+
 ```text
 ### Plugin maintenance
 
@@ -161,6 +179,11 @@ Run these, in order:
 1. Fix ~/.claude/settings.json: its "cleanupPeriodDays" is not valid
 2. /reload-plugins (--force if it warns), here and in your other sessions
 ```
+
+A ⏸️ row whose message said `Run \`claude update\`` puts `claude update` in
+the same numbered list, once however many rows asked for it, after any file fix
+and before the reload: the plugins it held move only on a later run, under the
+newer Claude Code.
 
 <!-- covers: GUIDE-11 -->
 When the guide's plugins section (Step 7) leaves commands only the user can type,
