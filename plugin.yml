@@ -53,7 +53,7 @@ suite:
     # One session, one run: the upgrade half and then the plugins half.
     # Acknowledging records the version, so the version errand is over for good.
     - { t: event, text: "background update: Claude Code 2.1.234 → 2.1.235, unacknowledged" }
-    - { t: cmd, cmd: "/maintain-harness", out: "Walked that release's changelog entry: nothing in it touches a hook schema or settings key your own rules depend on. Acknowledge 2.1.235? Yes: ran the steps in your guide and recorded it. Then plugins: 19 enabled · 15 current, 4 refreshed · 🗑️ 9 undeclared uninstalled, data dirs kept for you to judge · 🧹 6 stale caches pruned (~4.1M), 1 pinned by a live session. Changed this run: 2.1.235 recorded, 4 updated, 9 uninstalled, 6 caches pruned. Run /reload-plugins here and in your other sessions." }
+    - { t: cmd, cmd: "/maintain-harness", out: "Walked that release's changelog entry: nothing in it touches a hook schema or settings key your own rules depend on. Acknowledge 2.1.235? Yes: ran the steps in your guide and recorded it. Then plugins: 19 installed · 15 current, 4 refreshed · 🗑️ 9 undeclared uninstalled, data dirs kept for you to judge · 🧹 6 stale caches pruned (~4.1M), 1 pinned by a live session. Changed this run: 2.1.235 recorded, 4 updated, 9 uninstalled, 6 caches pruned. Run /reload-plugins here and in your other sessions." }
     - { t: event, text: "next launch: marketplace auto-update enabled for all 4 marketplaces" }
     - { t: note, text: "Plugins keep themselves current, and a Claude Code upgrade stops being something you find out about later." }
 

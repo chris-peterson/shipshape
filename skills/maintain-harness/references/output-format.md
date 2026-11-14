@@ -1,7 +1,7 @@
 # Output format: composition-first, scannable surfaces
 <!-- covers: REPORT-01, REPORT-02, REPORT-03, REPORT-04 -->
 
-Don't narrate the run as a scroll of per-plugin lines. Use three surfaces: an **inventory summary + plan table** up front, a **progress surface** (the native task list where the session offers it), and a **scannable final report** at the end. Both the opening summary and the closing report lead with the same composition line (installed / enabled / disabled) and share one emoji vocabulary, so the run reads as one coherent thing.
+Don't narrate the run as a scroll of per-plugin lines. Use three surfaces: an **inventory summary + plan table** up front, a **progress surface** (the native task list where the session offers it), and a **scannable final report** at the end. Both the opening summary and the closing report lead with the same composition line (installed / updating) and share one emoji vocabulary, so the run reads as one coherent thing.
 
 Know what the terminal can and can't do, so this isn't cargo-culted: message text is **append-only**. A printed line can't be redrawn — there's no cursor control in rendered markdown — so a hand-typed progress bar or `- [ ]` checklist stacks a new copy each time it's posted. Where the session offers the harness task tools (`TaskCreate` / `TaskUpdate`), the task list is the **only** surface Claude can mutate after emitting it: it re-renders in place as items flip to `completed`, so it carries progress. Where the session doesn't offer them, a checklist re-posted as each item finishes carries it instead, at the cost of one copy per item (section 2). The tables are two separate renders (a plan, then its refresh), not one mutated in place.
 
@@ -24,16 +24,18 @@ A shared emoji vocabulary ties the surfaces together — the same marker means t
 | ⏸️ | held by the plugin's Claude Code version range (not updated, updated short of the newest, not installed, or not loaded) |
 
 ## 1. Inventory summary + plan table
+<!-- covers: RECON-22 -->
 
 Render after Step 1, before any update/install/uninstall runs.
 
-Lead with a one-line **composition** so the enabled-vs-disabled split is declared up front, not revealed at the end. A disabled plugin is a deliberate state, not drift — the run leaves it alone, and the user should see that scope from the start:
+Lead with a one-line **composition**: how many plugins are installed and how many the run updates. The run updates every managed plugin whether it's enabled or not, so the line doesn't split them by enabled state, and nothing else in the run does either. What it does name is an unmanaged plugin (plugins.md Step 1), which the run leaves alone, with its count and why:
 
 ```text
-📦 30 installed · ✅ 17 enabled · 13 disabled (1 team-shared) · reconciling the 17 enabled
+📦 30 installed · updating all 30
+📦 31 installed · updating 30 · ☁️ 1 managed in claude.ai
 ```
 
-Then a **plan table** — but only when there's a mix of actions worth previewing (installs, uninstalls, skips). When the only planned action is "update every plugin" (the common case), the composition line already says so — don't follow it with 17 identical `queued: update` rows. One row per plugin you'll act on, ordered by marketplace then plugin; the Status column carries the *planned* action:
+Then a **plan table** — but only when there's a mix of actions worth previewing (installs, uninstalls, skips). When the only planned action is "update every plugin" (the common case), the composition line already says so — don't follow it with 30 identical `queued: update` rows. One row per plugin you'll act on, ordered by marketplace then plugin; the Status column carries the *planned* action:
 
 ```text
 | Marketplace  | Plugin   | Version | Status            |
@@ -64,74 +66,77 @@ Don't create an item for an empty group — an instantly-completed `Reconcile: n
 
 ## 3. Final report
 
-Render after Steps 2-3 finish. This is the authoritative result: an emoji-tagged status block, not prose paragraphs. It opens with the *same composition line* the run led with (so the reader who scrolled past the top still sees the enabled/disabled split here) and then reports each area — reconcile, updates, cache, data — as its own short line or table.
+Render after Steps 2-3 finish. This is the authoritative result: an emoji-tagged status block, not prose paragraphs. It opens with the *same composition line* the run led with (so the reader who scrolled past the top still sees the run's scope here) and then reports each area — reconcile, updates, cache, data — as its own short line or table.
 
-List **every plugin Step 2 updated on its own row** in the updates table, disabled ones included. A maintenance report exists to let the reader confirm each plugin's result — "did my plugin get handled?" — and a collapsed count (`tidydiff +5`, `13 others`) hides exactly the names they came to check, forcing a re-run of `claude plugin list`. Completeness wins over brevity here: one row per plugin, ordered by marketplace then plugin. A disabled plugin's Result carries `, disabled` after its outcome (`✅ current, disabled`, `⬆️ updated, disabled`), so the reader can tell it was handled and that it still isn't loaded. The Version column shows the current version, a `from → to` transition for a plugin that moved, or `n/a` for a HEAD-tracked plugin with no version number; the Result column carries the emoji-tagged outcome. A large plugin set produces a long table — that's the intended trade.
+List **every plugin Step 2 updated on its own row** in the updates table. A maintenance report exists to let the reader confirm each plugin's result — "did my plugin get handled?" — and a collapsed count (`tidydiff +5`, `13 others`) hides exactly the names they came to check, forcing a re-run of `claude plugin list`. Completeness wins over brevity here: one row per plugin, ordered by marketplace then plugin. Show the table on every run, an all-current one included. The Version column shows the current version, a `from → to` transition for a plugin that moved, or `n/a` for a HEAD-tracked plugin with no version number; the Result column carries the emoji-tagged outcome. A large plugin set produces a long table — that's the intended trade.
+
+<!-- covers: REPORT-14 -->
+The **Last updated** column is the age `plugin-last-updated.sh` printed for the plugin's key (plugins.md Step 2), copied as printed. With marketplace auto-update on, a plugin is usually updated before the run reaches it, so most rows read ✅ current; the age is what separates one that moved an hour ago from one that hasn't moved in months. A row with no manifest record behind it (uninstalled, removed by an update, not installed, unmanaged) reads `-`. Where the script exited non-zero, leave the column out, and put its stderr line under the table.
 
 <!-- covers: RECON-16 -->
 A plugin `plugin-unmanaged.sh` lists (Step 1) gets its row too, with its origin in the Marketplace column, so the reader can see it was left alone and why. A `synced` row reads `☁️ managed in claude.ai`; any other origin reads `⏭️ not a registered marketplace`:
 
 ```text
-| synced       | helper     | 2.0.0   | ☁️ managed in claude.ai |
+| synced       | helper     | 2.0.0   | -            | ☁️ managed in claude.ai |
 ```
 
 <!-- covers: RECON-18 -->
 An unused dependency the reconcile uninstalled (plugins.md Step 3) reads `🗑️ uninstalled (unused dependency)`, so the reader can tell it from an extra they removed from `enabledPlugins` themselves:
 
 ```text
-| acme-tools   | helperlib  | 1.0.0   | 🗑️ uninstalled (unused dependency) |
+| acme-tools   | helperlib  | 1.0.0   | -            | 🗑️ uninstalled (unused dependency) |
 ```
 
 <!-- covers: RECON-19 -->
 A plugin an update installed as a new dependency (plugins.md Step 2) reads `➕ installed (dependency)`, so the reader sees a plugin they never asked for and where it came from. One the update pass removed reads `➖ removed by an update`:
 
 ```text
-| acme-tools   | helperlib  | 1.0.0   | ➕ installed (dependency) |
-| acme-tools   | oldlib     | 0.9.0   | ➖ removed by an update |
+| acme-tools   | helperlib  | 1.0.0   | just now     | ➕ installed (dependency) |
+| acme-tools   | oldlib     | 0.9.0   | -            | ➖ removed by an update |
 ```
 
 <!-- covers: RECON-17 -->
 An install whose output names a settings file that does not load (plugins.md Step 3) reads `🔧 not enabled`, with the file and the reason Claude Code gave in parentheses:
 
 ```text
-| acme-tools   | gadget     | 1.0.0   | 🔧 not enabled: ~/.claude/settings.json does not load (its "cleanupPeriodDays" is not valid) |
+| acme-tools   | gadget     | 1.0.0   | just now     | 🔧 not enabled: ~/.claude/settings.json does not load (its "cleanupPeriodDays" is not valid) |
 ```
 
 <!-- covers: RECON-20 -->
 A plugin its Claude Code version range held back (plugins.md Steps 1-3) reads ⏸️ with the range Claude Code gave, so the reader can tell a plugin that is current from one that can't move or isn't running:
 
 ```text
-| acme-tools   | tidydiff   | 1.1.0           | ⏸️ held: 1.2.0 needs Claude Code >=9.9.0 |
-| acme-tools   | difflens   | 0.14.0 → 0.15.0 | ⬆️ updated, ⏸️ held below 0.16.0 (needs Claude Code >=9.9.0) |
-| acme-tools   | gadget     | 1.0.0           | ⏸️ not installed: needs Claude Code >=9.9.0 |
-| acme-tools   | notekeep   | 0.3.0           | ⏸️ not loaded: needs Claude Code >=9.9.0 |
+| acme-tools   | tidydiff   | 1.1.0           | 5w ago       | ⏸️ held: 1.2.0 needs Claude Code >=9.9.0 |
+| acme-tools   | difflens   | 0.14.0 → 0.15.0 | just now     | ⬆️ updated, ⏸️ held below 0.16.0 (needs Claude Code >=9.9.0) |
+| acme-tools   | gadget     | 1.0.0           | -            | ⏸️ not installed: needs Claude Code >=9.9.0 |
+| acme-tools   | notekeep   | 0.3.0           | 2mo ago      | ⏸️ not loaded: needs Claude Code >=9.9.0 |
 ```
 
 <!-- covers: RECON-21 -->
 An update or install whose output plugins.md doesn't name reads ⚠️ with the line Claude Code printed, never ✅:
 
 ```text
-| acme-tools   | trailhead  | 0.9.0   | ⚠️ "<the line Claude Code printed>" |
+| acme-tools   | trailhead  | 0.9.0   | 3d ago       | ⚠️ "<the line Claude Code printed>" |
 ```
 
 ```text
 ### Plugin maintenance
 
-📦 9 installed · ✅ 7 enabled · 2 disabled
+📦 9 installed · updating all 9
 🔁 Reconcile — nothing to install or uninstall; every plugin matches its desired state.
 
 **Updates**
-| Marketplace  | Plugin     | Version | Result                |
-|--------------|------------|---------|-----------------------|
-| acme-tools   | tidydiff   | 1.1.0   | ✅ current            |
-| acme-tools   | notekeep   | 0.3.0   | ✅ current, disabled  |
-| acme-tools   | difflens   | 0.15.0  | ✅ current            |
-| acme-tools   | speccraft  | 0.4.0   | ✅ current            |
-| acme-tools   | tuneup     | 0.4.3   | ✅ current, disabled  |
-| acme-tools   | trailhead  | 0.9.0   | ✅ current            |
-| oss-registry | uikit      | n/a     | 🔄 refreshed          |
-| oss-registry | browserkit | n/a     | 🔄 refreshed          |
-| oss-registry | devkit     | n/a     | 🔄 refreshed          |
+| Marketplace  | Plugin     | Version | Last updated | Result       |
+|--------------|------------|---------|--------------|--------------|
+| acme-tools   | difflens   | 0.15.0  | 6h ago       | ✅ current   |
+| acme-tools   | notekeep   | 0.3.0   | 3mo ago      | ✅ current   |
+| acme-tools   | speccraft  | 0.4.0   | 2d ago       | ✅ current   |
+| acme-tools   | tidydiff   | 1.1.0   | 5w ago       | ✅ current   |
+| acme-tools   | trailhead  | 0.9.0   | 1d ago       | ✅ current   |
+| acme-tools   | tuneup     | 0.4.3   | 1y ago       | ✅ current   |
+| oss-registry | browserkit | n/a     | 9d ago       | 🔄 refreshed |
+| oss-registry | devkit     | n/a     | just now     | 🔄 refreshed |
+| oss-registry | uikit      | n/a     | 4d ago       | 🔄 refreshed |
 
 🔒 Cache — 23 stale dirs (~166M) pinned by live sessions; 🧹 0 pruned (they free up as those sessions exit).
 ```
@@ -142,13 +147,13 @@ When plugins actually changed, the movers show their version transition in the s
 
 ```text
 **Updates**
-| Marketplace  | Plugin     | Version         | Result       |
-|--------------|------------|-----------------|--------------|
-| acme-tools   | tidydiff   | 1.1.0           | ✅ current   |
-| acme-tools   | difflens   | 0.14.0 → 0.15.0 | ⬆️ updated   |
-| acme-tools   | trailhead  | 0.8.0 → 0.9.0   | ⬆️ updated   |
-| oss-registry | uikit      | n/a             | 🔄 refreshed |
-| oss-registry | devkit     | n/a             | 🔄 refreshed |
+| Marketplace  | Plugin     | Version         | Last updated | Result       |
+|--------------|------------|-----------------|--------------|--------------|
+| acme-tools   | difflens   | 0.14.0 → 0.15.0 | just now     | ⬆️ updated   |
+| acme-tools   | tidydiff   | 1.1.0           | 5w ago       | ✅ current   |
+| acme-tools   | trailhead  | 0.8.0 → 0.9.0   | just now     | ⬆️ updated   |
+| oss-registry | devkit     | n/a             | 9d ago       | 🔄 refreshed |
+| oss-registry | uikit      | n/a             | 4d ago       | 🔄 refreshed |
 ```
 
 <!-- covers: REPORT-10 -->
@@ -162,7 +167,8 @@ list and reads past any explanation, so a step that needs a sentence to justify
 it costs them the step. When anything changed on disk, the step is
 `/reload-plugins`. When nothing changed, the closing is one line saying no reload
 is needed. If nothing changed at all (no updates, installs, uninstalls or
-prunes), the report is just the composition line plus that closing line.
+prunes), the report is the composition line, the Updates table, and that
+closing line.
 
 ```text
 Run /reload-plugins here and in your other sessions (/reload-plugins --force if it warns).
@@ -171,8 +177,8 @@ Run /reload-plugins here and in your other sessions (/reload-plugins --force if 
 A 🔧 row puts a numbered list ahead of the reload: fixing the file, which is
 the one step that isn't a command and names the file with Claude Code's reason,
 then `claude plugin enable <plugin>@<marketplace>` for each plugin the desired
-set enables whose enable didn't land in it. A plugin the user keeps disabled
-gets no enable step. A reload before the fix loads the same ignored file.
+set enables whose enable didn't land in it. A plugin set `false` in
+`enabledPlugins` gets no enable step. A reload before the fix loads the same ignored file.
 
 ```text
 Run these, in order:

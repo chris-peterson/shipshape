@@ -103,9 +103,9 @@ CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash "${CLAUDE_PLUGIN_ROOT}/scripts/plu
 
 It prints one row per key whose origin is not a registered marketplace, from either side: `<key>|installed|<scope>|<enabled|disabled>` or `<key>|desired|-|<true|false>`. No rows is the common case. Remove every listed key from both sets before diffing, so it is never an extra to uninstall nor a missing install, and never pass one to `claude plugin update`. Each listed install still gets its row in the final report (output-format.md). **A non-zero exit stops the half**: it means the registry, the plugin list, or the settings file couldn't be read, and reconciling without knowing which plugins are managed is the guess this step exists to prevent. Report the script's stderr line and release the lock.
 
-Build two sets of `<plugin>@<marketplace>` keys: **installed** (with scope) and **desired**. Note the enabled/disabled split while you're here — it feeds the composition line. Once you've diffed them (Step 3's classification), render the **inventory summary + plan table** (surface 1 in output-format.md) — the composition line (installed / enabled / disabled) the user sees before anything changes.
+Build two sets of `<plugin>@<marketplace>` keys: **installed** (with scope) and **desired**. Once you've diffed them (Step 3's classification), render the **inventory summary + plan table** (surface 1 in output-format.md) — the composition line (installed / updating) the user sees before anything changes.
 
-Enabled is not the same as running. A plugin whose Claude Code version range the running Claude Code is outside stays installed and enabled but isn't loaded, and `claude plugin list` says so on its row: `not loaded: needs Claude Code <range>, this is <running>`. Note each one: its Updates row reads ⏸️ **not loaded** with the range in place of ✅ current, unless the update pass moves it to a version that fits (output-format.md).
+Installed is not the same as running. A plugin whose Claude Code version range the running Claude Code is outside stays installed but isn't loaded, and `claude plugin list` says so on its row: `not loaded: needs Claude Code <range>, this is <running>`. Note each one: its Updates row reads ⏸️ **not loaded** with the range in place of ✅ current, unless the update pass moves it to a version that fits (output-format.md).
 
 Also read the install manifest — Step 3 gates uninstalls on it (see "a plugin shared by two marketplaces"):
 
@@ -128,7 +128,9 @@ Enumerating `extraKnownMarketplaces` alone would report the wrong set and fail o
 shipshape's `SessionStart` hook enforces this — it enables any marketplace missing the flag, effective next launch — so the skill only **reports** status here; it doesn't write. Surface any marketplace still showing `false` so the user knows the hook will pick it up.
 
 ## Step 2: Update plugins
-<!-- covers: RECON-07, RECON-08, RECON-09, RECON-14, RECON-19, RECON-20 -->
+<!-- covers: RECON-07, RECON-08, RECON-09, RECON-14, RECON-19, RECON-20, RECON-22, REPORT-14 -->
+
+**Update every plugin in the installed set, enabled or not.** A disabled plugin is still installed, and one left behind comes back stale the day it's turned on. Don't sort the set by enabled state, and don't report it: the reconcile treats an installed plugin the same either way.
 
 **Do not blanket-parallelize updates.** `claude plugin update` refreshes the plugin's marketplace by re-cloning it; run several updates for plugins from the *same* marketplace at once (the common case) and the clones collide (`destination path already exists and is not an empty directory`), so some updates fail with `Plugin not found` and are silently skipped in the parallel output. The marketplace isn't damaged — a sequential retry succeeds immediately — but the failure hides in the noise.
 
@@ -174,6 +176,14 @@ CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash "${CLAUDE_PLUGIN_ROOT}/scripts/jq.
 
 Each new key gets its own row in the final report as installed by an update, and each key Step 1 listed that the manifest no longer holds gets one as removed by an update (output-format.md). Either counts as a change for the reload step. A dependency the new version no longer needs but leaves installed is Step 3's unused-dependency pass.
 
+Then read when each plugin was last updated, for the report's **Last updated** column:
+
+```bash
+CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-last-updated.sh"
+```
+
+It prints `<key>|<lastUpdated>|<age>` per manifest key, the age already worked out (`just now`, `5h ago`, `3d ago`, `2w ago`, `4mo ago`, `1y ago`, or `unknown`). Copy the age onto the plugin's row as printed; don't recompute it from the timestamp. Read it after Step 3 too where Step 3 installed something, so a new install's row carries its own age. A non-zero exit means the manifest couldn't be read: the report leaves the column out and says why (output-format.md), and the run carries on, since nothing is decided from it.
+
 Track the pass on the progress surface (section 2 in output-format.md): the `Update plugins` item opens before the first update and closes after the last. Don't emit a line per plugin; the results land in the final report (Step 3).
 
 ## Step 3: Reconcile differences
@@ -214,7 +224,7 @@ Track the pass on the progress surface (section 2 in output-format.md): the `Upd
 
     A file with an invalid value took the write, so fixing it is the whole step. A file that isn't a JSON object took nothing, so where the check fails the closing adds `claude plugin enable <plugin>@<marketplace>` after the fix (output-format.md). That step is only for a plugin the desired set enables (`true` in `enabledPlugins`). A plugin the user keeps disabled (`false`) gets the file fix alone, so the run never turns on what they turned off. When the named file is `~/.claude/settings.json`, it's the file Step 1 read the desired set from, so Claude Code is ignoring every plugin enabled there, not only this one: say so once, on the row.
 
-The reconcile outcomes feed the **final report** (surface 3 in output-format.md), which defines the emoji each status maps to. If nothing changed at all, the report is the composition line plus a one-line "nothing to reconcile."
+The reconcile outcomes feed the **final report** (surface 3 in output-format.md), which defines the emoji each status maps to. If nothing changed at all, the report is the composition line, the Updates table, and a one-line "nothing to reconcile."
 
 ## Step 4: Scan caches and data dirs
 <!-- covers: PRUNE-01, PRUNE-02, PRUNE-03, PRUNE-04, PRUNE-05, PRUNE-12, PRUNE-16 -->
@@ -372,6 +382,7 @@ claude plugin list                                    # inventory
 CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-unmanaged.sh"   # keys from an unregistered origin (`@synced`), left out of the reconcile
 claude plugin marketplace update                       # refresh all marketplaces once (do before updates)
 claude plugin update <plugin>@<marketplace>           # update (run serialized, not in parallel)
+CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-last-updated.sh"   # each plugin's last-updated age, for the report (Step 2)
 claude plugin install <plugin>@<marketplace>          # install; read the whole output: a "does not load" line, a version-range refusal, or a warning (Step 3)
 claude plugin uninstall <plugin>@<marketplace> -y --keep-data   # uninstall, keeping the data dir for Step 5 to ask about
 CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-orphan-deps.sh"   # unused auto-installed dependencies, from `prune --dry-run` (Step 3)

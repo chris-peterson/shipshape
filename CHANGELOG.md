@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- **The plugin report says when each plugin was last updated.** With marketplace auto-update on, nearly every row of the updates table read `✅ current`, which said nothing about whether a plugin moved an hour ago or hasn't in months. Each row now has a **Last updated** column (`just now`, `5h ago`, `3d ago`, `4mo ago`), read from the install manifest, and the table shows on every run, an all-current one included.
+- **The plugin report no longer splits plugins by enabled state.** The run already updated every installed plugin; the opening and closing lines now say `📦 30 installed · updating all 30` instead of counting enabled and disabled plugins, and a disabled plugin's row no longer carries `, disabled`.
+
 ## 1.3.3
 
 ### Changed

@@ -97,6 +97,7 @@ scripts/plugin-cache-in-use.sh      lease liveness — exit 0 in use, exit 1 del
 scripts/plugin-cache-scan.sh        classifies cache and data entries against the install manifest
 scripts/plugin-unmanaged.sh         lists installed and desired keys whose origin isn't a registered marketplace
 scripts/plugin-orphan-deps.sh       lists auto-installed dependencies nothing needs, from `claude plugin prune --dry-run`
+scripts/plugin-last-updated.sh      each installed plugin's last-updated age, from the install manifest, for the updates report
 scripts/plugin-cache-prune.sh       deletes the paths it is handed, and refuses everything else
 scripts/maintenance-lock.sh         the cooperative lock one /maintain-harness run holds across both halves
 scripts/run-changes.sh              snapshots the repos a run writes to, and reports the paths it changed
@@ -144,8 +145,9 @@ what picks the level.
   start stays quiet.
 - **Report outcomes, not investigation.** No per-tool-call preambles, no narrated
   reasoning, and nothing about work outside the current run.
-- **Every enabled plugin gets its own row** in the updates report; unchanged ones
-  are not collapsed into a count. Stale-version caches are the exception —
+- **Every installed plugin gets its own row** in the updates report, enabled or
+  not, with how long ago it was last updated; unchanged ones are not collapsed
+  into a count, and the report never splits plugins by enabled state. Stale-version caches are the exception —
   reported as one count-and-size line, with table rows reserved for real orphans.
 
 ## Glossary

@@ -115,8 +115,8 @@ in `~/.claude/settings.json` (`enabledPlugins`), then:
    governed there, so it's set aside here and reported as managed in claude.ai
    rather than reconciled. A plugin from any other origin that isn't a
    registered marketplace is set aside the same way.
-3. **Update**: `claude plugin update` every plugin in both sets, one at a
-   time. Updating in parallel makes plugins from the same marketplace collide
+3. **Update**: `claude plugin update` every installed plugin, enabled or
+   not, one at a time. Updating in parallel makes plugins from the same marketplace collide
    over its clone, and the failures hide in the output. An update can install a
    dependency the plugin's new version adds, or remove a plugin; each gets its
    own row, `➕ installed (dependency)` or `➖ removed by an update`.
@@ -134,9 +134,11 @@ in `~/.claude/settings.json` (`enabledPlugins`), then:
    it carries out the plugins section of
    [your guide](/?id=your-harness-maintenance-guide).
 
-It lists **every plugin it updated**, each on a row with its version and result
-(disabled ones marked `, disabled`), so you can confirm each plugin's result at a glance rather than re-running
-`claude plugin list`. Only caches are reported by exception (stale-version dirs
+It lists **every plugin it updated**, each on a row with its version, how long
+ago it was last updated, and its result, so you can confirm each plugin's result
+at a glance rather than re-running `claude plugin list`. With auto-update on,
+most rows read `✅ current`; the age shows which ones moved this week and which
+haven't in months. Only caches are reported by exception (stale-version dirs
 are routine noise).
 
 Every run closes with what it changed: each file it wrote in your repos

@@ -210,6 +210,10 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   judgment, quoting the line, rather than as current, updated, or installed. The
   plugin manager's wording changes between Claude Code releases, and a shipshape
   older than the release reads a new outcome as nothing to report.
+- [RECON-22] shipshape shall update every managed installed plugin whether or
+  not it is enabled, and shall not report which plugins are enabled or
+  disabled. A disabled plugin is still installed, and one the update pass skips
+  comes back stale the day it is turned on.
 
 ### GUARD — Guardrails
 
@@ -603,11 +607,12 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
 - [REPORT-01] shipshape shall present a run using three surfaces: an inventory
   summary + plan table, a progress surface, and a final report.
 - [REPORT-02] shipshape shall lead both the opening summary and the closing
-  report with the same composition line (installed / enabled / disabled).
+  report with the same composition line: how many plugins are installed, how
+  many the run updates, and how many it leaves alone as unmanaged.
 - [REPORT-03] shipshape shall tag statuses with the shared emoji vocabulary.
 - [REPORT-04] shipshape shall list every plugin it updated on its own row in the
-  updates report rather than collapsing unchanged ones into a count, marking a
-  disabled plugin's result `, disabled`.
+  updates report rather than collapsing unchanged ones into a count, on every
+  run, including one where every plugin is current.
 - [REPORT-05] shipshape shall report stale-version caches by exception as a
   single count-and-size line, reserving table rows for genuine orphans.
 - [REPORT-06] shipshape shall report outcomes only — no per-tool-call preambles,
@@ -645,6 +650,13 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   A path that already had uncommitted changes at the snapshot shall be marked as
   such, and a dir that isn't a git work tree shall get a row saying its changes
   weren't tracked.
+- [REPORT-14] shipshape shall show on each plugin's updates row how long ago
+  the plugin was last updated, read from the install manifest's `lastUpdated`
+  after the update pass, taking the user-scope record where a key has one. With
+  marketplace auto-update on, a plugin is usually current before the run
+  reaches it, so the age is what tells a plugin that moved recently from one
+  that hasn't moved in months. If the manifest cannot be read, then shipshape
+  shall leave the age out and say why rather than stop the run.
 
 ## Future Requirements
 
