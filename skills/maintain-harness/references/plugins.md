@@ -125,6 +125,8 @@ CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} bash "${CLAUDE_PLUGIN_ROOT}/scripts/jq.
 
 Enumerating `extraKnownMarketplaces` alone would report the wrong set and fail on the state that matters most: a marketplace missing from it is the one the hook is about to enable, and it shows up as no row rather than `false`, while a settings file with no such key at all makes the whole expression error.
 
+**A marketplace declared in managed settings reads `managed: see /status`, not its user flag.** Managed policy outranks `~/.claude/settings.json`, and it can leave a marketplace with no automatic updates whatever the user-level `autoUpdate` says, so `true` there is no evidence it updates. Claude Code 2.1.329's `/status` has a **Marketplace auto-update** row that names each such marketplace and why; that is where the effective state lives. The managed declarations are the `extraKnownMarketplaces` keys of the OS's `managed-settings.json` (macOS `/Library/Application Support/ClaudeCode/`, Linux `/etc/claude-code/`, Windows `C:\Program Files\ClaudeCode\`), any `managed-settings.d/*.json` beside it, and `~/.claude/remote-settings.json` (server-managed). A file that isn't there declares nothing; one that is there but can't be read is reported, not taken as empty.
+
 shipshape's `SessionStart` hook enforces this — it enables any marketplace missing the flag, effective next launch — so the skill only **reports** status here; it doesn't write. Surface any marketplace still showing `false` so the user knows the hook will pick it up.
 
 ## Step 2: Update plugins

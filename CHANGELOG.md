@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- **A marketplace your organization manages no longer reads as auto-updating just because your own settings say so.** Managed settings outrank `~/.claude/settings.json` and can leave a marketplace without automatic updates. The plugin report now marks a marketplace declared in managed settings `managed: see /status`, pointing at the Marketplace auto-update row Claude Code 2.1.329 added there, which names the marketplaces that get no automatic updates and why.
+
 ## 1.4.0
 
 ### Changed

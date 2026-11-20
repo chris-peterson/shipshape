@@ -314,7 +314,10 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   Code leaves a third-party marketplace's auto-update off by default, so without
   the banner the user stays on the installed shipshape with no sign of why.
 - [AUTO-06] The maintenance run shall report each marketplace's auto-update
-  status without writing it.
+  status without writing it. Where managed settings declare the marketplace,
+  the run shall report it as managed and point at `/status`'s Marketplace
+  auto-update row rather than at the user-level flag, which managed policy
+  outranks.
 
 ### JSON — JSON processing
 
