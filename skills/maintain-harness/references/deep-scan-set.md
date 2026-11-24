@@ -51,7 +51,7 @@ which is why it is recorded per target rather than decided per run:
 | `action` | Ask it as | Finding becomes |
 |---|---|---|
 | `edit` | "fix it in the source" | a direct edit in that repo, left in the working tree to review |
-| `issue` | "file an issue" | a draft offered to `/anchor:issue` with the set |
+| `issue` | "file an issue" | a draft handed off with the rest, to `/anchor:issue` or as a prefilled new-issue link |
 | `summarize` | not asked; set it when the user says they only want to hear about findings | a line in the report |
 | `ignore` | "I don't maintain it" | nothing; the target is never examined |
 

@@ -8,6 +8,7 @@
 
 - **A marketplace your organization manages no longer reads as auto-updating just because your own settings say so.** Managed settings outrank `~/.claude/settings.json` and can leave a marketplace without automatic updates. The plugin report now marks a marketplace declared in managed settings `managed: see /status`, pointing at the Marketplace auto-update row Claude Code 2.1.329 added there, which names the marketplaces that get no automatic updates and why.
 - **The reload step is just `/reload-plugins`.** The closing no longer tells you to rerun it with `--force` if it warns.
+- **Upgrade findings are filed from one review, not one question at a time.** After an upgrade, `/maintain-harness` used to ask "file it or fix it now?" for every finding. Now fixes land in the working tree of repos you marked "fix it in the source", and every drafted issue for repos you marked "file an issue" opens in one review, where you keep, edit, or drop each draft. With anchor installed, that review is `/anchor:issue`'s batch, which files the drafts you keep. Without anchor, the drafts are markdown files in a folder the run opens for you. Once you've finished editing, you get one link per remaining draft that opens your forge's new-issue form (GitHub or GitLab) already filled in. A draft too long for a link fills in just the title and names the file to paste the body from. shipshape never files an issue itself and still needs nothing beyond `jq`.
 
 ## 1.4.0
 

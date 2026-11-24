@@ -4,7 +4,7 @@ Tracks coverage of the requirements in [SPEC.md](./SPEC.md) against the single
 in-repo implementation. Status vocabulary: **Covered** · **Partial** ·
 **Missing** · **Contradicts**.
 
-**Coverage: 133/133 requirements Covered (100%)**
+**Coverage: 135/135 requirements Covered (100%)**
 **Evidence pointers:** file
 
 Location holds the file. To find the spot inside it, grep for the requirement
@@ -141,7 +141,7 @@ means an edit can't leave the two disagreeing.
 | VERSION-26 | Covered | scripts/version-scan-targets.sh; skills/maintain-harness/references/deep-scan-set.md |
 | VERSION-27 | Covered | skills/maintain-harness/references/claude-code.md |
 | VERSION-28 | Covered | skills/maintain-harness/references/claude-code.md |
-| VERSION-29 | Covered | skills/maintain-harness/references/claude-code.md |
+| VERSION-29 | Covered | skills/maintain-harness/references/claude-code.md; skills/maintain-harness/references/default-guide.md |
 | VERSION-30 | Covered | skills/maintain-harness/references/claude-code.md |
 | VERSION-31 | Covered | skills/maintain-harness/references/claude-code.md |
 | VERSION-32 | Covered | skills/maintain-harness/references/claude-code.md; skills/maintain-harness/references/default-guide.md |
@@ -156,6 +156,7 @@ means an edit can't leave the two disagreeing.
 | VERSION-41 | Covered | skills/maintain-harness/references/default-guide.md; skills/maintain-harness/references/claude-code.md |
 | VERSION-42 | Covered | scripts/plugin-data-dir.sh; hooks/check-claude-code-version.sh; scripts/version-scan-targets.sh |
 | VERSION-43 | Covered | scripts/version-scan-targets.sh |
+| VERSION-44 | Covered | scripts/issue-draft-link.sh; skills/maintain-harness/references/claude-code.md |
 
 ## GUIDE — The harness maintenance guide
 

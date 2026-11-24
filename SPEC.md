@@ -461,11 +461,14 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   so the coverage is legible.
 - [VERSION-29] shipshape shall deliver a run's findings in one pass rather than
   one at a time, since the decision the user makes is which of them to act on
-  and that needs all of them in view. It shall then walk the findings one at a
-  time, asking per finding whether to file it or fix it now and carrying the
-  file, the line and the size of the fix into the question. Delivering the set
-  is what makes the findings comparable; a single closing offer over the set
-  asks for one answer across findings whose answers differ.
+  and that needs all of them in view. It shall then act on each finding by its
+  target's recorded action without a per-finding question, and shall hand every
+  drafted issue to one review in which the user keeps, edits, or drops each
+  draft separately; a dropped draft shall not be filed. Where `/anchor:issue` is
+  among the session's skills, that review shall be its batch. A question per
+  finding turns a release that touches several repos into a long run of prompts,
+  and a single answer over the set covers findings whose answers differ; a review
+  of the whole set with a decision per item avoids both.
 - [VERSION-30] While carrying out a multi-step guide, shipshape shall report the
   outcome of each step rather than each tool call it took, so the results the
   user can act on are not buried in the mechanics of reaching them.
@@ -569,6 +572,16 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   they test, so the ordering decides between a reported question and a command
   that exits without output — and the silent exit is indistinguishable from a
   clean pass.
+- [VERSION-44] Where `/anchor:issue` is not among the session's skills,
+  shipshape shall write each drafted issue to its own file under the session
+  scratch directory, open their folder for the user to edit or delete, and once
+  the user has finished, list one link per remaining draft that opens the
+  forge's new-issue form with its title and body filled in. Where that link
+  would exceed the length a forge accepts, it shall fill in the title alone and
+  name the draft to paste the body from. shipshape shall file no issue itself.
+  anchor is optional and a forge CLI would be a second dependency next to `jq`,
+  so the forge's own form keeps the handoff dependency-free while leaving the
+  write, and the user's account, with the user.
 
 ### GUIDE — The harness maintenance guide
 
