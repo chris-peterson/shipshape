@@ -171,7 +171,7 @@ prunes), the report is the composition line, the Updates table, and that
 closing line.
 
 ```text
-Run /reload-plugins here and in your other sessions (/reload-plugins --force if it warns).
+Run /reload-plugins here and in your other sessions.
 ```
 
 A 🔧 row puts a numbered list ahead of the reload: fixing the file, which is
@@ -183,7 +183,7 @@ set enables whose enable didn't land in it. A plugin set `false` in
 ```text
 Run these, in order:
 1. Fix ~/.claude/settings.json: its "cleanupPeriodDays" is not valid
-2. /reload-plugins (--force if it warns), here and in your other sessions
+2. /reload-plugins, here and in your other sessions
 ```
 
 A ⏸️ row whose message said `Run \`claude update\`` puts `claude update` in
@@ -199,7 +199,7 @@ since an installer runs whichever version the session has loaded:
 
 ```text
 Run these, in order:
-1. /reload-plugins (--force if it warns), here and in your other sessions
+1. /reload-plugins, here and in your other sessions
 2. /foo:install-foo
 3. /bar:install-bar
 ```

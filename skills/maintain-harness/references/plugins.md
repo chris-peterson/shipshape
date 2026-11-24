@@ -344,10 +344,8 @@ Release on every exit path, including the early ones — if you bailed out mid-r
 Installs, uninstalls, and updates change plugins on disk but don't take effect in the running session — Claude Code reads the plugin set once at startup and freezes it. `/reload-plugins` re-reads it in place (no restart). It's a built-in command that only a human can type: there's no CLI flag, hook, or skill that triggers a reload, and no way to reload across sessions — each running session is an independent process. So the reconcile only lands where the user runs the reload, and the ask is the closing step in output-format.md, worded as the command alone:
 
 ```text
-Run /reload-plugins here and in your other sessions (/reload-plugins --force if it warns).
+Run /reload-plugins here and in your other sessions.
 ```
-
-Name the `--force` rerun in the ask, not after the user reports the warning. A reload that would invalidate the prompt cache warns and does nothing until it's rerun with the flag, so a plain "run `/reload-plugins`" can leave the reconcile unapplied while reading as done.
 
 The reasons behind the ask stay out of the report; the closing carries the command, not its rationale:
 

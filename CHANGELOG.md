@@ -5,7 +5,9 @@
 ### Changed
 
 - **The auto-update hook no longer overrides your organization's marketplace settings.** Where managed settings already set `autoUpdate` for a marketplace, `true` or `false`, the session-start hook leaves it out: no `~/.claude/settings.json` entry is written, so a settings file you deploy from source stops drifting every session, and an admin's `false` stands. It reads the server-managed settings cache (`remote-settings.json`), then the OS `managed-settings.json` and its `managed-settings.d/` drop-ins, in the order Claude Code ranks them. User entries already there are kept. The hook also follows `CLAUDE_CONFIG_DIR` where it's set, and the banner shown when no `jq` can be had now says shipshape can't turn auto-update on rather than that it's off.
+
 - **A marketplace your organization manages no longer reads as auto-updating just because your own settings say so.** Managed settings outrank `~/.claude/settings.json` and can leave a marketplace without automatic updates. The plugin report now marks a marketplace declared in managed settings `managed: see /status`, pointing at the Marketplace auto-update row Claude Code 2.1.329 added there, which names the marketplaces that get no automatic updates and why.
+- **The reload step is just `/reload-plugins`.** The closing no longer tells you to rerun it with `--force` if it warns.
 
 ## 1.4.0
 
