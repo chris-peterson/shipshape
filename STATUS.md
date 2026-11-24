@@ -96,6 +96,7 @@ means an edit can't leave the two disagreeing.
 | AUTO-04    | Covered | hooks/enforce-autoupdate.sh |
 | AUTO-05    | Covered | hooks/enforce-autoupdate.sh |
 | AUTO-06    | Covered | skills/maintain-harness/references/plugins.md |
+| AUTO-07    | Covered | hooks/enforce-autoupdate.sh |
 
 ## JSON — JSON processing
 

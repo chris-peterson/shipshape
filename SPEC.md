@@ -302,6 +302,7 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   registered marketplaces from `~/.claude/plugins/known_marketplaces.json` and
   set `autoUpdate: true` on each one's `extraKnownMarketplaces` entry in
   `~/.claude/settings.json`, creating that entry where it does not exist.
+  Where `CLAUDE_CONFIG_DIR` is set, both files are read from it instead.
 - [AUTO-02] The auto-update hook shall write only when a marketplace is missing
   the flag, leaving settings unchanged at steady state.
 - [AUTO-03] The auto-update hook shall preserve existing `extraKnownMarketplaces`
@@ -318,6 +319,17 @@ Ubiquitous (`The <system> shall …`), State-Driven (`While …`), Event-Driven
   the run shall report it as managed and point at `/status`'s Marketplace
   auto-update row rather than at the user-level flag, which managed policy
   outranks.
+- [AUTO-07] Where a managed source's `extraKnownMarketplaces` entry for a
+  marketplace sets `autoUpdate`, `true` or `false`, the auto-update hook shall
+  neither write a user entry for it nor list it, and shall leave any user entry
+  it finds in place. A managed entry replaces a user entry of the same name
+  whole, so the user flag does nothing, and an admin's `false` is the org's
+  decision. The managed sources are, in rank order, the server-managed cache
+  `remote-settings.json` in the config dir, then the OS `managed-settings.json`
+  with `managed-settings.d/*.json` merged over it; the first that delivers a
+  policy key is the only one read, unless it sets `managedSourcesBehavior:
+  "merge"`. A managed entry that leaves `autoUpdate` unset decides nothing, and
+  a managed file that doesn't parse delivers nothing.
 
 ### JSON — JSON processing
 
