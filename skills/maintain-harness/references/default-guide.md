@@ -121,7 +121,7 @@ rather than a judgment to make per run:
 | `action` | What to do with a finding |
 |---|---|
 | `summarize` | one line in the report: the file, the line, and what a fix would cost. Nothing is written. Set only when the user asks to hear about findings without acting on them. |
-| `issue` | draft it for filing — title, a why-first body written for someone who has never seen that part of the repo, the exact files and lines, a size estimate — then offer the set to `/anchor:issue`. |
+| `issue` | draft it for filing — title, a why-first body written for someone who has never seen that part of the repo, the exact files and lines, a size estimate — then hand the whole set off together, to `/anchor:issue` where the session has it and as prefilled links where it doesn't ([Acknowledge](claude-code.md#acknowledge)). |
 | `edit` | land the fix as a direct edit in that repo for the user to review. No branch, no commit — leaving it in the working tree is what lets them read it before it goes anywhere. |
 | `ignore` | not examined at all, and not mentioned. |
 
@@ -131,9 +131,10 @@ indistinguishable from a fix that never happened.
 A target's recorded action is its default, not a verdict on the run. Where
 a finding lands somewhere other than where its action points — a
 `summarize` target whose finding is a one-line fix, an `issue` target the user
-is sitting in — offer the other shape when the walk reaches it.
+is sitting in — say so on its line in the report, and the user can drop it from
+the batch and ask for the other shape.
 
-## 6. Report once, then walk the findings
+## 6. Report once, then hand off the drafts
 
 One pass, in this order, and nothing per tool call:
 
@@ -147,12 +148,12 @@ about somebody else's software, and putting it at the end of the report asks the
 user to hold a number they have nothing to do with. Ignored targets earn no
 line, no count, and no closing tally.
 
-Then take the findings one at a time and ask **file it or fix it now**, one
-**AskUserQuestion** per finding, carrying the file, the line and the size of the
-fix into the question itself. The report is what puts every finding in view; the
-walk is what turns each one into a decision. A single closing offer to file the
-set makes the user answer for all of them at once, which is the one shape that
-suits none of them.
+Then hand every `issue` target's drafts off together, as
+[Acknowledge](claude-code.md#acknowledge) describes, with no question per
+finding. The report is what puts every finding in view, and the review the drafts
+open in is where each one becomes a decision: the user keeps, edits, or drops
+each draft separately, so no one answer has to cover findings whose answers
+differ.
 
 Where the whole pass turns up nothing, that is the answer: say the release was
 internal to Claude Code and touched nothing the user maintains. A quiet upgrade

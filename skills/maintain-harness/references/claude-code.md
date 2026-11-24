@@ -174,7 +174,7 @@ Walking is not acknowledging. While `pending` is true, close with the
 [question](#close-with-the-question).
 
 ## Acknowledge
-<!-- covers: VERSION-18, VERSION-19, VERSION-21, VERSION-24, VERSION-27, VERSION-28, VERSION-29, VERSION-30, VERSION-31, VERSION-32 -->
+<!-- covers: VERSION-18, VERSION-19, VERSION-21, VERSION-24, VERSION-27, VERSION-28, VERSION-29, VERSION-30, VERSION-31, VERSION-32, VERSION-44 -->
 
 Stop here when `pending` is false: there's no upgrade to handle, and the guide
 is an upgrade errand rather than something to run on request. Say what's
@@ -252,14 +252,39 @@ not a verdict — it hands back the hedge the step existed to remove. Count them
 in the report, so the coverage is legible: a step over 7 targets and 12
 candidates accounts for 84 verdicts, or says which it could not reach.
 
-**Report findings in one pass, then walk them one at a time.** A release that
+**Report findings in one pass, then hand them off as a set.** A release that
 touches the harness surfaces work in several repos at once, so deliver them
-together, each in the contract's shape — that is what puts the set in view.
-Then take them one by one and ask **file it or fix it now**, one
-**AskUserQuestion** per finding, carrying the file, the line and the size of the
-fix into the question. `/anchor:issue` writes the body for the ones they file.
-One closing offer to file the set asks for a single answer across findings whose
-answers differ.
+together, each in the contract's shape. That's what puts the set in view. Then
+act on each finding by its target's recorded action, with no per-finding
+question: an `edit` target's fixes land in its working tree, and every `issue`
+target's drafts go out together, to one review where the user decides each draft
+on its own. A finding they'd rather fix now, they drop from that review and ask
+for.
+
+- **Where `anchor:issue` is among this session's skills**, hand every drafted
+  issue to `/anchor:issue` in one call, as its "Several issues at once" batch,
+  each one addressed to the repo it lands in. Its review is the gate: the user
+  keeps, edits, or drops each draft there, and a dropped one is never filed. A
+  single draft goes the same way, as a batch of one.
+- **Where it isn't**, shipshape files nothing itself, since anchor is optional
+  and a forge CLI would be a second dependency. Write each draft to
+  `<scratch>/issues/<repo>/<n>-<slug>.md` under the session scratch directory: a
+  `# <title>` line, then the body. Open the `issues` folder for the user
+  (`open` on macOS, `xdg-open` on Linux, `explorer.exe` under git-bash; where
+  none runs, give the path), and ask once, with **AskUserQuestion**, whether
+  they've finished: editing a file changes that issue, and deleting it drops
+  it. Then, for each repo folder that still holds drafts:
+
+  ```bash
+  bash ${CLAUDE_PLUGIN_ROOT}/scripts/issue-draft-link.sh <checkout> <draft.md>...
+  ```
+
+  List one link per remaining draft, for the user to open and file. A `full`
+  link opens the forge's new-issue form with the title and body filled in. A
+  `title-only` link fills in only the title, so its line names the draft to
+  paste the body from. `no-title` means the draft has lost its `# ` heading.
+  Exit 2 means that repo's forge has no form to link to, so list its drafts'
+  paths instead.
 
 **A step that names the user's plugins means the ones they maintain.** The
 built-in guide has already resolved that set and each target's action — reuse

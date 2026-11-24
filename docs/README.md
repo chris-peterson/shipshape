@@ -275,7 +275,16 @@ finds your checkout and asks what to do with a finding:
 | Your answer | What a finding in that repo becomes |
 |---|---|
 | fix it in the source | an edit in that repo's working tree, for you to review |
-| file an issue | a drafted issue, offered to `/anchor:issue` with the rest |
+| file an issue | a drafted issue, reviewed with the rest in one place |
+
+The run asks nothing per finding. Fixes land in your working tree for you to
+read, and every drafted issue opens for review together, where you keep, edit,
+or drop each one. With [anchor](https://github.com/chris-peterson/anchor)
+installed, that review is `/anchor:issue`'s batch, which files the ones you
+keep. Without it, the drafts are markdown files in a folder shipshape opens for
+you: edit or delete them, and it hands back one link per remaining draft that
+opens your forge's new-issue form already filled in. shipshape never files an
+issue itself.
 
 Later runs reconcile that against what you have installed and ask only about
 the difference, so a plugin you've already answered for never comes up again.
